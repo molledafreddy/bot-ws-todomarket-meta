@@ -25,6 +25,9 @@ WORKDIR /app
 ARG PORT
 ENV PORT $PORT
 EXPOSE $PORT
+RUN echo "La variable de entorno es: $PORT"
+
+
 
 COPY --from=builder /app/assets ./assets
 COPY --from=builder /app/dist ./dist
