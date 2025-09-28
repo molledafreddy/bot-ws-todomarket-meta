@@ -62,16 +62,27 @@ const fullSamplesFlow = addKeyword<Provider, Database>(['samples', utils.setEven
 const main = async () => {
     const adapterFlow = createFlow([welcomeFlow, registerFlow, fullSamplesFlow])
     
+    // const adapterProvider = createProvider(Provider, {
+    //     jwtToken: process.env.JWT_TOKEN!,
+    //     numberId: process.env.NUMBER_ID!,
+    //     verifyToken: process.env.VERIFY_TOKEN!,
+    //     version: 'v18.0'
+    // })
+
     const adapterProvider = createProvider(Provider, {
-        jwtToken: process.env.JWT_TOKEN!,
-        numberId: process.env.NUMBER_ID!,
-        verifyToken: process.env.VERIFY_TOKEN!,
+        jwtToken: '3cb83eb89c64667ce904255019dae47b',
+        numberId: '15551533209',
+        verifyToken: 'mi_bot_secreto_2025_xyz789',
         version: 'v18.0'
     })
 
-    const adapterDB = new Database({
-        dbUri: process.env.MONGO_DB_URI!,
-        dbName: process.env.MONGO_DB_NAME!,
+    // const adapterDB = new Database({
+    //     dbUri: process.env.MONGO_DB_URI!,
+    //     dbName: process.env.MONGO_DB_NAME!,
+    // })
+     const adapterDB = new Database({
+        dbUri: 'mongodb+srv://molledafreddy:magallanes2721.@cluster0.1e16p.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0',
+        dbName: 'db_bot',
     })
 
     const { handleCtx, httpServer } = await createBot({
