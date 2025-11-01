@@ -73,7 +73,7 @@ const main = async () => {
         jwtToken: 'EAAV7DZBhkJqsBPZBbZC3chlY2cI36cYUhmDMrZCVWQ4jAFiHWsV9q9zNcYh4MYLO1nPLZCVizA9i8NbpwTzUeemprIDeleSluQZCI3ha5wVkPK4URYERz7f8Fjsq8aHFOGPgz8X4K5ctZCHDOslj5s7O4ZBIOH6vIjqxaS65uteOPtc7ZBFjTJHgjKfMHsqmqsFKCSXqokbY7knX0at8GQPWxDjrfAaeaM6CmzEEMncI9fJXzvBtu6Qizj7zkpGnFyFhlKxSZBBGNgPROvVQsW9bwf55Jl',
         numberId: '725315067342333',
         verifyToken: 'mi_bot_secreto_2025_xyz789',
-        version: 'v18.0'
+        version: 'v22.0'
     })
 
     // const adapterDB = new Database({
