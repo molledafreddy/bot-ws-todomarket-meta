@@ -70,8 +70,8 @@ const main = async () => {
     // })
 
     const adapterProvider = createProvider(Provider, {
-        jwtToken: 'EAAV7DZBhkJqsBPZBbZC3chlY2cI36cYUhmDMrZCVWQ4jAFiHWsV9q9zNcYh4MYLO1nPLZCVizA9i8NbpwTzUeemprIDeleSluQZCI3ha5wVkPK4URYERz7f8Fjsq8aHFOGPgz8X4K5ctZCHDOslj5s7O4ZBIOH6vIjqxaS65uteOPtc7ZBFjTJHgjKfMHsqmqsFKCSXqokbY7knX0at8GQPWxDjrfAaeaM6CmzEEMncI9fJXzvBtu6Qizj7zkpGnFyFhlKxSZBBGNgPROvVQsW9bwf55Jl',
-        numberId: '725315067342333',
+        jwtToken: 'EAAV7DZBhkJqsBP0w37DQODKs6dGwZAvILqWYC6l8gFZCfHyYXjCYbZBzZCcOTNUpB2pKvIUZB4HhjnZANake5CZCHuvMZCKJbzs4eWSbDCWWmJgbi5hHnSgZBJZAINfX2dLulzPQZBlZCoSmqrEyTFEekpWuM9gg3WSAePjTK6ZCMQ7xiBggxIfGoCJHgD4wpC6WQBWkncbSagZBrZABYcXRX5L4GMUspiDEAU2NpPMkrVJ8ICQKqKGRMUjd9juYKnFzZCQcxP3lgdJ7otjdpOFZCIr6giL3M1bMZADpgZDZD',
+        numberId: '768634939670452',
         verifyToken: 'mi_bot_secreto_2025_xyz789',
         version: 'v22.0'
     })
