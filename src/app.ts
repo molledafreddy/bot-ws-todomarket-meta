@@ -91,6 +91,12 @@ const main = async () => {
         database: adapterDB,
     })
 
+    // Ruta GET para la raíz - necesaria para verificación del webhook
+    adapterProvider.server.get('/', (req, res) => {
+        res.writeHead(200, { 'Content-Type': 'text/plain' })
+        return res.end('Bot TodoMarket is running! 🤖')
+    })
+
     adapterProvider.server.post(
         '/v1/messages',
         handleCtx(async (bot, req, res) => {
