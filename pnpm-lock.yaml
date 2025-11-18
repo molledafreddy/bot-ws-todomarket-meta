@@ -9,14 +9,14 @@ importers:
   .:
     dependencies:
       '@builderbot/bot':
-        specifier: 1.3.2-y.0
-        version: 1.3.2-y.0
+        specifier: 1.3.5
+        version: 1.3.5
       '@builderbot/database-mongo':
-        specifier: 1.3.2-y.0
-        version: 1.3.2-y.0
+        specifier: 1.3.5
+        version: 1.3.5
       '@builderbot/provider-meta':
-        specifier: 1.3.2-y.0
-        version: 1.3.2-y.0
+        specifier: 1.3.5
+        version: 1.3.5
       dotenv:
         specifier: ^17.2.2
         version: 17.2.2
@@ -188,11 +188,14 @@ packages:
   '@builderbot/bot@1.3.2-y.0':
     resolution: {integrity: sha512-oC4/1/ojYNj47OwnMIVu+Scq6u5R05nrwMqmFTaRAfqXhqG0F9FXbzwSi7lpP0aqu30jHmdbefC6kGD5tFVz1g==}
 
-  '@builderbot/database-mongo@1.3.2-y.0':
-    resolution: {integrity: sha512-65jZOonDRUEqm+zEjFrMiOT9SICdClTHi1MueBkqyIMcNrg2tOJFsoFrfR7MiGKIIGj6nOiS87jPcKkjraSD/Q==}
+  '@builderbot/bot@1.3.5':
+    resolution: {integrity: sha512-abhp/enQ50HSggar/KJom4I1o7rYEllT8cRwyCpgF/DiGTWBPlDNmz6vfLPMWT4ZBh8I2Dr7wU0rhMpWnt3HLw==}
 
-  '@builderbot/provider-meta@1.3.2-y.0':
-    resolution: {integrity: sha512-FWaFNtbOCyz11ID0bhuSY8h3pwpQV8YS2CJpzueVtGu1icuAsYCYxnph5uV206p/e6j5rZAxPOAIhF86FJd8Iw==}
+  '@builderbot/database-mongo@1.3.5':
+    resolution: {integrity: sha512-IFOfOAh6Zb2Iry9qMOBLB44P6UFsmo2baSGNTC77RuBOIJcf34wlrC4FfxhnXY2n6Sv2TOQB7U38xt9ISTl1Fg==}
+
+  '@builderbot/provider-meta@1.3.5':
+    resolution: {integrity: sha512-kjdgkcilIhGFkjA77nJqr0L3DTw1xx1O/M/SkrHoSUa2WvVVXgM0KZPnqDnzKxCBa8YmvbacO5OP2eCJtLuFrg==}
 
   '@emnapi/runtime@1.5.0':
     resolution: {integrity: sha512-97/BJ3iXHww3djw6hYIfErCZFee7qCtrneuLa20UXFCOTCfBM2cvQHjWJ2EG0s0MtdNwInarqCTz35i4wWXHsQ==}
@@ -2281,7 +2284,23 @@ snapshots:
       - debug
       - supports-color
 
-  '@builderbot/database-mongo@1.3.2-y.0':
+  '@builderbot/bot@1.3.5':
+    dependencies:
+      '@ffmpeg-installer/ffmpeg': 1.1.0
+      body-parser: 1.20.3
+      cors: 2.8.5
+      fluent-ffmpeg: 2.1.3
+      follow-redirects: 1.15.11
+      mime-types: 2.1.35
+      picocolors: 1.1.1
+      polka: 0.5.2
+    optionalDependencies:
+      sharp: 0.33.3
+    transitivePeerDependencies:
+      - debug
+      - supports-color
+
+  '@builderbot/database-mongo@1.3.5':
     dependencies:
       '@builderbot/bot': 1.3.2-y.0
       mongodb: 4.17.2
@@ -2290,7 +2309,7 @@ snapshots:
       - debug
       - supports-color
 
-  '@builderbot/provider-meta@1.3.2-y.0':
+  '@builderbot/provider-meta@1.3.5':
     dependencies:
       axios: 1.12.2
       body-parser: 1.20.3
