@@ -60,9 +60,9 @@ RUN npm cache clean --force && pnpm install --production --ignore-scripts \
 # Switch to non-root user
 USER nodejs
 
-# Health check for Railway
+# Health check for Railway - Railway sets PORT automatically
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD curl -f http://localhost:${PORT:-3008}/ || exit 1
+    CMD curl -f http://localhost:$PORT/ || exit 1
 
 # Log timezone for verification
 RUN echo "Container timezone: $(date)"

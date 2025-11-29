@@ -10,7 +10,8 @@ import process from 'process';
 // Importar fetch para Node.js si no está disponible globalmente
 const fetch = globalThis.fetch || require('node-fetch')
 
-const PORT = process.env.PORT ?? 3008
+// Railway requires PORT as integer
+const PORT = parseInt(process.env.PORT || '3008', 10)
 
 
 
@@ -1467,7 +1468,9 @@ const main = async () => {
         }
     )
 
-    httpServer(+PORT)
+    // Start HTTP server with proper port validation for Railway
+    console.log(`🚀 Starting server on port: ${PORT}`);
+    httpServer(PORT)
 }
 
 main()
