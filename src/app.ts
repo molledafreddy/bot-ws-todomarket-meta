@@ -5,6 +5,7 @@ import { createBot, createProvider, createFlow, addKeyword, utils, EVENTS } from
 import { MongoAdapter as Database } from '@builderbot/database-mongo'
 import { MetaProvider as Provider } from '@builderbot/provider-meta'
 import { idleFlow, reset, start, stop, IDLETIME } from './idle-custom'
+import process from 'process';
 
 // Importar fetch para Node.js si no está disponible globalmente
 const fetch = globalThis.fetch || require('node-fetch')
@@ -320,7 +321,6 @@ const flowEndShoppingCart = addKeyword(utils.setEvent('END_SHOPPING_CART'))
             return endFlow([
                 '✅ *¡Pedido confirmado!* 🛒',
                 '',
-                `📍 *Dirección:* ${dataAddress}`,
                 `💳 *Método de pago:* ${dataPaymentMethod}`,
                 totalDisplay,
                 '',
@@ -556,7 +556,7 @@ async function debugCatalogProducts(catalogId: string, provider: any) {
         console.log('\n🔍 === DEBUG: LISTANDO PRODUCTOS DEL CATÁLOGO ===');
         console.log('📋 Catalog ID:', catalogId);
         
-        const accessToken = provider.jwtToken || process.env.JWT_TOKEN;
+        const accessToken = provider.jwtToken || process.env.JWT_TOKEN || process.env.JWT_TOKEN_USER;
         
         if (!accessToken) {
             console.log('❌ No se encontró token de acceso');
@@ -575,54 +575,54 @@ async function debugCatalogProducts(catalogId: string, provider: any) {
         
         console.log('📡 Consultando catálogo completo...');
         
-        const response = await fetch(catalogFullUrl, {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-            }
-        });
+        // const response = await fetch(catalogFullUrl, {
+        //     method: 'GET',
+        //     headers: {
+        //         'Content-Type': 'application/json',
+        //     }
+        // });
         
-        if (response.ok) {
-            const data = await response.json();
-            console.log('✅ Respuesta exitosa del catálogo');
+        // if (response.ok) {
+        //     const data = await response.json();
+        //     console.log('✅ Respuesta exitosa del catálogo');
             
-            if (data && data.data && Array.isArray(data.data)) {
-                console.log(`📦 Productos encontrados: ${data.data.length}`);
-                console.log('\n📋 LISTA DE PRODUCTOS:');
-                console.log('========================');
+        //     if (data && data.data && Array.isArray(data.data)) {
+        //         console.log(`📦 Productos encontrados: ${data.data.length}`);
+        //         console.log('\n📋 LISTA DE PRODUCTOS:');
+        //         console.log('========================');
                 
-                data.data.forEach((product, index) => {
-                    console.log(`${index + 1}. ID: ${product.id || 'N/A'}`);
-                    console.log(`   Retailer ID: ${product.retailer_id || 'N/A'}`);
-                    console.log(`   Nombre: ${product.name || 'N/A'}`);
-                    console.log(`   Precio: ${product.price || 'N/A'} ${product.currency || ''}`);
-                    console.log(`   Disponibilidad: ${product.availability || 'N/A'}`);
-                    console.log(`   Marca: ${product.brand || 'N/A'}`);
-                    console.log('   ---');
-                });
+        //         data.data.forEach((product, index) => {
+        //             console.log(`${index + 1}. ID: ${product.id || 'N/A'}`);
+        //             console.log(`   Retailer ID: ${product.retailer_id || 'N/A'}`);
+        //             console.log(`   Nombre: ${product.name || 'N/A'}`);
+        //             console.log(`   Precio: ${product.price || 'N/A'} ${product.currency || ''}`);
+        //             console.log(`   Disponibilidad: ${product.availability || 'N/A'}`);
+        //             console.log(`   Marca: ${product.brand || 'N/A'}`);
+        //             console.log('   ---');
+        //         });
                 
-                // Buscar los IDs específicos que estamos probando
-                const testIds = ['51803h3qku', 'ip1nctw0hq', '5snmm6fndt', 'ypgstd82t1'];
-                console.log('\n🔍 VERIFICANDO IDs DE PRUEBA:');
-                console.log('=============================');
+        //         // Buscar los IDs específicos que estamos probando
+        //         const testIds = ['51803h3qku', 'ip1nctw0hq', '5snmm6fndt', 'ypgstd82t1'];
+        //         console.log('\n🔍 VERIFICANDO IDs DE PRUEBA:');
+        //         console.log('=============================');
                 
-                testIds.forEach(testId => {
-                    const found = data.data.find(p => p.retailer_id === testId || p.id === testId);
-                    if (found) {
-                        console.log(`✅ ${testId}: ENCONTRADO -> ${found.name}`);
-                    } else {
-                        console.log(`❌ ${testId}: NO ENCONTRADO`);
-                    }
-                });
+        //         testIds.forEach(testId => {
+        //             const found = data.data.find(p => p.retailer_id === testId || p.id === testId);
+        //             if (found) {
+        //                 console.log(`✅ ${testId}: ENCONTRADO -> ${found.name}`);
+        //             } else {
+        //                 console.log(`❌ ${testId}: NO ENCONTRADO`);
+        //             }
+        //         });
                 
-            } else {
-                console.log('⚠️ No se encontraron productos en la respuesta');
-            }
-        } else {
-            console.log('❌ Error HTTP:', response.status, response.statusText);
-            const errorText = await response.text();
-            console.log('📄 Respuesta de error:', errorText);
-        }
+        //     } else {
+        //         console.log('⚠️ No se encontraron productos en la respuesta');
+        //     }
+        // } else {
+        //     console.log('❌ Error HTTP:', response.status, response.statusText);
+        //     const errorText = await response.text();
+        //     console.log('📄 Respuesta de error:', errorText);
+        // }
         
         console.log('\n=== FIN DEBUG CATÁLOGO ===\n');
         
@@ -693,8 +693,7 @@ async function getProductDetailsFromMeta(productId: string, catalogId: string, p
         console.log('🔍 Consultando Meta API para producto:', productId, 'en catálogo:', catalogId);
         
         // Obtener el token de acceso
-        const accessToken = process.env.JWT_TOKEN_USER;
-        
+        const accessToken = process.env.JWT_TOKEN || process.env.JWT_TOKEN_USER;
         if (!accessToken) {
             console.log('⚠️ No se encontró token de acceso para Meta API');
             return null;
@@ -704,7 +703,7 @@ async function getProductDetailsFromMeta(productId: string, catalogId: string, p
         try {
             console.log('📡 Método 1: Obteniendo productos del catálogo completo');
             
-            const catalogUrl = `https://graph.facebook.com/v22.0/${catalogId}/products`;
+            const catalogUrl = `https://graph.facebook.com/v23.0/${catalogId}/products`;
             const catalogParams = {
                 fields: 'id,name,description,price,currency,retailer_id,availability,condition,brand',
                 access_token: accessToken,
@@ -757,56 +756,56 @@ async function getProductDetailsFromMeta(productId: string, catalogId: string, p
         }
         
         // Método 2: Intentar consultar producto individual (si el método anterior falla)
-        try {
-            console.log('📡 Método 2: Consultando producto individual');
+        // try {
+        //     console.log('📡 Método 2: Consultando producto individual');
             
-            // Buscar si existe un producto con ese retailer_id específico
-            const productUrl = `https://graph.facebook.com/v22.0/${catalogId}/products`;
-            const productParams = {
-                fields: 'id,name,description,price,currency,retailer_id,availability,condition,brand',
-                access_token: accessToken,
-                retailer_id: productId
-            };
+        //     // Buscar si existe un producto con ese retailer_id específico
+        //     const productUrl = `https://graph.facebook.com/v22.0/${catalogId}/products`;
+        //     const productParams = {
+        //         fields: 'id,name,description,price,currency,retailer_id,availability,condition,brand',
+        //         access_token: accessToken,
+        //         retailer_id: productId
+        //     };
             
-            const productQueryString = new URLSearchParams(productParams).toString();
-            const productFullUrl = `${productUrl}?${productQueryString}`;
+        //     const productQueryString = new URLSearchParams(productParams).toString();
+        //     const productFullUrl = `${productUrl}?${productQueryString}`;
             
-            console.log('📡 URL producto individual:', productFullUrl.replace(accessToken, '***TOKEN***'));
+        //     console.log('📡 URL producto individual:', productFullUrl.replace(accessToken, '***TOKEN***'));
             
-            const productResponse = await fetch(productFullUrl, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                }
-            });
+        //     const productResponse = await fetch(productFullUrl, {
+        //         method: 'GET',
+        //         headers: {
+        //             'Content-Type': 'application/json',
+        //         }
+        //     });
             
-            if (productResponse.ok) {
-                const productData = await productResponse.json();
-                console.log('📦 Respuesta producto individual:', JSON.stringify(productData, null, 2));
+        //     if (productResponse.ok) {
+        //         const productData = await productResponse.json();
+        //         console.log('📦 Respuesta producto individual:', JSON.stringify(productData, null, 2));
                 
-                if (productData && productData.data && Array.isArray(productData.data) && productData.data.length > 0) {
-                    const product = productData.data[0];
-                    console.log('✅ Producto encontrado (método 2):', product.name);
+        //         if (productData && productData.data && Array.isArray(productData.data) && productData.data.length > 0) {
+        //             const product = productData.data[0];
+        //             console.log('✅ Producto encontrado (método 2):', product.name);
                     
-                    return {
-                        id: productId,
-                        name: product.name || `Producto ${productId}`,
-                        description: product.description || null,
-                        brand: product.brand || null,
-                        metaPrice: product.price || null,
-                        currency: product.currency || 'CLP',
-                        availability: product.availability || null,
-                        source: 'meta_api_individual'
-                    };
-                }
-            } else {
-                console.log('❌ Error HTTP producto individual:', productResponse.status, productResponse.statusText);
-                const errorText = await productResponse.text();
-                console.log('📄 Respuesta de error:', errorText);
-            }
-        } catch (individualError) {
-            console.log('❌ Error consultando producto individual:', individualError);
-        }
+        //             return {
+        //                 id: productId,
+        //                 name: product.name || `Producto ${productId}`,
+        //                 description: product.description || null,
+        //                 brand: product.brand || null,
+        //                 metaPrice: product.price || null,
+        //                 currency: product.currency || 'CLP',
+        //                 availability: product.availability || null,
+        //                 source: 'meta_api_individual'
+        //             };
+        //         }
+        //     } else {
+        //         console.log('❌ Error HTTP producto individual:', productResponse.status, productResponse.statusText);
+        //         const errorText = await productResponse.text();
+        //         console.log('📄 Respuesta de error:', errorText);
+        //     }
+        // } catch (individualError) {
+        //     console.log('❌ Error consultando producto individual:', individualError);
+        // }
         
         console.log('⚠️ Producto no encontrado con ningún método');
         return null;
@@ -834,52 +833,52 @@ async function getProductDetailsFromMetaAlternative(productId: string, catalogId
         
         // Método alternativo: Usar la API de Graph directamente
         // Según la documentación, también se puede acceder vía: /{business-id}/owned_product_catalogs
-        try {
-            console.log('📡 Intentando acceso directo a producto por retailer_id');
+        // try {
+        //     console.log('📡 Intentando acceso directo a producto por retailer_id');
             
-            const directUrl = `https://graph.facebook.com/v22.0/${catalogId}/products/${productId}`;
-            const directParams = {
-                fields: 'id,name,description,price,currency,retailer_id,availability,condition,brand',
-                access_token: accessToken
-            };
+        //     const directUrl = `https://graph.facebook.com/v22.0/${catalogId}/products/${productId}`;
+        //     const directParams = {
+        //         fields: 'id,name,description,price,currency,retailer_id,availability,condition,brand',
+        //         access_token: accessToken
+        //     };
             
-            const directQueryString = new URLSearchParams(directParams).toString();
-            const directFullUrl = `${directUrl}?${directQueryString}`;
+        //     const directQueryString = new URLSearchParams(directParams).toString();
+        //     const directFullUrl = `${directUrl}?${directQueryString}`;
             
-            console.log('📡 URL acceso directo:', directFullUrl.replace(accessToken, '***TOKEN***'));
+        //     console.log('📡 URL acceso directo:', directFullUrl.replace(accessToken, '***TOKEN***'));
             
-            const directResponse = await fetch(directFullUrl, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                }
-            });
+        //     // const directResponse = await fetch(directFullUrl, {
+        //     //     method: 'GET',
+        //     //     headers: {
+        //     //         'Content-Type': 'application/json',
+        //     //     }
+        //     // });
             
-            if (directResponse.ok) {
-                const directData = await directResponse.json();
-                console.log('📦 Respuesta acceso directo:', JSON.stringify(directData, null, 2));
+        //     // if (directResponse.ok) {
+        //     //     const directData = await directResponse.json();
+        //     //     console.log('📦 Respuesta acceso directo:', JSON.stringify(directData, null, 2));
                 
-                if (directData && directData.id) {
-                    console.log('✅ Producto encontrado (acceso directo):', directData.name);
-                    return {
-                        id: productId,
-                        name: directData.name || `Producto ${productId}`,
-                        description: directData.description || null,
-                        brand: directData.brand || null,
-                        metaPrice: directData.price || null,
-                        currency: directData.currency || 'CLP',
-                        availability: directData.availability || null,
-                        source: 'meta_api_direct'
-                    };
-                }
-            } else {
-                console.log('❌ Error acceso directo:', directResponse.status, directResponse.statusText);
-                const errorText = await directResponse.text();
-                console.log('📄 Error directo:', errorText);
-            }
-        } catch (directError) {
-            console.log('❌ Error en acceso directo:', directError);
-        }
+        //     //     if (directData && directData.id) {
+        //     //         console.log('✅ Producto encontrado (acceso directo):', directData.name);
+        //     //         return {
+        //     //             id: productId,
+        //     //             name: directData.name || `Producto ${productId}`,
+        //     //             description: directData.description || null,
+        //     //             brand: directData.brand || null,
+        //     //             metaPrice: directData.price || null,
+        //     //             currency: directData.currency || 'CLP',
+        //     //             availability: directData.availability || null,
+        //     //             source: 'meta_api_direct'
+        //     //         };
+        //     //     }
+        //     // } else {
+        //     //     console.log('❌ Error acceso directo:', directResponse.status, directResponse.statusText);
+        //     //     const errorText = await directResponse.text();
+        //     //     console.log('📄 Error directo:', errorText);
+        //     // }
+        // } catch (directError) {
+        //     console.log('❌ Error en acceso directo:', directError);
+        // }
         
         return null;
         
@@ -913,16 +912,22 @@ async function getProductDetails(productId: string, catalogId: string, provider:
             };
         }
         
-        // Prioridad 2: Intentar Meta API (aunque probablemente falle por permisos)
+        // Prioridad 2: Consultar Meta API (REACTIVADO)
         if (catalogId && provider && process.env.ENABLE_META_API === 'true') {
-            console.log('🔄 Prioridad 2: Intentando Meta Business API (experimental)...');
-            const metaProduct = await getProductDetailsFromMeta(productId, catalogId, provider);
-            if (metaProduct) {
-                console.log('✅ Producto obtenido desde Meta API');
-                return metaProduct;
+            console.log('🔄 Prioridad 2: Consultando Meta Business API...');
+            try {
+                const metaProduct = await getProductDetailsFromMeta(productId, catalogId, provider);
+                if (metaProduct) {
+                    console.log('✅ Producto obtenido desde Meta API:', metaProduct.name);
+                    return metaProduct;
+                } else {
+                    console.log('⚠️ Meta API no retornó datos, usando catálogo local como fallback');
+                }
+            } catch (apiError) {
+                console.error('❌ Error consultando Meta API, usando catálogo local:', apiError.message);
             }
         } else {
-            console.log('⚠️  Meta API deshabilitada (falta permisos catalog_management)');
+            console.log('ℹ️ Meta API deshabilitada o faltan parámetros, usando catálogo local');
         }
         
         // Prioridad 3: Fallback final - usar ID como nombre
@@ -971,20 +976,46 @@ async function processOrderFromCatalog(productItems: any[], catalogId: string, p
             
             // Obtener detalles adicionales del producto desde Meta API o catálogo local
             let productName = productId; // Por defecto usar el ID
-            let productInfo = null;
+            // let productInfo = null; // Comentado para evitar warning de lint
+            
+            // Consulta híbrida: Meta API + Catálogo local como fallback
+            console.log('📦 Consultando producto con Meta API habilitada:', productId);
             
             if (provider && catalogId) {
                 try {
-                    productInfo = await getProductDetails(productId, catalogId, provider);
-                    productName = productInfo.name || productId;
+                    // Prioridad 1: Meta API para obtener datos actuales
+                    console.log('� Consultando Meta API...');
+                    const productDetails = await getProductDetails(productId, catalogId, provider);
                     
-                    // Log del origen de la información
-                    if (productInfo.source) {
-                        console.log(`📋 Producto obtenido desde: ${productInfo.source}`);
+                    if (productDetails && productDetails.source === 'meta_api') {
+                        productName = productDetails.name;
+                        console.log('✅ Producto obtenido desde Meta API:', productName);
+                    } else {
+                        // Fallback a catálogo local
+                        const localProductName = PRODUCT_CATALOG[productId as keyof typeof PRODUCT_CATALOG];
+                        if (localProductName) {
+                            productName = localProductName;
+                            console.log('✅ Producto obtenido desde catálogo local (fallback):', localProductName);
+                        } else {
+                            console.log('⚠️ Producto no encontrado en ningún catálogo, usando ID:', productId);
+                        }
                     }
                 } catch (error) {
-                    console.log('⚠️ No se pudieron obtener detalles del producto:', productId);
-                    productName = productId;
+                    console.log('❌ Error consultando producto, usando catálogo local:', error.message);
+                    
+                    // Fallback seguro al catálogo local
+                    const localProductName = PRODUCT_CATALOG[productId as keyof typeof PRODUCT_CATALOG];
+                    if (localProductName) {
+                        productName = localProductName;
+                        console.log('✅ Producto obtenido desde catálogo local (error fallback):', localProductName);
+                    }
+                }
+            } else {
+                console.log('ℹ️ Parámetros faltantes para Meta API, usando catálogo local');
+                const localProductName = PRODUCT_CATALOG[productId as keyof typeof PRODUCT_CATALOG];
+                if (localProductName) {
+                    productName = localProductName;
+                    console.log('✅ Producto encontrado en catálogo local:', localProductName);
                 }
             }
             
@@ -1138,56 +1169,7 @@ const flowDisable = addKeyword("disable")
     }
 )
 
-const markMessageAsRead = async function (ctx: any, provider: any) {
-    console.log('📖 Marcando mensaje como leído:', ctx.message_id)
-    
-    try {
-        // Verificar que tenemos message_id válido
-        if (!ctx.message_id) {
-            console.log('⚠️ No se encontró message_id válido para marcar como leído');
-            return null;
-        }
 
-        // ✅ FORMATO CORRECTO según WhatsApp Cloud API
-        // Endpoint: POST https://graph.facebook.com/v22.0/{phone_number_id}/messages
-        // Body: {"messaging_product": "whatsapp", "status": "read", "message_id": "MESSAGE_ID"}
-        
-        const payload = {
-            "messaging_product": "whatsapp",
-            "status": "read",
-            "message_id": ctx.message_id
-        };
-        
-        console.log('� Payload para marcar como leído:', JSON.stringify(payload, null, 2));
-        
-        // Usar el método correcto del provider para enviar al endpoint de mensajes
-        const result = await provider.sendMessageMeta(payload);
-        console.log('✅ Mensaje marcado como leído exitosamente');
-        return result;
-        
-    } catch (error: any) {
-        // Manejo específico de errores según la documentación de Meta
-        if (error?.response?.status === 400) {
-            console.log('⚠️ Error 400: Posiblemente ventana de 24 horas expirada o mensaje inválido');
-        } else if (error?.response?.status === 403) {
-            console.log('⚠️ Error 403: Sin permisos para marcar como leído');
-        } else if (error?.message?.includes('24 hours')) {
-            console.log('⚠️ Ventana de 24 horas expirada para marcar como leído');
-        } else if (error?.response?.data?.error?.code === 131005) {
-            console.log('⚠️ Error Meta: Mensaje ya fue marcado como leído o no existe');
-        } else {
-            console.error('❌ Error inesperado marcando mensaje como leído:', {
-                status: error?.response?.status,
-                statusText: error?.response?.statusText,
-                message: error?.message,
-                data: error?.response?.data
-            });
-        }
-        
-        // NO fallar el flujo principal si hay error al marcar como leído
-        return null;
-    }
-}
 
 // const recording = async function (ctx: any, provider: any) {
 //     if (provider && provider?.vendor && provider.vendor?.sendPresenceUpdate) {
@@ -1231,7 +1213,7 @@ const flowValidTime = addKeyword<Provider, Database>(EVENTS.WELCOME)
 
         // Validación de horario
         const horaActual = moment();
-        const horario = "14:00-24:00"; // Horario de atención (2:00 PM - 10:00 PM)
+        const horario = "10:00-24:00"; // Horario de atención (2:00 PM - 10:00 PM)
         const rangoHorario = horario.split("-");
         const horaInicio = moment(rangoHorario[0], "HH:mm");
         const horaFin = moment(rangoHorario[1], "HH:mm");
@@ -1259,20 +1241,90 @@ const flowValidTime = addKeyword<Provider, Database>(EVENTS.WELCOME)
 
 
 
-// 🧪 FLUJO DE PRUEBA PARA DEBUGGING
-const flowTest = addKeyword(['test', 'prueba', 'hola', 'hi', 'hello'])
-.addAnswer('🧪 TEST: ¡Bot funcionando correctamente!', null, async (ctx) => {
+// 🧪 FLUJO DE PRUEBA PARA DEBUGGING - VERSIÓN SIMPLIFICADA
+const flowTest = addKeyword(['test', 'prueba', 'hola', 'hi', 'hello', 'ola'])
+.addAnswer('🧪 *TEST: ¡Bot funcionando correctamente!*')
+.addAnswer([
+    '✅ *Bot TodoMarket está funcionando*',
+    '',
+    '📋 Respuesta de prueba enviada exitosamente',
+    '',
+    '🔧 Si ves este mensaje, el bot responde correctamente'
+], null, async (ctx) => {
     console.log('🧪 TEST: Mensaje recibido:', ctx.body);
     console.log('🧪 TEST: Usuario:', ctx.from, ctx.pushName);
+    console.log('🧪 TEST: Respuesta enviada correctamente');
+});
+
+// 🔍 FLUJO DE PRUEBA ESPECÍFICO PARA CATÁLOGO META
+const flowTestCatalog = addKeyword(['catalog', 'catalogo', 'meta'])
+.addAnswer('🔍 *Probando consulta al catálogo de Meta...*', null, async (ctx, {flowDynamic, provider}) => {
+    console.log('🔍 === PRUEBA DE CATÁLOGO META ===');
+    
+    try {
+        // Probar con un ID de producto conocido
+        const testProductId = '51803h3qku'; // Coca Cola según tu catálogo
+        const catalogId = '1057244946408276'; // Tu catalog ID
+        
+        console.log('🔄 Probando consulta a Meta API...');
+        console.log('📋 Product ID:', testProductId);
+        console.log('📋 Catalog ID:', catalogId);
+        
+        // Llamar directamente a la función de Meta API
+        const result = await getProductDetailsFromMeta(testProductId, catalogId, provider);
+        
+        if (result) {
+            await flowDynamic([
+                '✅ *Consulta a Meta API exitosa*',
+                '',
+                `📦 Producto: ${result.name}`,
+                `🏷️ ID: ${result.id}`,
+                `📋 Fuente: ${result.source}`,
+                `💰 Precio: ${result.metaPrice || 'No disponible'}`,
+                `💱 Moneda: ${result.currency || 'N/A'}`,
+                '',
+                '🎉 La consulta al catálogo de Meta está funcionando'
+            ].join('\n'));
+        } else {
+            await flowDynamic([
+                '⚠️ *Consulta a Meta API sin resultados*',
+                '',
+                'La consulta se realizó pero no retornó datos.',
+                'Posibles causas:',
+                '• El producto no existe en el catálogo',
+                '• Permisos insuficientes del token',
+                '• Catalog ID incorrecto',
+                '',
+                '📝 Revisa los logs de la consola para más detalles'
+            ].join('\n'));
+        }
+        
+    } catch (error) {
+        console.error('❌ Error en prueba de catálogo:', error);
+        
+        await flowDynamic([
+            '❌ *Error en consulta a Meta API*',
+            '',
+            `🚨 Error: ${error.message}`,
+            '',
+            'Posibles causas:',
+            '• Token de acceso expirado',
+            '• Permisos insuficientes',
+            '• Problemas de conectividad',
+            '• Configuración incorrecta',
+            '',
+            '📝 Revisa los logs de la consola para más detalles'
+        ].join('\n'));
+    }
 });
 
 const main = async () => {
-    // Demostrar el nuevo formato de productos
-    demonstrateNewFormat();
     
-    // Configurar flows: el PRINCIPAL debe ir PRIMERO
+    
+    // Configurar flows: PRODUCCIÓN CON META API
     const adapterFlow = createFlow([
-        // flowTest,           // 🧪 Flujo de prueba - PARA DEBUGGING
+        // flowTest,           // 🧪 Flujo de prueba - DESHABILITADO EN PRODUCCIÓN
+        // flowTestCatalog,    // 🔍 Flujo de prueba del catálogo - DESHABILITADO EN PRODUCCIÓN
         flowValidTime,      // Flujo de validación de horario
         flowPrincipal,      // 🎯 Menú principal - DEBE IR PRIMERO
         flowDisable,        // ⚠️ Flujo fuera de horario - ANTES de FlowAgente2 para evitar conflictos
