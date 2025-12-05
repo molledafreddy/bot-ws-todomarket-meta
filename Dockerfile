@@ -58,25 +58,6 @@ RUN mkdir -p /tmp/logs && \
 # Give nodejs user ownership of /app directory
 RUN chown -R nodejs:nodejs /app
 
-# Create startup script with logging
-RUN echo '#!/bin/sh\n\
-echo "🚀 Starting TodoMarket Bot..."\n\
-echo "📊 Environment:"\n\
-echo "  - NODE_ENV: $NODE_ENV"\n\
-echo "  - TZ: $TZ"\n\
-echo "  - PORT: ${PORT:-3008}"\n\
-echo "  - PWD: $(pwd)"\n\
-echo "  - USER: $(whoami)"\n\
-echo "📂 Files check:"\n\
-ls -la /app/dist/ || echo "❌ No dist directory"\n\
-echo "📝 Permissions check:"\n\
-ls -la /app/logs/ 2>/dev/null || echo "Creating logs directory..."\n\
-mkdir -p /app/logs 2>/dev/null || true\n\
-touch /app/logs/app.log 2>/dev/null || true\n\
-echo "🔥 Starting application..."\n\
-exec node dist/app.js\n\
-' > /app/start.sh && chmod +x /app/start.sh && chown nodejs:nodejs /app/start.sh
-
 # Verify files are in place
 RUN echo "📦 Verifying build artifacts:" && \
     ls -la /app/ && \
@@ -89,5 +70,5 @@ USER nodejs
 # Expose port (Railway will set PORT env var)  
 EXPOSE 3008
 
-# Start application with detailed logging
-CMD ["/app/start.sh"]
+# Start application directly (no startup script needed)
+CMD ["node", "dist/app.js"]
