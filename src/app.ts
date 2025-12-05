@@ -13,6 +13,71 @@ const fetch = globalThis.fetch || require('node-fetch')
 // Railway requires PORT as integer
 const PORT = parseInt(process.env.PORT || '3008', 10)
 
+// Validate required environment variables
+function validateEnvironment() {
+    const required = ['JWT_TOKEN', 'NUMBER_ID', 'VERIFY_TOKEN', 'MONGO_DB_URI'];
+    const missing = required.filter(key => !process.env[key]);
+    
+    console.log('🔍 Environment validation:');
+    console.log(`  - PORT: ${PORT}`);
+    console.log(`  - NODE_ENV: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`  - TZ: ${process.env.TZ || 'system default'}`);
+    
+    if (missing.length > 0) {
+        console.error('❌ Missing required environment variables:');
+        missing.forEach(key => console.error(`  - ${key}`));
+        console.error('🚫 Cannot start bot without required configuration');
+        
+        // In production, we should fail fast
+        if (process.env.NODE_ENV === 'production') {
+            process.exit(1);
+        }
+        return false;
+    }
+    
+    console.log('✅ All required environment variables are set');
+    return true;
+}
+
+// Validate environment before starting
+validateEnvironment();
+
+// Configure logging for Railway deployment
+if (process.env.NODE_ENV === 'production') {
+    console.log('🔧 Setting up production logging...');
+    
+    // Option 1: Try to setup logs directory in /tmp (Railway compatible)
+    try {
+        const fs = require('fs');
+        const path = require('path');
+        const logsDir = '/tmp/logs';
+        
+        // Create logs directory if it doesn't exist
+        if (!fs.existsSync(logsDir)) {
+            fs.mkdirSync(logsDir, { recursive: true, mode: 0o777 });
+            console.log('📁 Created logs directory:', logsDir);
+        }
+        
+        // Set environment variables to redirect BuilderBot logs
+        process.env.LOG_DIR = logsDir;
+        process.env.LOG_LEVEL = 'info';
+        
+        // Change working directory for log files
+        process.chdir('/tmp/logs');
+        
+        console.log('✅ Logging configured for production (using /tmp/logs)');
+        
+    } catch (logSetupError) {
+        console.warn('⚠️ Could not setup file logging, using console only:', logSetupError.message);
+        
+        // Option 2: Disable file logging completely
+        process.env.DISABLE_FILE_LOGGING = 'true';
+        process.env.LOG_LEVEL = 'info';
+        
+        console.log('📺 File logging disabled, using console output only');
+    }
+}
+
 
 
 const FlowAgente2 = addKeyword(['Agente', 'AGENTE', 'agente'])

@@ -2,6 +2,16 @@ dist/*
 node_modules
 .env
 
+# Exclude log files - will be created in container with proper permissions
+*.log
+core.class.log
+queue.class.log
+
 *_sessions
 *tokens
 .wwebjs*
+
+# Exclude development files
+debug-*
+test-*
+*.backup
