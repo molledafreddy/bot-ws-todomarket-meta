@@ -460,54 +460,64 @@ async function sendCatalog(provider: any, from: any, catalog: any) {
     try {
         console.log('🛒 Enviando catálogo a:', from);
         
-        // Usar directamente el enlace del catálogo (método más confiable)
-        const fallbackPayload = {
+        // Método 1: Intentar enviar catálogo nativo de Meta (si está configurado)
+        try {
+            console.log('📱 Intentando envío de catálogo nativo...');
+            
+            const catalogPayload = {
+                "messaging_product": "whatsapp",
+                "recipient_type": "individual", 
+                "to": from,
+                "type": "interactive",
+                "interactive": {
+                    "type": "catalog_message",
+                    "body": {
+                        "text": message || "Revisa nuestros productos disponibles 🛒"
+                    },
+                    "action": {
+                        "name": "catalog_message"
+                    }
+                }
+            };
+            
+            const catalogResult = await provider.sendMessageMeta(catalogPayload);
+            console.log('✅ Catálogo nativo enviado exitosamente');
+            return catalogResult;
+            
+        } catch (catalogError) {
+            console.log('⚠️ Catálogo nativo no disponible, usando enlace alternativo:', catalogError.message);
+        }
+        
+        // Método 2: Fallback con enlace directo (más confiable)
+        console.log('� Enviando enlace del catálogo como fallback');
+        
+        const linkPayload = {
             "messaging_product": "whatsapp", 
             "recipient_type": "individual",
             "to": from,
             "type": "text",
             "text": {
                 "preview_url": true,
-                "body": `${message || "Mira todos nuestros productos"} 🛒\n\n🔗 Ver catálogo completo:\nhttps://wa.me/c/56979643935\n\n� Toca el enlace para ver todos nuestros productos disponibles.`
+                "body": `${message || "Mira todos nuestros productos"} 🛒\n\n🔗 Ver catálogo completo:\nhttps://wa.me/c/56979643935\n\n📱 Toca el enlace para ver todos nuestros productos disponibles.`
             }
         };
         
-        console.log('📦 Enviando enlace del catálogo');
-        
-        try {
-            const result = await provider.sendMessageMeta(fallbackPayload);
-            console.log('✅ Enlace de catálogo enviado exitosamente');
-            return result;
-        } catch (linkError) {
-            console.error('❌ Error enviando enlace de catálogo:', linkError);
-            
-            // Último fallback con mensaje simple
-            console.log('🔄 Intentando fallback con enlace...');
-            
-            const fallbackPayload = {
-                "messaging_product": "whatsapp", 
-                "recipient_type": "individual",
-                "to": from,
-                "type": "text",
-                "text": {
-                    "preview_url": true,
-                    "body": `${message || "Mira todos nuestros productos"} 🛒\n\n🔗 Ver catálogo completo:\nhttps://wa.me/c/56979643935\n\n📱 Toca el enlace para ver todos nuestros productos disponibles.`
-                }
-            };
-            
-            const fallbackResult = await provider.sendMessageMeta(fallbackPayload);
-            console.log('✅ Enlace de catálogo enviado como fallback');
-            return fallbackResult;
-        }
+        const linkResult = await provider.sendMessageMeta(linkPayload);
+        console.log('✅ Enlace de catálogo enviado exitosamente');
+        return linkResult;
         
     } catch (error) {
         console.error('💥 Error general en sendCatalog:', error);
         
-        // Opción 3: Último fallback con mensaje simple
+        // Método 3: Último fallback con mensaje simple usando BuilderBot
         try {
-            await provider.sendMessage(from, 'Disculpa, tenemos problemas técnicos con el catálogo. Por favor escribe "productos" para ver nuestras opciones disponibles.');
+            const simpleMessage = `${message || "Catálogo TodoMarket"} 🛒\n\nPor favor visita nuestro catálogo en:\nhttps://wa.me/c/56979643935\n\n📱 Productos disponibles para entrega inmediata.`;
+            await provider.sendMessage(from, simpleMessage);
+            console.log('✅ Mensaje de catálogo simple enviado');
         } catch (lastError) {
             console.error('💥 Error en último fallback:', lastError);
+            // Enviar mensaje de error básico
+            await provider.sendMessage(from, 'Disculpa, tenemos problemas técnicos con el catálogo. Contáctanos directamente.');
         }
     }
 }
