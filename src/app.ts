@@ -5,6 +5,7 @@ import { createBot, createProvider, createFlow, addKeyword, utils, EVENTS } from
 import { MongoAdapter as Database } from '@builderbot/database-mongo'
 import { MetaProvider as Provider } from '@builderbot/provider-meta'
 import { idleFlow, reset, start, stop, IDLETIME } from './idle-custom'
+import { getCatalogConfig, CatalogConfig } from './catalog-config'
 import process from 'process';
 
 // Importar fetch para Node.js si no está disponible globalmente
@@ -454,17 +455,94 @@ const flowPrincipal = addKeyword<Provider, Database>(utils.setEvent('welcome'))
      }
  );
 
-async function sendCatalog(provider: any, from: any, catalog: any) {
+/**
+ * Función mejorada para enviar catálogos usando configuración centralizada
+ * @param provider Proveedor de Meta
+ * @param from Número del destinatario
+ * @param catalogType Tipo de catálogo ('main', 'offers', 'premium', etc.)
+ */
+async function sendCatalogByType(provider: any, from: string, catalogType: string) {
+    const catalogConfig = getCatalogConfig(catalogType);
+    
+    if (!catalogConfig) {
+        console.error(`❌ Configuración de catálogo no encontrada para tipo: ${catalogType}`);
+        await provider.sendMessage(from, 'Lo siento, ese catálogo no está disponible.');
+        return;
+    }
+
+    console.log(`🛒 Enviando catálogo tipo '${catalogType}' a: ${from}`);
+    
+    try {
+        // Intentar catálogo nativo de Meta
+        const catalogPayload: any = {
+            "messaging_product": "whatsapp",
+            "recipient_type": "individual", 
+            "to": from,
+            "type": "interactive",
+            "interactive": {
+                "type": "catalog_message",
+                "body": {
+                    "text": catalogConfig.message
+                },
+                "action": {
+                    "name": "catalog_message"
+                }
+            }
+        };
+
+        // Si tiene catalog_id específico, añadirlo
+        if (catalogConfig.id) {
+            catalogPayload.interactive.action.parameters = {
+                "catalog_id": catalogConfig.id
+            };
+            console.log(`📋 Usando catalog_id específico: ${catalogConfig.id}`);
+        } else {
+            console.log(`📋 Usando catálogo por defecto del NUMBER_ID`);
+        }
+        
+        const result = await provider.sendMessageMeta(catalogPayload);
+        console.log(`✅ Catálogo ${catalogType} enviado exitosamente`);
+        return result;
+        
+    } catch (error: any) {
+        console.log(`⚠️ Catálogo nativo falló para ${catalogType}, usando enlace fallback:`, error.message);
+        
+        // Fallback con enlace específico
+        const fallbackUrl = catalogConfig.fallbackUrl || "https://wa.me/c/56979643935";
+        const linkPayload = {
+            "messaging_product": "whatsapp", 
+            "recipient_type": "individual",
+            "to": from,
+            "type": "text",
+            "text": {
+                "preview_url": true,
+                "body": `${catalogConfig.message}\n\n🔗 Ver catálogo completo:\n${fallbackUrl}`
+            }
+        };
+        
+        try {
+            const linkResult = await provider.sendMessageMeta(linkPayload);
+            console.log(`✅ Enlace de catálogo ${catalogType} enviado`);
+            return linkResult;
+        } catch (linkError) {
+            console.error(`💥 Error en fallback para ${catalogType}:`, linkError);
+            await provider.sendMessage(from, `${catalogConfig.title} no disponible temporalmente.`);
+        }
+    }
+}
+
+async function sendCatalog(provider: any, from: any, catalog: any, catalogId?: string) {
     const { title, message } = catalog || {};
     
     try {
-        console.log('🛒 Enviando catálogo a:', from);
+        console.log('🛒 Enviando catálogo a:', from, catalogId ? `(Catálogo ID: ${catalogId})` : '(Catálogo por defecto)');
         
         // Método 1: Intentar enviar catálogo nativo de Meta (si está configurado)
         try {
             console.log('📱 Intentando envío de catálogo nativo...');
             
-            const catalogPayload = {
+            // Crear payload base
+            const catalogPayload: any = {
                 "messaging_product": "whatsapp",
                 "recipient_type": "individual", 
                 "to": from,
@@ -479,6 +557,13 @@ async function sendCatalog(provider: any, from: any, catalog: any) {
                     }
                 }
             };
+
+            // Si se especifica un catalogId, añadirlo al payload
+            if (catalogId) {
+                catalogPayload.interactive.action.parameters = {
+                    "catalog_id": catalogId
+                };
+            }
             
             const catalogResult = await provider.sendMessageMeta(catalogPayload);
             console.log('✅ Catálogo nativo enviado exitosamente');
