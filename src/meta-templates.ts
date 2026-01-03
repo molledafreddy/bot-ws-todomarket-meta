@@ -229,5 +229,5 @@ export const DEFAULT_TEMPLATE_CONFIG = {
     businessName: 'TodoMarket',
     schedule: 'Lunes a Domingo 2:00 PM - 10:00 PM',
     contact: '+56 9 3649 9908',
-    catalogUrl: 'https://wa.me/c/725315067342333'
+    catalogUrl: 'https://wa.me/c/56979643935'
 };
