@@ -6,6 +6,14 @@ import { MongoAdapter as Database } from '@builderbot/database-mongo'
 import { MetaProvider as Provider } from '@builderbot/provider-meta'
 import { idleFlow, reset, start, stop, IDLETIME } from './idle-custom'
 import { getCatalogConfig, CatalogConfig } from './catalog-config'
+import { 
+    createTodoMarketCatalogTemplate, 
+    createTodoMarketInteractiveCatalog,
+    validateTemplatePayload,
+    validateInteractivePayload,
+    LANGUAGE_CODES,
+    TODOMARKET_TEMPLATES 
+} from './catalog-template'
 import process from 'process';
 
 // Importar fetch para Node.js si no está disponible globalmente
@@ -433,11 +441,13 @@ const flowPrincipal = addKeyword<Provider, Database>(utils.setEvent('welcome'))
             const numAgente = ctx.from;
             console.log('👤 Enviando catálogo a:', numAgente)
         
-            // Usar la función corregida con el catálogo principal
+            // PROBAR PLANTILLA DE CATALOGO META (cambiar a true para probar plantillas)
+            const useMetaTemplate = false; // Cambiar a true cuando tengas plantilla aprobada
+            
             await sendCatalog(provider, numAgente, {
                 title: "Catalogo Principal",
                 message: "Mira todos nuestros productos aqui 👇🏼",
-            }, 'main'); // ← Especificamos usar el catálogo principal
+            }, 'main', useMetaTemplate); // ← Incluye parámetro para usar plantillas Meta
 
             return endFlow([
                 '✅ ¡Catálogo enviado! 🛒',
@@ -539,38 +549,132 @@ async function sendCatalogByType(provider: any, from: string, catalogType: strin
     }
 }
 
-// FUNCIÓN SENDCATALOG ULTRA SIMPLE - GARANTIZA ENVÍO
-async function sendCatalog(provider: any, from: any, catalog: any, catalogType: string = 'main') {
-    console.log('🛒 === INICIANDO ENVÍO CATÁLOGO SIMPLE ===');
+// FUNCIÓN SENDCATALOG CON SOPORTE PARA PLANTILLAS META
+async function sendCatalog(provider: any, from: any, catalog: any, catalogType: string = 'main', useTemplate: boolean = false) {
+    console.log('🛒 === INICIANDO ENVÍO CATÁLOGO ===');
     console.log('📱 Destinatario:', from);
+    console.log('📋 Tipo de catálogo:', catalogType);
+    console.log('📧 Usar plantilla Meta:', useTemplate);
     
     try {
-        // Mensaje ultra simple y directo
-        const mensajeCatalogo = `🛒 Catálogo TodoMarket
+        // MÉTODO 1: Plantilla oficial de Meta (si está habilitada)
+        if (useTemplate) {
+            console.log('📧 MÉTODO 1: Enviando plantilla de catálogo oficial Meta');
+            
+            try {
+                // Payload de plantilla según documentación oficial de Meta
+                const templatePayload = {
+                    messaging_product: "whatsapp",
+                    recipient_type: "individual",
+                    to: from,
+                    type: "template",
+                    template: {
+                        name: "todomarket_catalog", // Debe estar aprobada en Meta Business Manager
+                        language: {
+                            code: "es_CL" // Código de idioma Chile
+                        },
+                        components: [
+                            {
+                                type: "header",
+                                parameters: [
+                                    {
+                                        type: "text",
+                                        text: "� TodoMarket - Minimarket"
+                                    }
+                                ]
+                            },
+                            {
+                                type: "body",
+                                parameters: [
+                                    {
+                                        type: "text", 
+                                        text: "Descubre nuestros productos frescos y de calidad. Horario: 2:00 PM - 10:00 PM"
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                };
+
+                console.log('📨 Enviando plantilla de catálogo:', JSON.stringify(templatePayload, null, 2));
+                
+                // Enviar usando el método nativo de WhatsApp Business API
+                const response = await provider.vendor.sendMessage(templatePayload);
+                console.log('✅ PLANTILLA DE CATÁLOGO ENVIADA:', response);
+                return true;
+                
+            } catch (templateError) {
+                console.error('❌ Error enviando plantilla:', templateError);
+                console.log('🔄 Fallback a mensaje interactivo...');
+                throw templateError;
+            }
+        }
+        
+        // MÉTODO 2: Mensaje interactivo con catálogo (alternativa a plantilla)
+        try {
+            console.log('🔄 MÉTODO 2: Enviando mensaje interactivo con catálogo');
+            
+            const interactivePayload = {
+                messaging_product: "whatsapp",
+                recipient_type: "individual",
+                to: from,
+                type: "interactive",
+                interactive: {
+                    type: "catalog_message",
+                    header: {
+                        type: "text",
+                        text: "🛒 TodoMarket"
+                    },
+                    body: {
+                        text: "Minimarket de barrio con productos frescos y de calidad.\n\nHorario de atención:\nLunes a Domingo 2:00 PM - 10:00 PM"
+                    },
+                    footer: {
+                        text: "📞 +56 9 3649 9908"
+                    },
+                    action: {
+                        name: "catalog_message",
+                        parameters: {
+                            thumbnail_product_retailer_id: "51803h3qku" // Producto destacado
+                        }
+                    }
+                }
+            };
+
+            console.log('📨 Enviando mensaje interactivo:', JSON.stringify(interactivePayload, null, 2));
+            
+            const response = await provider.vendor.sendMessage(interactivePayload);
+            console.log('✅ MENSAJE INTERACTIVO ENVIADO:', response);
+            return true;
+            
+        } catch (interactiveError) {
+            console.error('❌ Error mensaje interactivo:', interactiveError);
+            console.log('🔄 Fallback a enlace directo...');
+            throw interactiveError;
+        }
+        
+    } catch (error) {
+        console.error('💥 Error en métodos avanzados:', error);
+        console.log('🚨 FALLBACK: Enviando enlace directo simple');
+        
+        // MÉTODO 3: Fallback - Mensaje simple con enlace (FUNCIONA SIEMPRE)
+        try {
+            const mensajeCatalogo = `🛒 Catálogo TodoMarket
 
 https://wa.me/c/725315067342333
 
-📱 Toca el enlace para ver nuestros productos`;
+📱 Toca el enlace para ver nuestros productos
+📞 Contacto: +56 9 3649 9908
+⏰ Horario: 2:00 PM - 10:00 PM`;
 
-        console.log('📨 Enviando mensaje simple...');
-        console.log('📝 Contenido:', mensajeCatalogo);
-        
-        // Usar método más básico
-        await provider.sendMessage(from, mensajeCatalogo);
-        
-        console.log('✅ CATÁLOGO ENVIADO EXITOSAMENTE');
-        return true;
-        
-    } catch (error) {
-        console.error('💥 ERROR ENVIANDO CATÁLOGO:', error);
-        
-        // Último recurso - mensaje aún más básico
-        try {
-            console.log('🚨 ÚLTIMO INTENTO...');
-            await provider.sendMessage(from, "Catálogo: https://wa.me/c/725315067342333");
-            console.log('✅ MENSAJE BÁSICO ENVIADO');
+            console.log('� Enviando enlace directo...');
+            await provider.sendMessage(from, mensajeCatalogo);
+            
+            console.log('✅ ENLACE DE CATÁLOGO ENVIADO');
+            return true;
+            
         } catch (finalError) {
             console.error('💥 ERROR FINAL:', finalError);
+            return false;
         }
     }
 }
