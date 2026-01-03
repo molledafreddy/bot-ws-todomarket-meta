@@ -539,96 +539,42 @@ async function sendCatalogByType(provider: any, from: string, catalogType: strin
     }
 }
 
-// FUNCIÓN SENDCATALOG CORREGIDA según documentación oficial de Meta
+// FUNCIÓN SENDCATALOG ULTRA SIMPLE - GARANTIZA ENVÍO
 async function sendCatalog(provider: any, from: any, catalog: any, catalogType: string = 'main') {
-    const { title, message } = catalog || {};
+    console.log('🛒 === INICIANDO ENVÍO CATÁLOGO SIMPLE ===');
+    console.log('📱 Destinatario:', from);
     
     try {
-        console.log('🛒 === ENVIANDO CATÁLOGO ===');
-        console.log('📱 Destinatario:', from);
-        console.log('📂 Tipo de catálogo:', catalogType);
+        // Mensaje ultra simple y directo
+        const mensajeCatalogo = `🛒 Catálogo TodoMarket
+
+https://wa.me/c/725315067342333
+
+📱 Toca el enlace para ver nuestros productos`;
+
+        console.log('📨 Enviando mensaje simple...');
+        console.log('📝 Contenido:', mensajeCatalogo);
         
-        // Obtener configuración del catálogo
-        const catalogConfig = getCatalogConfig(catalogType);
-        if (!catalogConfig) {
-            console.error('❌ Configuración de catálogo no encontrada:', catalogType);
-            throw new Error(`Configuración no encontrada: ${catalogType}`);
-        }
+        // Usar método más básico
+        await provider.sendMessage(from, mensajeCatalogo);
         
-        console.log('⚙️ Configuración del catálogo:', {
-            title: catalogConfig.title,
-            hasSpecificId: !!(catalogConfig.id),
-            catalogId: catalogConfig.id,
-            fallbackUrl: catalogConfig.fallbackUrl
-        });
-        
-        // MÉTODO 1: Catálogo Nativo Meta (ESTRUCTURA OFICIAL EXACTA)
-        try {
-            console.log('� Método 1: Enviando catálogo nativo según documentación oficial de Meta');
-            
-            // SOLUCIÓN WEBBRIDGE ERROR: NO usar payload de catálogo nativo
-            console.log('⚠️ WEBBRIDGE FIX: Saltando catálogo nativo');
-            console.log('� Usando solo enlace directo para evitar error webBridge');
-            
-            throw new Error('Usar enlace directo - evitar webBridge error');
-            
-        } catch (nativeError) {
-            console.error('❌ Error método 1 (catálogo nativo):', nativeError);
-            console.error('🔍 Detalles del error:', {
-                message: nativeError.message,
-                stack: nativeError.stack?.substring(0, 200)
-            });
-            console.log('🔄 Fallback: Intentando método 2 (enlace directo)...');
-        }
-        
-        // MÉTODO 2: Mensaje de texto con enlace directo (FALLBACK SEGURO)
-        try {
-            console.log('📡 Método 2: Enviando enlace directo del catálogo');
-            
-            const linkMessage = [
-                `${message || catalogConfig.message} 🛒`,
-                '',
-                catalogConfig.fallbackUrl,
-                '',
-                '📱 Toca el enlace para ver productos'
-            ].join('\n');
-            
-            console.log('📨 Mensaje a enviar:', linkMessage);
-            console.log('📱 Destinatario:', from);
-            console.log('🔗 URL:', catalogConfig.fallbackUrl);
-            
-            await provider.sendMessage(from, linkMessage);
-            console.log('✅ Enlace de catálogo enviado exitosamente');
-            return;
-            
-        } catch (linkError) {
-            console.error('❌ Error método 2 (enlace directo):', linkError);
-            console.error('❌ Detalles:', linkError.message);
-            throw new Error('Falló el envío del enlace de catálogo');
-        }
+        console.log('✅ CATÁLOGO ENVIADO EXITOSAMENTE');
+        return true;
         
     } catch (error) {
-        console.error('💥 Error crítico enviando catálogo:', error);
-        console.error('🔍 Contexto del error:', {
-            from: from,
-            catalogType: catalogType,
-            message: error.message
-        });
+        console.error('💥 ERROR ENVIANDO CATÁLOGO:', error);
         
-        // MÉTODO 3: Último recurso - mensaje ultra simple
+        // Último recurso - mensaje aún más básico
         try {
-            console.log('🚨 ÚLTIMO RECURSO: Enviando mensaje básico');
-            const errorMessage = `Catalogo TodoMarket:\nhttps://wa.me/c/725315067342333\n\nContacto: +56 9 3649 9908`;
-            
-            console.log('📨 Mensaje último recurso:', errorMessage);
-            await provider.sendMessage(from, errorMessage);
-            console.log('✅ Mensaje básico enviado al usuario');
-            
+            console.log('🚨 ÚLTIMO INTENTO...');
+            await provider.sendMessage(from, "Catálogo: https://wa.me/c/725315067342333");
+            console.log('✅ MENSAJE BÁSICO ENVIADO');
         } catch (finalError) {
-            console.error('💥 Error crítico final:', finalError);
+            console.error('💥 ERROR FINAL:', finalError);
         }
     }
 }
+
 
 // 📦 CATÁLOGO DE PRODUCTOS TODOMARKET
 // Mapeo de productos reales del minimarket (actualizar con tus productos)
