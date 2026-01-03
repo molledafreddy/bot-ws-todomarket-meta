@@ -566,38 +566,11 @@ async function sendCatalog(provider: any, from: any, catalog: any, catalogType: 
         try {
             console.log('� Método 1: Enviando catálogo nativo según documentación oficial de Meta');
             
-            // Estructura EXACTA según documentación oficial de Meta Business API
-            const officialCatalogPayload = {
-                messaging_product: "whatsapp",
-                recipient_type: "individual",
-                to: from,
-                type: "interactive",
-                interactive: {
-                    type: "catalog_message",
-                    body: {
-                        text: message || catalogConfig.message
-                    },
-                    action: {
-                        name: "catalog_message"
-                        // ✅ NO incluir catalog_id para catálogo por defecto
-                        // ✅ Meta automáticamente usa el catálogo asociado al NUMBER_ID
-                    }
-                }
-            };
+            // SOLUCIÓN WEBBRIDGE ERROR: NO usar payload de catálogo nativo
+            console.log('⚠️ WEBBRIDGE FIX: Saltando catálogo nativo');
+            console.log('� Usando solo enlace directo para evitar error webBridge');
             
-            console.log('📦 Payload oficial (estructura Meta):', JSON.stringify(officialCatalogPayload, null, 2));
-            
-            // Enviar usando el método correcto del provider
-            const result = await provider.sendMessageMeta(officialCatalogPayload);
-            
-            if (result && !result.error) {
-                console.log('✅ Catálogo nativo enviado exitosamente');
-                console.log('📊 Respuesta del servidor:', result);
-                return;
-            } else {
-                console.error('❌ Error en respuesta del catálogo nativo:', result);
-                throw new Error('Respuesta inválida del servidor de Meta');
-            }
+            throw new Error('Catálogo nativo omitido - usar enlace directo');
             
         } catch (nativeError) {
             console.error('❌ Error método 1 (catálogo nativo):', nativeError);
@@ -615,12 +588,9 @@ async function sendCatalog(provider: any, from: any, catalog: any, catalogType: 
             const linkMessage = [
                 `${message || catalogConfig.message} 🛒`,
                 '',
-                '🔗 Ver catálogo completo:',
-                catalogConfig.fallbackUrl, // ✅ URL CORREGIDA
+                catalogConfig.fallbackUrl,
                 '',
-                '📱 Toca el enlace para ver todos nuestros productos disponibles.',
-                '',
-                '🛒 Selecciona los productos que desees y regresa aquí para completar tu pedido.'
+                '📱 Toca el enlace para ver productos'
             ].join('\n');
             
             await provider.sendMessage(from, linkMessage);
@@ -641,24 +611,15 @@ async function sendCatalog(provider: any, from: any, catalog: any, catalogType: 
             message: error.message
         });
         
-        // MÉTODO 3: Último recurso - mensaje de error amigable
+        // MÉTODO 3: Último recurso - mensaje ultra simple
         try {
-            const errorMessage = [
-                '❌ *Disculpa, hay problemas técnicos con el catálogo*',
-                '',
-                '📞 Contáctanos directamente:',
-                '+56 9 3649 9908',
-                '',
-                '⏰ Horario: 2:00 PM - 10:00 PM',
-                '',
-                '🔄 También puedes intentar escribir "hola" para volver al menú.'
-            ].join('\n');
+            const errorMessage = `Catalogo: https://wa.me/c/725315067342333\n\nContacto: +56 9 3649 9908`;
             
             await provider.sendMessage(from, errorMessage);
-            console.log('📨 Mensaje de error enviado al usuario');
+            console.log('📨 Mensaje básico enviado al usuario');
             
         } catch (finalError) {
-            console.error('💥 Error crítico final enviando mensaje de error:', finalError);
+            console.error('💥 Error crítico final:', finalError);
         }
     }
 }
