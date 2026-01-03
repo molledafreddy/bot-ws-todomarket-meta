@@ -570,7 +570,7 @@ async function sendCatalog(provider: any, from: any, catalog: any, catalogType: 
             console.log('⚠️ WEBBRIDGE FIX: Saltando catálogo nativo');
             console.log('� Usando solo enlace directo para evitar error webBridge');
             
-            throw new Error('Catálogo nativo omitido - usar enlace directo');
+            throw new Error('Usar enlace directo - evitar webBridge error');
             
         } catch (nativeError) {
             console.error('❌ Error método 1 (catálogo nativo):', nativeError);
@@ -593,13 +593,17 @@ async function sendCatalog(provider: any, from: any, catalog: any, catalogType: 
                 '📱 Toca el enlace para ver productos'
             ].join('\n');
             
+            console.log('📨 Mensaje a enviar:', linkMessage);
+            console.log('📱 Destinatario:', from);
+            console.log('🔗 URL:', catalogConfig.fallbackUrl);
+            
             await provider.sendMessage(from, linkMessage);
             console.log('✅ Enlace de catálogo enviado exitosamente');
-            console.log('🔗 URL enviada:', catalogConfig.fallbackUrl);
             return;
             
         } catch (linkError) {
             console.error('❌ Error método 2 (enlace directo):', linkError);
+            console.error('❌ Detalles:', linkError.message);
             throw new Error('Falló el envío del enlace de catálogo');
         }
         
@@ -613,10 +617,12 @@ async function sendCatalog(provider: any, from: any, catalog: any, catalogType: 
         
         // MÉTODO 3: Último recurso - mensaje ultra simple
         try {
-            const errorMessage = `Catalogo: https://wa.me/c/725315067342333\n\nContacto: +56 9 3649 9908`;
+            console.log('🚨 ÚLTIMO RECURSO: Enviando mensaje básico');
+            const errorMessage = `Catalogo TodoMarket:\nhttps://wa.me/c/725315067342333\n\nContacto: +56 9 3649 9908`;
             
+            console.log('📨 Mensaje último recurso:', errorMessage);
             await provider.sendMessage(from, errorMessage);
-            console.log('📨 Mensaje básico enviado al usuario');
+            console.log('✅ Mensaje básico enviado al usuario');
             
         } catch (finalError) {
             console.error('💥 Error crítico final:', finalError);
