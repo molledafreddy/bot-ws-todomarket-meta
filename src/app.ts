@@ -570,42 +570,10 @@ async function sendCatalog(provider: any, from: any, catalog: any, catalogType: 
             console.log('📧 MÉTODO 1: Enviando plantilla oficial aprobada de Meta');
             
             try {
-                // Payload para plantilla aprobada según documentación Meta
-                const templatePayload = {
-                    messaging_product: "whatsapp",
-                    to: from,
-                    type: "template",
-                    template: {
-                        name: "catalog_template", // Nombre de tu plantilla aprobada
-                        language: {
-                            code: "es_CL" // Código de idioma Chile
-                        },
-                        components: [
-                            {
-                                type: "header",
-                                parameters: [
-                                    {
-                                        type: "text",
-                                        text: "🛒 TodoMarket"
-                                    }
-                                ]
-                            },
-                            {
-                                type: "body",
-                                parameters: [
-                                    {
-                                        type: "text",
-                                        text: "Minimarket de barrio"
-                                    }
-                                ]
-                            }
-                        ]
-                    }
-                };
-
-                console.log('📨 Payload plantilla Meta:', JSON.stringify(templatePayload, null, 2));
+                // Usar la función configurada en meta-templates.ts
+                const templatePayload = getApprovedTemplatePayload('catalog_main', from);
                 
-                // Usar la API directa de Meta Graph API
+                console.log('📨 Payload plantilla Meta:', JSON.stringify(templatePayload, null, 2));                // Usar la API directa de Meta Graph API
                 const accessToken = process.env.JWT_TOKEN;
                 const phoneNumberId = process.env.NUMBER_ID;
                 
@@ -649,12 +617,8 @@ async function sendCatalog(provider: any, from: any, catalog: any, catalogType: 
                 type: "interactive", 
                 interactive: {
                     type: "catalog_message",
-                    header: {
-                        type: "text",
-                        text: "🛒 TodoMarket"
-                    },
                     body: {
-                        text: "Explora nuestro catálogo completo de productos"
+                        text: "🛒 TodoMarket\n\nExplora nuestro catálogo completo de productos"
                     },
                     footer: {
                         text: "📞 +56 9 3649 9908"
@@ -720,10 +684,34 @@ https://wa.me/c/725315067342333
 🚚 *Delivery disponible*`;
 
         console.log('📨 Enviando enlace directo...');
-        await provider.sendMessage(from, mensajeCatalogo);
         
-        console.log('✅ ENLACE DIRECTO ENVIADO');
-        return true;
+        // Usar payload directo para Meta API
+        const textPayload = {
+            messaging_product: "whatsapp",
+            to: from,
+            type: "text",
+            text: {
+                body: mensajeCatalogo
+            }
+        };
+        
+        const response = await fetch(`https://graph.facebook.com/v18.0/${process.env.NUMBER_ID}/messages`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${process.env.JWT_TOKEN}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(textPayload)
+        });
+        
+        if (response.ok) {
+            console.log('✅ ENLACE DIRECTO ENVIADO');
+            return true;
+        } else {
+            const errorText = await response.text();
+            console.error('❌ Error enviando enlace directo:', errorText);
+            throw new Error(`Error en enlace directo: ${errorText}`);
+        }
         
     } catch (error) {
         console.error('💥 ERROR CRÍTICO EN SENDCATALOG:', error);
@@ -733,7 +721,31 @@ https://wa.me/c/725315067342333
             console.log('🚨 ÚLTIMO RECURSO - Mensaje mínimo...');
             const mensajeBasico = `🛒 Catálogo TodoMarket\nhttps://wa.me/c/725315067342333\n📞 +56 9 3649 9908`;
             
-            await provider.sendMessage(from, mensajeBasico);
+            const basicPayload = {
+                messaging_product: "whatsapp",
+                to: from,
+                type: "text",
+                text: {
+                    body: mensajeBasico
+                }
+            };
+            
+            const basicResponse = await fetch(`https://graph.facebook.com/v18.0/${process.env.NUMBER_ID}/messages`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${process.env.JWT_TOKEN}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(basicPayload)
+            });
+            
+            if (basicResponse.ok) {
+                console.log('✅ MENSAJE BÁSICO ENVIADO');
+                return true;
+            } else {
+                const basicError = await basicResponse.text();
+                console.error('❌ Error mensaje básico:', basicError);
+            }
             console.log('✅ MENSAJE MÍNIMO ENVIADO');
             return true;
             
