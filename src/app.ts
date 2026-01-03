@@ -14,6 +14,14 @@ import {
     LANGUAGE_CODES,
     TODOMARKET_TEMPLATES 
 } from './catalog-template'
+import {
+    TODOMARKET_TEMPLATES as META_TEMPLATES,
+    getApprovedTemplatePayload,
+    detectTemplateNameFromMeta,
+    getAllBusinessTemplates,
+    checkTemplateStatus,
+    DEFAULT_TEMPLATE_CONFIG
+} from './meta-templates'
 import process from 'process';
 
 // Importar fetch para Node.js si no está disponible globalmente
@@ -441,13 +449,13 @@ const flowPrincipal = addKeyword<Provider, Database>(utils.setEvent('welcome'))
             const numAgente = ctx.from;
             console.log('👤 Enviando catálogo a:', numAgente)
         
-            // PROBAR PLANTILLA DE CATALOGO META (cambiar a true para probar plantillas)
-            const useMetaTemplate = false; // Cambiar a true cuando tengas plantilla aprobada
+            // ACTIVAR PLANTILLAS OFICIALES DE META (cambiar a true para usar tu plantilla aprobada)
+            const useMetaTemplate = true; // ✅ ACTIVADO para usar plantilla oficial Meta
             
             await sendCatalog(provider, numAgente, {
                 title: "Catalogo Principal",
                 message: "Mira todos nuestros productos aqui 👇🏼",
-            }, 'main', useMetaTemplate); // ← Incluye parámetro para usar plantillas Meta
+            }, 'main', useMetaTemplate); // ← Usa plantilla oficial Meta
 
             return endFlow([
                 '✅ ¡Catálogo enviado! 🛒',
@@ -549,51 +557,188 @@ async function sendCatalogByType(provider: any, from: string, catalogType: strin
     }
 }
 
-// FUNCIÓN SENDCATALOG SIMPLIFICADA - GARANTIZA ENTREGA
+// FUNCIÓN SENDCATALOG CON PLANTILLAS OFICIALES META
 async function sendCatalog(provider: any, from: any, catalog: any, catalogType: string = 'main', useTemplate: boolean = false) {
-    console.log('🛒 === INICIANDO ENVÍO CATÁLOGO SIMPLE ===');
+    console.log('🛒 === INICIANDO ENVÍO CATÁLOGO CON PLANTILLAS META ===');
     console.log('📱 Destinatario:', from);
     console.log('📋 Tipo de catálogo:', catalogType);
+    console.log('📧 Usar plantilla Meta:', useTemplate);
     
     try {
-        // Mensaje optimizado con enlace directo
+        // MÉTODO 1: PLANTILLA OFICIAL APROBADA DE META
+        if (useTemplate) {
+            console.log('📧 MÉTODO 1: Enviando plantilla oficial aprobada de Meta');
+            
+            try {
+                // Payload para plantilla aprobada según documentación Meta
+                const templatePayload = {
+                    messaging_product: "whatsapp",
+                    to: from,
+                    type: "template",
+                    template: {
+                        name: "catalog_template", // Nombre de tu plantilla aprobada
+                        language: {
+                            code: "es_CL" // Código de idioma Chile
+                        },
+                        components: [
+                            {
+                                type: "header",
+                                parameters: [
+                                    {
+                                        type: "text",
+                                        text: "🛒 TodoMarket"
+                                    }
+                                ]
+                            },
+                            {
+                                type: "body",
+                                parameters: [
+                                    {
+                                        type: "text",
+                                        text: "Minimarket de barrio"
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                };
+
+                console.log('📨 Payload plantilla Meta:', JSON.stringify(templatePayload, null, 2));
+                
+                // Usar la API directa de Meta Graph API
+                const accessToken = process.env.JWT_TOKEN;
+                const phoneNumberId = process.env.NUMBER_ID;
+                
+                if (!accessToken || !phoneNumberId) {
+                    throw new Error('Token o NUMBER_ID no disponibles');
+                }
+
+                const response = await fetch(`https://graph.facebook.com/v18.0/${phoneNumberId}/messages`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(templatePayload)
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    console.log('✅ PLANTILLA OFICIAL ENVIADA:', result);
+                    return true;
+                } else {
+                    const errorText = await response.text();
+                    console.error('❌ Error HTTP plantilla:', response.status, errorText);
+                    throw new Error(`HTTP ${response.status}: ${errorText}`);
+                }
+                
+            } catch (templateError) {
+                console.error('❌ Error enviando plantilla oficial:', templateError);
+                console.log('🔄 Fallback a mensaje interactivo...');
+                // Continuar al método 2
+            }
+        }
+        
+        // MÉTODO 2: MENSAJE INTERACTIVO CON CATÁLOGO 
+        try {
+            console.log('🔄 MÉTODO 2: Enviando mensaje interactivo con catálogo');
+            
+            const interactivePayload = {
+                messaging_product: "whatsapp",
+                to: from,
+                type: "interactive", 
+                interactive: {
+                    type: "catalog_message",
+                    header: {
+                        type: "text",
+                        text: "🛒 TodoMarket"
+                    },
+                    body: {
+                        text: "Explora nuestro catálogo completo de productos"
+                    },
+                    footer: {
+                        text: "📞 +56 9 3649 9908"
+                    },
+                    action: {
+                        name: "catalog_message",
+                        parameters: {
+                            thumbnail_product_retailer_id: "51803h3qku" // Producto destacado
+                        }
+                    }
+                }
+            };
+
+            console.log('📨 Payload interactivo:', JSON.stringify(interactivePayload, null, 2));
+            
+            // Usar API directa de Meta
+            const accessToken = process.env.JWT_TOKEN;
+            const phoneNumberId = process.env.NUMBER_ID;
+            
+            const response = await fetch(`https://graph.facebook.com/v18.0/${phoneNumberId}/messages`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(interactivePayload)
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                console.log('✅ MENSAJE INTERACTIVO ENVIADO:', result);
+                return true;
+            } else {
+                const errorText = await response.text();
+                console.error('❌ Error HTTP interactivo:', response.status, errorText);
+                throw new Error(`HTTP ${response.status}: ${errorText}`);
+            }
+            
+        } catch (interactiveError) {
+            console.error('❌ Error mensaje interactivo:', interactiveError);
+            console.log('🔄 Fallback a enlace directo...');
+            // Continuar al método 3
+        }
+        
+        // MÉTODO 3: FALLBACK - ENLACE DIRECTO 
+        console.log('🚨 MÉTODO 3: Enviando enlace directo como fallback');
+        
         const mensajeCatalogo = `🛒 *TodoMarket - Minimarket*
 
-🏪 Minimarket de barrio con productos frescos y de calidad
+🏪 Productos frescos y de calidad
 
 🕐 *Horario de atención:*
 📅 Lunes a Domingo
 ⏰ 2:00 PM - 10:00 PM
 
-�️ *Ver nuestros productos:*
-👇 Toca el enlace para explorar el catálogo
+🛍️ *Ver catálogo completo:*
+👇 Toca el enlace para explorar
 https://wa.me/c/725315067342333
 
 📞 *Contacto directo:*
 +56 9 3649 9908
 
-🚚 *Delivery disponible en horario de atención*`;
+🚚 *Delivery disponible*`;
 
-        console.log('📨 Enviando catálogo con enlace directo...');
+        console.log('📨 Enviando enlace directo...');
         await provider.sendMessage(from, mensajeCatalogo);
         
-        console.log('✅ CATÁLOGO ENVIADO EXITOSAMENTE');
+        console.log('✅ ENLACE DIRECTO ENVIADO');
         return true;
         
     } catch (error) {
-        console.error('💥 ERROR ENVIANDO CATÁLOGO:', error);
+        console.error('💥 ERROR CRÍTICO EN SENDCATALOG:', error);
         
-        // Último recurso - mensaje ultra básico
+        // Último recurso ultra básico
         try {
-            console.log('🚨 ÚLTIMO INTENTO - Mensaje básico...');
+            console.log('🚨 ÚLTIMO RECURSO - Mensaje mínimo...');
             const mensajeBasico = `🛒 Catálogo TodoMarket\nhttps://wa.me/c/725315067342333\n📞 +56 9 3649 9908`;
             
             await provider.sendMessage(from, mensajeBasico);
-            console.log('✅ MENSAJE BÁSICO ENVIADO');
+            console.log('✅ MENSAJE MÍNIMO ENVIADO');
             return true;
             
         } catch (finalError) {
-            console.error('💥 ERROR FINAL:', finalError);
+            console.error('💥 ERROR FINAL TOTAL:', finalError);
             return false;
         }
     }
