@@ -534,7 +534,7 @@ async function sendCatalogByType(provider: any, from: string, catalogType: strin
         console.log(`⚠️ Catálogo nativo falló para ${catalogType}, usando enlace fallback:`, error.message);
         
         // Fallback con enlace específico
-        const fallbackUrl = catalogConfig.fallbackUrl || "https://wa.me/c/725315067342333"; // ✅ URL CORREGIDA
+        const fallbackUrl = catalogConfig.fallbackUrl || "https://wa.me/c/56979643935"; // ✅ URL CORREGIDA
         const linkPayload = {
             "messaging_product": "whatsapp", 
             "recipient_type": "individual",
@@ -676,7 +676,7 @@ async function sendCatalog(provider: any, from: any, catalog: any, catalogType: 
 
 🛍️ *Ver catálogo completo:*
 👇 Toca el enlace para explorar
-https://wa.me/c/725315067342333
+https://wa.me/c/56979643935
 
 📞 *Contacto directo:*
 +56 9 3649 9908
