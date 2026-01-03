@@ -94,27 +94,55 @@ export function getApprovedTemplatePayload(templateKey: string, to: string, para
         }
     };
 
-    // Construir componentes con parámetros
+    // ✅ CORREGIDO: Construir TODOS los componentes (no solo los que tienen parámetros)
     template.components.forEach(component => {
-        if (component.type === 'HEADER' && component.parameters) {
-            payload.template.components.push({
-                type: "header",
-                parameters: component.parameters.map(param => ({
+        if (component.type === 'HEADER') {
+            const headerComp: any = {
+                type: "header"
+            };
+            
+            if (component.parameters && component.parameters.length > 0) {
+                headerComp.parameters = component.parameters.map(param => ({
                     type: param.type,
                     text: parameters?.[param.text || ''] || param.text
-                }))
-            });
+                }));
+            }
+            
+            payload.template.components.push(headerComp);
         }
         
-        if (component.type === 'BODY' && component.parameters) {
-            payload.template.components.push({
-                type: "body", 
-                parameters: component.parameters.map(param => ({
+        if (component.type === 'BODY') {
+            const bodyComp: any = {
+                type: "body"
+            };
+            
+            if (component.parameters && component.parameters.length > 0) {
+                bodyComp.parameters = component.parameters.map(param => ({
                     type: param.type,
                     text: parameters?.[param.text || ''] || param.text
-                }))
-            });
+                }));
+            }
+            
+            payload.template.components.push(bodyComp);
         }
+        
+        if (component.type === 'FOOTER') {
+            const footerComp: any = {
+                type: "footer"
+            };
+            
+            if (component.parameters && component.parameters.length > 0) {
+                footerComp.parameters = component.parameters.map(param => ({
+                    type: param.type,
+                    text: parameters?.[param.text || ''] || param.text
+                }));
+            }
+            
+            payload.template.components.push(footerComp);
+        }
+        
+        // Los botones de CATALOG se manejan automáticamente por Meta
+        // No se incluyen en el payload de la template
     });
 
     return payload;
@@ -229,5 +257,5 @@ export const DEFAULT_TEMPLATE_CONFIG = {
     businessName: 'TodoMarket',
     schedule: 'Lunes a Domingo 2:00 PM - 10:00 PM',
     contact: '+56 9 3649 9908',
-    catalogUrl: 'https://wa.me/c/56979643935'
+    catalogUrl: 'https://wa.me/c/56979643935' // ✅ CORREGIDO - usar número de teléfono real para enlace público
 };

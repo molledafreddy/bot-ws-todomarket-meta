@@ -626,7 +626,7 @@ async function sendCatalog(provider: any, from: any, catalog: any, catalogType: 
                     action: {
                         name: "catalog_message",
                         parameters: {
-                            thumbnail_product_retailer_id: "51803h3qku" // Producto destacado
+                            thumbnail_product_retailer_id: "8b9dwc6jus" // ✅ PRODUCTO REAL: Papas Kryzpo
                         }
                     }
                 }
@@ -719,7 +719,7 @@ https://wa.me/c/56979643935
         // Último recurso ultra básico
         try {
             console.log('🚨 ÚLTIMO RECURSO - Mensaje mínimo...');
-            const mensajeBasico = `🛒 Catálogo TodoMarket\nhttps://wa.me/c/725315067342333\n📞 +56 9 3649 9908`;
+            const mensajeBasico = `🛒 Catálogo TodoMarket\nhttps://wa.me/c/56979643935\n📞 +56 9 3649 9908`; // ✅ Usar número de teléfono real
             
             const basicPayload = {
                 messaging_product: "whatsapp",
