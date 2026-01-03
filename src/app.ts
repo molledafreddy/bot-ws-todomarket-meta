@@ -425,20 +425,28 @@ const flowPrincipal = addKeyword<Provider, Database>(utils.setEvent('welcome'))
         console.log('ctx.body flowPrincipal', ctx.body)
         const userInput = ctx.body.toLowerCase().trim();
         
-        // Opción 1: Catálogo
+        // Opción 1: Catálogo (ACTUALIZADA)
         if (userInput === '1') {
             stop(ctx)
             console.log('🛒 Usuario seleccionó opción 1 - Catálogo');
             
             const numAgente = ctx.from;
-            console.log('getCart', numAgente)
+            console.log('👤 Enviando catálogo a:', numAgente)
         
-            await sendCatalog(provider, numAgente,{
-                title: "Catalogo",
+            // Usar la función corregida con el catálogo principal
+            await sendCatalog(provider, numAgente, {
+                title: "Catalogo Principal",
                 message: "Mira todos nuestros productos aqui 👇🏼",
-            });
+            }, 'main'); // ← Especificamos usar el catálogo principal
 
-            return endFlow('¡Catálogo enviado! 🛒');
+            return endFlow([
+                '✅ ¡Catálogo enviado! 🛒',
+                '',
+                '📱 Revisa tu conversación para ver el catálogo.',
+                '🛒 Selecciona los productos que desees.',
+                '',
+                '💡 Si tienes problemas para ver el catálogo, escribe "hola" para más opciones.'
+            ].join('\n'));
         }
    
         // Opción 2: Agente
@@ -508,7 +516,7 @@ async function sendCatalogByType(provider: any, from: string, catalogType: strin
         console.log(`⚠️ Catálogo nativo falló para ${catalogType}, usando enlace fallback:`, error.message);
         
         // Fallback con enlace específico
-        const fallbackUrl = catalogConfig.fallbackUrl || "https://wa.me/c/56979643935";
+        const fallbackUrl = catalogConfig.fallbackUrl || "https://wa.me/c/725315067342333"; // ✅ URL CORREGIDA
         const linkPayload = {
             "messaging_product": "whatsapp", 
             "recipient_type": "individual",
@@ -531,78 +539,126 @@ async function sendCatalogByType(provider: any, from: string, catalogType: strin
     }
 }
 
-async function sendCatalog(provider: any, from: any, catalog: any, catalogId?: string) {
+// FUNCIÓN SENDCATALOG CORREGIDA según documentación oficial de Meta
+async function sendCatalog(provider: any, from: any, catalog: any, catalogType: string = 'main') {
     const { title, message } = catalog || {};
     
     try {
-        console.log('🛒 Enviando catálogo a:', from, catalogId ? `(Catálogo ID: ${catalogId})` : '(Catálogo por defecto)');
+        console.log('🛒 === ENVIANDO CATÁLOGO ===');
+        console.log('📱 Destinatario:', from);
+        console.log('📂 Tipo de catálogo:', catalogType);
         
-        // Método 1: Intentar enviar catálogo nativo de Meta (si está configurado)
+        // Obtener configuración del catálogo
+        const catalogConfig = getCatalogConfig(catalogType);
+        if (!catalogConfig) {
+            console.error('❌ Configuración de catálogo no encontrada:', catalogType);
+            throw new Error(`Configuración no encontrada: ${catalogType}`);
+        }
+        
+        console.log('⚙️ Configuración del catálogo:', {
+            title: catalogConfig.title,
+            hasSpecificId: !!(catalogConfig.id),
+            catalogId: catalogConfig.id,
+            fallbackUrl: catalogConfig.fallbackUrl
+        });
+        
+        // MÉTODO 1: Catálogo Nativo Meta (ESTRUCTURA OFICIAL EXACTA)
         try {
-            console.log('📱 Intentando envío de catálogo nativo...');
+            console.log('� Método 1: Enviando catálogo nativo según documentación oficial de Meta');
             
-            // Crear payload base
-            const catalogPayload: any = {
-                "messaging_product": "whatsapp",
-                "recipient_type": "individual", 
-                "to": from,
-                "type": "interactive",
-                "interactive": {
-                    "type": "catalog_message",
-                    "body": {
-                        "text": message || "Revisa nuestros productos disponibles 🛒"
+            // Estructura EXACTA según documentación oficial de Meta Business API
+            const officialCatalogPayload = {
+                messaging_product: "whatsapp",
+                recipient_type: "individual",
+                to: from,
+                type: "interactive",
+                interactive: {
+                    type: "catalog_message",
+                    body: {
+                        text: message || catalogConfig.message
                     },
-                    "action": {
-                        "name": "catalog_message"
+                    action: {
+                        name: "catalog_message"
+                        // ✅ NO incluir catalog_id para catálogo por defecto
+                        // ✅ Meta automáticamente usa el catálogo asociado al NUMBER_ID
                     }
                 }
             };
-
-            // Si se especifica un catalogId, añadirlo al payload
-            if (catalogId) {
-                catalogPayload.interactive.action.parameters = {
-                    "catalog_id": catalogId
-                };
+            
+            console.log('📦 Payload oficial (estructura Meta):', JSON.stringify(officialCatalogPayload, null, 2));
+            
+            // Enviar usando el método correcto del provider
+            const result = await provider.sendMessageMeta(officialCatalogPayload);
+            
+            if (result && !result.error) {
+                console.log('✅ Catálogo nativo enviado exitosamente');
+                console.log('📊 Respuesta del servidor:', result);
+                return;
+            } else {
+                console.error('❌ Error en respuesta del catálogo nativo:', result);
+                throw new Error('Respuesta inválida del servidor de Meta');
             }
             
-            const catalogResult = await provider.sendMessageMeta(catalogPayload);
-            console.log('✅ Catálogo nativo enviado exitosamente');
-            return catalogResult;
-            
-        } catch (catalogError) {
-            console.log('⚠️ Catálogo nativo no disponible, usando enlace alternativo:', catalogError.message);
+        } catch (nativeError) {
+            console.error('❌ Error método 1 (catálogo nativo):', nativeError);
+            console.error('🔍 Detalles del error:', {
+                message: nativeError.message,
+                stack: nativeError.stack?.substring(0, 200)
+            });
+            console.log('🔄 Fallback: Intentando método 2 (enlace directo)...');
         }
         
-        // Método 2: Fallback con enlace directo (más confiable)
-        console.log('� Enviando enlace del catálogo como fallback');
-        
-        const linkPayload = {
-            "messaging_product": "whatsapp", 
-            "recipient_type": "individual",
-            "to": from,
-            "type": "text",
-            "text": {
-                "preview_url": true,
-                "body": `${message || "Mira todos nuestros productos"} 🛒\n\n🔗 Ver catálogo completo:\nhttps://wa.me/c/56979643935\n\n📱 Toca el enlace para ver todos nuestros productos disponibles.`
-            }
-        };
-        
-        const linkResult = await provider.sendMessageMeta(linkPayload);
-        console.log('✅ Enlace de catálogo enviado exitosamente');
-        return linkResult;
+        // MÉTODO 2: Mensaje de texto con enlace directo (FALLBACK SEGURO)
+        try {
+            console.log('📡 Método 2: Enviando enlace directo del catálogo');
+            
+            const linkMessage = [
+                `${message || catalogConfig.message} 🛒`,
+                '',
+                '🔗 Ver catálogo completo:',
+                catalogConfig.fallbackUrl, // ✅ URL CORREGIDA
+                '',
+                '📱 Toca el enlace para ver todos nuestros productos disponibles.',
+                '',
+                '🛒 Selecciona los productos que desees y regresa aquí para completar tu pedido.'
+            ].join('\n');
+            
+            await provider.sendMessage(from, linkMessage);
+            console.log('✅ Enlace de catálogo enviado exitosamente');
+            console.log('🔗 URL enviada:', catalogConfig.fallbackUrl);
+            return;
+            
+        } catch (linkError) {
+            console.error('❌ Error método 2 (enlace directo):', linkError);
+            throw new Error('Falló el envío del enlace de catálogo');
+        }
         
     } catch (error) {
-        console.error('💥 Error general en sendCatalog:', error);
+        console.error('💥 Error crítico enviando catálogo:', error);
+        console.error('🔍 Contexto del error:', {
+            from: from,
+            catalogType: catalogType,
+            message: error.message
+        });
         
-        // Método 3: Último fallback con mensaje simple usando BuilderBot
+        // MÉTODO 3: Último recurso - mensaje de error amigable
         try {
-            const simpleMessage = `${message || "Catálogo TodoMarket"} 🛒\n\nPor favor visita nuestro catálogo en:\nhttps://wa.me/c/56979643935\n\n📱 Productos disponibles para entrega inmediata.`;
-            await provider.sendMessage(from, simpleMessage);
-            console.log('✅ Mensaje de catálogo simple enviado');
-        } catch (lastError) {
-            console.error('💥 Error en último fallback:', lastError);
-            // Enviar mensaje de error básico
-            await provider.sendMessage(from, 'Disculpa, tenemos problemas técnicos con el catálogo. Contáctanos directamente.');
+            const errorMessage = [
+                '❌ *Disculpa, hay problemas técnicos con el catálogo*',
+                '',
+                '📞 Contáctanos directamente:',
+                '+56 9 3649 9908',
+                '',
+                '⏰ Horario: 2:00 PM - 10:00 PM',
+                '',
+                '🔄 También puedes intentar escribir "hola" para volver al menú.'
+            ].join('\n');
+            
+            await provider.sendMessage(from, errorMessage);
+            console.log('📨 Mensaje de error enviado al usuario');
+            
+        } catch (finalError) {
+            console.error('💥 Error crítico final enviando mensaje de error:', finalError);
         }
     }
 }
