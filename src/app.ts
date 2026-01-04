@@ -560,103 +560,169 @@ async function sendCatalogByType(provider: any, from: string, catalogType: strin
     }
 }
 
-// FUNCIÓN SENDCATALOG MEJORADA - SOLUCION INMEDIATA PARA ERROR WEBBRIDGE
+// FUNCIÓN SENDCATALOG CORREGIDA - PREPARADA PARA TOKEN ACTUALIZADO
 async function sendCatalog(provider: any, from: any, catalog: any, catalogType: string = 'main', useTemplate: boolean = false) {
-    console.log('🛒 === ENVIANDO CATÁLOGO CON SOLUCIÓN WEBBRIDGE ===');
+    console.log('🛒 === ENVIANDO CATÁLOGO OFICIAL (TOKEN CORREGIDO) ===');
     console.log('📱 Destinatario:', from);
-    console.log('⚠️ SALTANDO catálogo oficial (causa error WebBridgeInput)');
     
     try {
-        // ⚠️ SOLUCIÓN INMEDIATA: NO enviar catálogo oficial para evitar error WebBridgeInput
-        // El catálogo oficial causa "Serializer for class 'WebBridgeInput' is not found"
-        console.log('🔄 Enviando directamente lista de productos interactiva...');
+        // ✅ MÉTODO PRINCIPAL: Catálogo oficial de Meta (una vez corregido el token)
+        console.log('🔧 Enviando catálogo oficial de Meta...');
         
-        const alternativePayload = createProductList(from);
+        const catalogPayload = {
+            messaging_product: "whatsapp",
+            to: from,
+            type: "interactive",
+            interactive: {
+                type: "catalog_message",
+                body: {
+                    text: "🛒 TodoMarket - Catálogo Oficial\n\n📦 Explora nuestros productos y agrega al carrito:\n\n👇 Presiona para abrir el catálogo"
+                },
+                footer: {
+                    text: "Selecciona productos → Genera pedido automáticamente"
+                },
+                action: {
+                    name: "catalog_message"
+                    // Note: No incluimos catalog_id aquí para usar el por defecto conectado
+                }
+            }
+        };
+        
         const accessToken = process.env.JWT_TOKEN;
         const phoneNumberId = process.env.NUMBER_ID;
         
-        const alternativeResponse = await fetch(`https://graph.facebook.com/v18.0/${phoneNumberId}/messages`, {
+        const response = await fetch(`https://graph.facebook.com/v18.0/${phoneNumberId}/messages`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${accessToken}`,
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify(alternativePayload)
+            body: JSON.stringify(catalogPayload)
         });
         
-        if (alternativeResponse.ok) {
-            const result = await alternativeResponse.json();
-            console.log('✅ LISTA DE PRODUCTOS INTERACTIVA ENVIADA:', result.messages[0].id);
-            console.log('✅ ERROR WEBBRIDGE EVITADO - Usuario puede ver productos');
+        if (response.ok) {
+            const result = await response.json();
+            console.log('✅ CATÁLOGO OFICIAL ENVIADO EXITOSAMENTE:', result.messages[0].id);
+            console.log('🛒 Usuario puede seleccionar productos y generar pedidos');
             return true;
+            
         } else {
-            const errorText = await alternativeResponse.text();
-            console.error('❌ Error enviando lista interactiva:', errorText);
-            throw new Error(`Error lista: ${errorText}`);
+            const errorText = await response.text();
+            console.error('❌ Error enviando catálogo oficial:', errorText);
+            
+            // Verificar si es problema de token
+            if (errorText.includes('access token') || errorText.includes('expired')) {
+                console.log('🚨 PROBLEMA DE TOKEN DETECTADO');
+                console.log('� Solución: Actualizar JWT_TOKEN en variables de entorno');
+                
+                // Enviar mensaje informativo al usuario
+                const tokenErrorMessage = [
+                    '⚠️ *Catálogo temporalmente no disponible*',
+                    '',
+                    'El catálogo está siendo actualizado.',
+                    '',
+                    '� *Mientras tanto, puedes hacer tu pedido por WhatsApp:*',
+                    '"Quiero [producto] cantidad [número]"',
+                    '',
+                    'O llama al: +56 9 7964 3935',
+                    '⏰ Horario: 2:00 PM - 10:00 PM'
+                ].join('\n');
+                
+                const errorPayload = {
+                    messaging_product: "whatsapp",
+                    to: from,
+                    type: "text",
+                    text: { body: tokenErrorMessage }
+                };
+                
+                await fetch(`https://graph.facebook.com/v18.0/${phoneNumberId}/messages`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(errorPayload)
+                });
+                
+                return false;
+            }
+            
+            throw new Error(`Error catálogo: ${errorText}`);
         }
         
     } catch (error) {
-        console.error('💥 Error en lista interactiva, usando texto simple:', error);
+        console.error('💥 Error en catálogo oficial, usando alternativa temporal:', error);
         
-        // Fallback final: Mensaje de texto simple (último recurso)
+        // 🔄 FALLBACK: Lista interactiva temporal (mientras se corrige el token)
         try {
-            console.log('🔄 Enviando mensaje de texto como último recurso...');
+            console.log('🔄 Enviando lista interactiva como alternativa temporal...');
             
-            const textMessage = [
-                "🛒 *TodoMarket - Catálogo de Productos*",
-                "",
-                "📱 *Bebidas y Refrescos:*",
-                "• Coca Cola Lata 350ml - $1.900",
-                "• Pepsi Lata 350ml - $1.800", 
-                "• Agua Mineral 1.5L - $1.200",
-                "",
-                "🍞 *Panadería:*",
-                "• Pan de molde 500g - $1.600",
-                "• Hallullas x6 - $2.200",
-                "",
-                "🥛 *Lácteos:*",
-                "• Leche entera 1L - $1.400",
-                "• Queso Gouda 200g - $4.200",
-                "• Huevos docena - $3.500",
-                "",
-                "🌾 *Abarrotes:*",
-                "• Arroz 1kg - $2.800",
-                "• Fideos 500g - $1.900",
-                "• Aceite 1L - $3.200",
-                "",
-                "📞 *Para hacer tu pedido:*",
-                "Escribe el nombre del producto y la cantidad",
-                "Ejemplo: \"Quiero 2 coca cola\"",
-                "",
-                "📞 *O llama directamente:* +56 9 7964 3935",
-                "⏰ *Horario:* 2:00 PM - 10:00 PM"
+            const alternativePayload = createProductList(from);
+            const accessToken = process.env.JWT_TOKEN;
+            const phoneNumberId = process.env.NUMBER_ID;
+            
+            const alternativeResponse = await fetch(`https://graph.facebook.com/v18.0/${phoneNumberId}/messages`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(alternativePayload)
+            });
+            
+            if (alternativeResponse.ok) {
+                const result = await alternativeResponse.json();
+                console.log('✅ LISTA TEMPORAL ENVIADA:', result.messages[0].id);
+                console.log('� Esta es una solución temporal hasta corregir el catálogo oficial');
+                return true;
+            } else {
+                console.error('❌ Error en lista temporal');
+                throw new Error('Fallo en método alternativo');
+            }
+            
+        } catch (alternativeError) {
+            console.error('❌ Error en método alternativo:', alternativeError);
+            
+            // 📞 ÚLTIMO RECURSO: Mensaje de texto con información de contacto
+            const contactMessage = [
+                '❌ *Catálogo temporalmente no disponible*',
+                '',
+                '📞 *Haz tu pedido directamente:*',
+                '+56 9 7964 3935',
+                '',
+                '💬 *O escribe tu pedido aquí:*',
+                '"Quiero [producto] cantidad [número]"',
+                '',
+                '⏰ *Horario:* 2:00 PM - 10:00 PM',
+                '',
+                '🔧 Estamos solucionando el catálogo'
             ].join('\n');
             
-            const textPayload = {
+            const contactPayload = {
                 messaging_product: "whatsapp",
                 to: from,
                 type: "text",
-                text: { body: textMessage }
+                text: { body: contactMessage }
             };
             
-            const textResponse = await fetch(`https://graph.facebook.com/v18.0/${process.env.NUMBER_ID}/messages`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${process.env.JWT_TOKEN}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(textPayload)
-            });
-            
-            if (textResponse.ok) {
-                console.log('✅ Mensaje de texto final enviado exitosamente');
+            try {
+                await fetch(`https://graph.facebook.com/v18.0/${process.env.NUMBER_ID}/messages`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${process.env.JWT_TOKEN}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(contactPayload)
+                });
+                
+                console.log('✅ Mensaje de contacto directo enviado');
                 return true;
+                
+            } catch (contactError) {
+                console.error('❌ Error total en envío:', contactError);
+                return false;
             }
-        } catch (textError) {
-            console.error('❌ Error en mensaje de texto final:', textError);
         }
-        
-        return false;
     }
 }
 
