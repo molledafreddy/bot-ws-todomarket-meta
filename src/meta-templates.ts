@@ -52,12 +52,12 @@ export const TODOMARKET_TEMPLATES: Record<string, ApprovedTemplate> = {
         components: [
             {
                 type: 'BODY',
-                text: 'Catalgo con todos Nuestros productos', // Texto real de la plantilla
-                parameters: []
+                text: 'Catalgo con todos Nuestros productos', // Texto FIJO de la plantilla
+                parameters: [] // Sin parámetros - texto fijo
             },
             {
                 type: 'FOOTER', 
-                text: 'Minimarket TodoMarket', // Footer real de la plantilla
+                text: 'Minimarket TodoMarket', // Footer FIJO de la plantilla
                 parameters: []
             },
             {
@@ -116,12 +116,14 @@ export function getApprovedTemplatePayload(templateKey: string, to: string, para
                 type: "body"
             };
             
+            // CORREGIDO: Solo agregar parámetros si realmente los tiene
             if (component.parameters && component.parameters.length > 0) {
                 bodyComp.parameters = component.parameters.map(param => ({
                     type: param.type,
-                    text: parameters?.[param.text || ''] || param.text
+                    text: parameters?.[param.text || ''] || 'TodoMarket'
                 }));
             }
+            // Si no tiene parámetros, el componente va sin parameters (texto fijo)
             
             payload.template.components.push(bodyComp);
         }

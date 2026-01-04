@@ -449,13 +449,13 @@ const flowPrincipal = addKeyword<Provider, Database>(utils.setEvent('welcome'))
             const numAgente = ctx.from;
             console.log('👤 Enviando catálogo a:', numAgente)
         
-            // ACTIVAR PLANTILLAS OFICIALES DE META (cambiar a true para usar tu plantilla aprobada)
-            const useMetaTemplate = true; // ✅ ACTIVADO para usar plantilla oficial Meta
+            // ACTIVAR MÉTODO QUE FUNCIONA (basado en diagnóstico exitoso)
+            const useMetaTemplate = false; // ❌ DESACTIVADO - Las plantillas fallan con error 131008
             
             await sendCatalog(provider, numAgente, {
                 title: "Catalogo Principal",
                 message: "Mira todos nuestros productos aqui 👇🏼",
-            }, 'main', useMetaTemplate); // ← Usa plantilla oficial Meta
+            }, 'main', useMetaTemplate); // ← Usa método interactivo que SÍ funciona
 
             return endFlow([
                 '✅ ¡Catálogo enviado! 🛒',
@@ -559,114 +559,122 @@ async function sendCatalogByType(provider: any, from: string, catalogType: strin
 
 // FUNCIÓN SENDCATALOG CON PLANTILLAS OFICIALES META
 async function sendCatalog(provider: any, from: any, catalog: any, catalogType: string = 'main', useTemplate: boolean = false) {
-    console.log('🛒 === INICIANDO ENVÍO CATÁLOGO CON PLANTILLAS META ===');
+    console.log('🛒 === INICIANDO ENVÍO CATÁLOGO CON MÉTODO CORREGIDO ===');
     console.log('📱 Destinatario:', from);
     console.log('📋 Tipo de catálogo:', catalogType);
-    console.log('📧 Usar plantilla Meta:', useTemplate);
+    console.log('📧 Usar plantilla Meta:', useTemplate, '(DESACTIVADO - Funciona método interactivo)');
     
     try {
-        // MÉTODO 1: PLANTILLA OFICIAL APROBADA DE META
-        if (useTemplate) {
-            console.log('📧 MÉTODO 1: Enviando plantilla oficial aprobada de Meta');
-            
-            try {
-                // Usar la función configurada en meta-templates.ts
-                const templatePayload = getApprovedTemplatePayload('catalog_main', from);
-                
-                console.log('📨 Payload plantilla Meta:', JSON.stringify(templatePayload, null, 2));                // Usar la API directa de Meta Graph API
-                const accessToken = process.env.JWT_TOKEN;
-                const phoneNumberId = process.env.NUMBER_ID;
-                
-                if (!accessToken || !phoneNumberId) {
-                    throw new Error('Token o NUMBER_ID no disponibles');
+        // MÉTODO 1: MENSAJE INTERACTIVO CON CATÁLOGO (FUNCIONA ✅)
+        console.log('✅ MÉTODO 1: Enviando mensaje interactivo que SÍ funciona');
+        
+        const interactivePayload = {
+            messaging_product: "whatsapp",
+            to: from,
+            type: "interactive", 
+            interactive: {
+                type: "catalog_message",
+                body: {
+                    text: "🛒 *TodoMarket - Minimarket*\n\n📦 Productos disponibles:\n• Papas Kryzpo - $2.400\n• Queso Llanero - $10.500\n\n👇 Presiona para ver el catálogo completo"
+                },
+                footer: {
+                    text: "Minimarket TodoMarket"
+                },
+                action: {
+                    name: "catalog_message",
+                    parameters: {
+                        thumbnail_product_retailer_id: "8b9dwc6jus" // ✅ PRODUCTO CONFIRMADO: Papas Kryzpo
+                    }
                 }
-
-                const response = await fetch(`https://graph.facebook.com/v18.0/${phoneNumberId}/messages`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${accessToken}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(templatePayload)
-                });
-
-                if (response.ok) {
-                    const result = await response.json();
-                    console.log('✅ PLANTILLA OFICIAL ENVIADA:', result);
-                    return true;
-                } else {
-                    const errorText = await response.text();
-                    console.error('❌ Error HTTP plantilla:', response.status, errorText);
-                    throw new Error(`HTTP ${response.status}: ${errorText}`);
-                }
-                
-            } catch (templateError) {
-                console.error('❌ Error enviando plantilla oficial:', templateError);
-                console.log('🔄 Fallback a mensaje interactivo...');
-                // Continuar al método 2
             }
+        };
+
+        console.log('📨 Payload interactivo (método que funciona):', JSON.stringify(interactivePayload, null, 2));
+        
+        // Usar API directa de Meta
+        const accessToken = process.env.JWT_TOKEN;
+        const phoneNumberId = process.env.NUMBER_ID;
+        
+        const response = await fetch(`https://graph.facebook.com/v18.0/${phoneNumberId}/messages`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(interactivePayload)
+        });
+
+        if (response.ok) {
+            const result = await response.json();
+            console.log('✅ CATÁLOGO INTERACTIVO ENVIADO EXITOSAMENTE:', result.messages[0].id);
+            return true;
+        } else {
+            const errorText = await response.text();
+            console.error('❌ Error HTTP interactivo:', response.status, errorText);
+            throw new Error(`HTTP ${response.status}: ${errorText}`);
         }
         
-        // MÉTODO 2: MENSAJE INTERACTIVO CON CATÁLOGO 
+    } catch (interactiveError) {
+        console.error('❌ Error método interactivo:', interactiveError);
+        console.log('🔄 Fallback a enlace directo...');
+        
+        // MÉTODO 2: FALLBACK - ENLACE DIRECTO 
+        console.log('🚨 MÉTODO 2: Enviando enlace directo como fallback');
+        
         try {
-            console.log('🔄 MÉTODO 2: Enviando mensaje interactivo con catálogo');
-            
-            const interactivePayload = {
+            const mensajeCatalogo = `🛒 TodoMarket - Minimarket
+
+🏪 Productos frescos y de calidad
+
+📦 Productos destacados:
+• Papas Kryzpo - $2.400
+• Queso Llanero - $10.500
+• Y muchos más...
+
+🕐 Horario de atención:
+📅 Lunes a Domingo  
+⏰ 2:00 PM - 10:00 PM
+
+🛍️ Ver catálogo completo:
+👇 Toca el enlace para explorar
+https://wa.me/c/56979643935
+
+📞 Contacto: +56 9 7964 3935`;
+
+            const fallbackPayload = {
                 messaging_product: "whatsapp",
                 to: from,
-                type: "interactive", 
-                interactive: {
-                    type: "catalog_message",
-                    body: {
-                        text: "🛒 TodoMarket\n\nExplora nuestro catálogo completo de productos"
-                    },
-                    footer: {
-                        text: "📞 +56 9 3649 9908"
-                    },
-                    action: {
-                        name: "catalog_message",
-                        parameters: {
-                            thumbnail_product_retailer_id: "8b9dwc6jus" // ✅ PRODUCTO REAL: Papas Kryzpo
-                        }
-                    }
+                type: "text",
+                text: {
+                    body: mensajeCatalogo
                 }
             };
 
-            console.log('📨 Payload interactivo:', JSON.stringify(interactivePayload, null, 2));
-            
-            // Usar API directa de Meta
             const accessToken = process.env.JWT_TOKEN;
             const phoneNumberId = process.env.NUMBER_ID;
-            
+
             const response = await fetch(`https://graph.facebook.com/v18.0/${phoneNumberId}/messages`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${accessToken}`,
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify(interactivePayload)
+                body: JSON.stringify(fallbackPayload)
             });
 
             if (response.ok) {
-                const result = await response.json();
-                console.log('✅ MENSAJE INTERACTIVO ENVIADO:', result);
+                console.log('✅ ENLACE DIRECTO ENVIADO');
                 return true;
             } else {
                 const errorText = await response.text();
-                console.error('❌ Error HTTP interactivo:', response.status, errorText);
-                throw new Error(`HTTP ${response.status}: ${errorText}`);
+                console.error('❌ Error enviando enlace directo:', errorText);
+                throw new Error(`Error en enlace directo: ${errorText}`);
             }
-            
-        } catch (interactiveError) {
-            console.error('❌ Error mensaje interactivo:', interactiveError);
-            console.log('🔄 Fallback a enlace directo...');
-            // Continuar al método 3
+        } catch (fallbackError) {
+            console.error('❌ Error en fallback:', fallbackError);
+            return false;
         }
-        
-        // MÉTODO 3: FALLBACK - ENLACE DIRECTO 
-        console.log('🚨 MÉTODO 3: Enviando enlace directo como fallback');
-        
-        const mensajeCatalogo = `🛒 *TodoMarket - Minimarket*
+    }
 
 🏪 Productos frescos y de calidad
 
