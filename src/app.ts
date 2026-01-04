@@ -559,23 +559,20 @@ async function sendCatalogByType(provider: any, from: string, catalogType: strin
 
 // FUNCIÓN SENDCATALOG CON PLANTILLAS OFICIALES META
 async function sendCatalog(provider: any, from: any, catalog: any, catalogType: string = 'main', useTemplate: boolean = false) {
-    console.log('🛒 === INICIANDO ENVÍO CATÁLOGO CON MÉTODO CORREGIDO ===');
+    console.log('🛒 === ENVIANDO CATÁLOGO CON MÉTODO CORREGIDO ===');
     console.log('📱 Destinatario:', from);
-    console.log('📋 Tipo de catálogo:', catalogType);
-    console.log('📧 Usar plantilla Meta:', useTemplate, '(DESACTIVADO - Funciona método interactivo)');
     
     try {
-        // MÉTODO 1: MENSAJE INTERACTIVO CON CATÁLOGO (FUNCIONA ✅)
-        console.log('✅ MÉTODO 1: Enviando mensaje interactivo que SÍ funciona');
+        console.log('✅ Enviando catálogo interactivo (método confirmado)...');
         
-        const interactivePayload = {
+        const catalogPayload = {
             messaging_product: "whatsapp",
             to: from,
-            type: "interactive", 
+            type: "interactive",
             interactive: {
                 type: "catalog_message",
                 body: {
-                    text: "🛒 *TodoMarket - Minimarket*\n\n📦 Productos disponibles:\n• Papas Kryzpo - $2.400\n• Queso Llanero - $10.500\n\n👇 Presiona para ver el catálogo completo"
+                    text: "🛒 TodoMarket - Minimarket\n\n📦 Productos disponibles:\n• Papas Kryzpo - $2.400\n• Queso Llanero - $10.500\n\n👇 Presiona para ver el catálogo completo"
                 },
                 footer: {
                     text: "Minimarket TodoMarket"
@@ -583,15 +580,12 @@ async function sendCatalog(provider: any, from: any, catalog: any, catalogType: 
                 action: {
                     name: "catalog_message",
                     parameters: {
-                        thumbnail_product_retailer_id: "8b9dwc6jus" // ✅ PRODUCTO CONFIRMADO: Papas Kryzpo
+                        thumbnail_product_retailer_id: "8b9dwc6jus"
                     }
                 }
             }
         };
-
-        console.log('📨 Payload interactivo (método que funciona):', JSON.stringify(interactivePayload, null, 2));
         
-        // Usar API directa de Meta
         const accessToken = process.env.JWT_TOKEN;
         const phoneNumberId = process.env.NUMBER_ID;
         
@@ -601,166 +595,53 @@ async function sendCatalog(provider: any, from: any, catalog: any, catalogType: 
                 'Authorization': `Bearer ${accessToken}`,
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify(interactivePayload)
+            body: JSON.stringify(catalogPayload)
         });
-
+        
         if (response.ok) {
             const result = await response.json();
-            console.log('✅ CATÁLOGO INTERACTIVO ENVIADO EXITOSAMENTE:', result.messages[0].id);
+            console.log('✅ CATÁLOGO ENVIADO EXITOSAMENTE:', result.messages[0].id);
             return true;
         } else {
             const errorText = await response.text();
-            console.error('❌ Error HTTP interactivo:', response.status, errorText);
-            throw new Error(`HTTP ${response.status}: ${errorText}`);
-        }
-        
-    } catch (interactiveError) {
-        console.error('❌ Error método interactivo:', interactiveError);
-        console.log('🔄 Fallback a enlace directo...');
-        
-        // MÉTODO 2: FALLBACK - ENLACE DIRECTO 
-        console.log('🚨 MÉTODO 2: Enviando enlace directo como fallback');
-        
-        try {
-            const mensajeCatalogo = `🛒 TodoMarket - Minimarket
-
-🏪 Productos frescos y de calidad
-
-📦 Productos destacados:
-• Papas Kryzpo - $2.400
-• Queso Llanero - $10.500
-• Y muchos más...
-
-🕐 Horario de atención:
-📅 Lunes a Domingo  
-⏰ 2:00 PM - 10:00 PM
-
-🛍️ Ver catálogo completo:
-👇 Toca el enlace para explorar
-https://wa.me/c/56979643935
-
-📞 Contacto: +56 9 7964 3935`;
-
-            const fallbackPayload = {
-                messaging_product: "whatsapp",
-                to: from,
-                type: "text",
-                text: {
-                    body: mensajeCatalogo
-                }
-            };
-
-            const accessToken = process.env.JWT_TOKEN;
-            const phoneNumberId = process.env.NUMBER_ID;
-
-            const response = await fetch(`https://graph.facebook.com/v18.0/${phoneNumberId}/messages`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${accessToken}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(fallbackPayload)
-            });
-
-            if (response.ok) {
-                console.log('✅ ENLACE DIRECTO ENVIADO');
-                return true;
-            } else {
-                const errorText = await response.text();
-                console.error('❌ Error enviando enlace directo:', errorText);
-                throw new Error(`Error en enlace directo: ${errorText}`);
-            }
-        } catch (fallbackError) {
-            console.error('❌ Error en fallback:', fallbackError);
-            return false;
-        }
-    }
-
-🏪 Productos frescos y de calidad
-
-🕐 *Horario de atención:*
-📅 Lunes a Domingo
-⏰ 2:00 PM - 10:00 PM
-
-🛍️ *Ver catálogo completo:*
-👇 Toca el enlace para explorar
-https://wa.me/c/56979643935
-
-📞 *Contacto directo:*
-+56 9 3649 9908
-
-🚚 *Delivery disponible*`;
-
-        console.log('📨 Enviando enlace directo...');
-        
-        // Usar payload directo para Meta API
-        const textPayload = {
-            messaging_product: "whatsapp",
-            to: from,
-            type: "text",
-            text: {
-                body: mensajeCatalogo
-            }
-        };
-        
-        const response = await fetch(`https://graph.facebook.com/v18.0/${process.env.NUMBER_ID}/messages`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${process.env.JWT_TOKEN}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(textPayload)
-        });
-        
-        if (response.ok) {
-            console.log('✅ ENLACE DIRECTO ENVIADO');
-            return true;
-        } else {
-            const errorText = await response.text();
-            console.error('❌ Error enviando enlace directo:', errorText);
-            throw new Error(`Error en enlace directo: ${errorText}`);
+            console.error('❌ Error enviando catálogo:', errorText);
+            throw new Error(`Error: ${errorText}`);
         }
         
     } catch (error) {
-        console.error('💥 ERROR CRÍTICO EN SENDCATALOG:', error);
+        console.error('💥 Error en sendCatalog:', error);
         
-        // Último recurso ultra básico
+        // Fallback simple
         try {
-            console.log('🚨 ÚLTIMO RECURSO - Mensaje mínimo...');
-            const mensajeBasico = `🛒 Catálogo TodoMarket\nhttps://wa.me/c/56979643935\n📞 +56 9 3649 9908`; // ✅ Usar número de teléfono real
+            console.log('🔄 Enviando mensaje fallback...');
             
-            const basicPayload = {
+            const fallbackMessage = "🛒 TodoMarket Catálogo\n\nProductos disponibles:\n• Papas Kryzpo - $2.400\n• Queso Llanero - $10.500\n\n📞 Contáctanos: +56 9 7964 3935";
+            
+            const textPayload = {
                 messaging_product: "whatsapp",
                 to: from,
                 type: "text",
-                text: {
-                    body: mensajeBasico
-                }
+                text: { body: fallbackMessage }
             };
             
-            const basicResponse = await fetch(`https://graph.facebook.com/v18.0/${process.env.NUMBER_ID}/messages`, {
+            const fallbackResponse = await fetch(`https://graph.facebook.com/v18.0/${process.env.NUMBER_ID}/messages`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${process.env.JWT_TOKEN}`,
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify(basicPayload)
+                body: JSON.stringify(textPayload)
             });
             
-            if (basicResponse.ok) {
-                console.log('✅ MENSAJE BÁSICO ENVIADO');
+            if (fallbackResponse.ok) {
+                console.log('✅ Mensaje fallback enviado');
                 return true;
-            } else {
-                const basicError = await basicResponse.text();
-                console.error('❌ Error mensaje básico:', basicError);
             }
-            console.log('✅ MENSAJE MÍNIMO ENVIADO');
-            return true;
-            
-        } catch (finalError) {
-            console.error('💥 ERROR FINAL TOTAL:', finalError);
-            return false;
+        } catch (fallbackError) {
+            console.error('❌ Error en fallback:', fallbackError);
         }
+        
+        return false;
     }
 }
 
