@@ -1532,52 +1532,157 @@ const flowTestCatalog = addKeyword(['catalog', 'catalogo', 'meta'])
     }
 });
 
-// 🛒 FLUJO PARA MANEJAR CATEGORÍAS DE PRODUCTOS (SOLUCIÓN TEMPORAL)
+// 🛒 FLUJO PARA MANEJAR TODAS LAS INTERACCIONES (SOLUCIÓN ROBUSTA)
 const flowProductCategories = addKeyword(['categoria_bebidas', 'categoria_panaderia', 'categoria_lacteos', 'categoria_abarrotes', 'categoria_frutas', 'categoria_limpieza'])
 .addAction(async (ctx, { flowDynamic, provider }) => {
     try {
         console.log('🛒 === MANEJO DE CATEGORÍA DE PRODUCTOS ===');
         console.log('📱 Usuario:', ctx.from);
         console.log('📋 Categoría seleccionada:', ctx.body);
+        console.log('📋 Contexto completo:', JSON.stringify(ctx, null, 2));
         
         const categoryId = ctx.body;
         const from = ctx.from;
         
-        // Crear lista de productos para la categoría seleccionada
-        const categoryProductList = createCategoryProductList(from, categoryId);
+        // 🔧 SOLUCIÓN SIMPLIFICADA: Enviar productos como texto simple
+        console.log('🔄 Enviando productos como mensaje de texto...');
         
-        if (categoryProductList) {
-            console.log('📤 Enviando lista de productos para:', categoryId);
-            
-            const accessToken = process.env.JWT_TOKEN;
-            const phoneNumberId = process.env.NUMBER_ID;
-            
-            const response = await fetch(`https://graph.facebook.com/v18.0/${phoneNumberId}/messages`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${accessToken}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(categoryProductList)
-            });
-            
-            if (response.ok) {
-                const result = await response.json();
-                console.log('✅ Lista de productos enviada exitosamente:', result.messages[0].id);
-            } else {
-                const errorText = await response.text();
-                console.error('❌ Error enviando lista de productos:', errorText);
-                await flowDynamic(['❌ Error mostrando productos. Por favor intenta nuevamente.']);
-            }
-            
-        } else {
-            console.error('❌ Categoría no encontrada:', categoryId);
-            await flowDynamic(['❌ Categoría no encontrada. Por favor selecciona una categoría válida.']);
+        let productMessage = '';
+        
+        switch (categoryId) {
+            case 'categoria_bebidas':
+                productMessage = [
+                    '🥤 *Bebidas y Refrescos*',
+                    '',
+                    '• Coca Cola Lata 350ml - $1.900',
+                    '• Pepsi Lata 350ml - $1.800',
+                    '• Sprite Lata 350ml - $1.800',
+                    '• Agua Mineral 1.5L - $1.200',
+                    '• Jugo Watts Durazno 1L - $2.500',
+                    '',
+                    '📞 *Para hacer tu pedido escribe:*',
+                    '"Quiero 2 coca cola" o "Necesito agua"',
+                    '',
+                    'O llama al: +56 9 7964 3935'
+                ].join('\n');
+                break;
+                
+            case 'categoria_panaderia':
+                productMessage = [
+                    '🍞 *Panadería y Cereales*',
+                    '',
+                    '• Pan de Molde 500g - $1.600',
+                    '• Hallullas x6 unidades - $2.200',
+                    '• Cereal Corn Flakes 500g - $4.500',
+                    '• Avena Quaker 500g - $3.200',
+                    '',
+                    '📞 *Para hacer tu pedido escribe:*',
+                    '"Quiero pan de molde" o "Necesito hallullas"',
+                    '',
+                    'O llama al: +56 9 7964 3935'
+                ].join('\n');
+                break;
+                
+            case 'categoria_lacteos':
+                productMessage = [
+                    '🥛 *Lácteos y Huevos*',
+                    '',
+                    '• Leche Entera 1L - $1.400',
+                    '• Yogurt Natural 150g - $800',
+                    '• Queso Gouda 200g - $4.200',
+                    '• Huevos Docena - $3.500',
+                    '',
+                    '📞 *Para hacer tu pedido escribe:*',
+                    '"Quiero leche" o "Necesito huevos"',
+                    '',
+                    'O llama al: +56 9 7964 3935'
+                ].join('\n');
+                break;
+                
+            case 'categoria_abarrotes':
+                productMessage = [
+                    '🌾 *Abarrotes*',
+                    '',
+                    '• Arroz Grado 1 1kg - $2.800',
+                    '• Fideos Espagueti 500g - $1.900',
+                    '• Aceite Vegetal 1L - $3.200',
+                    '• Azúcar 1kg - $2.200',
+                    '',
+                    '📞 *Para hacer tu pedido escribe:*',
+                    '"Quiero arroz" o "Necesito aceite"',
+                    '',
+                    'O llama al: +56 9 7964 3935'
+                ].join('\n');
+                break;
+                
+            case 'categoria_frutas':
+                productMessage = [
+                    '🍎 *Frutas y Verduras*',
+                    '',
+                    '• Plátanos x6 unidades - $2.500',
+                    '• Manzanas Rojas x4 - $2.800',
+                    '• Tomates 1kg - $2.200',
+                    '• Papas 2kg - $3.500',
+                    '',
+                    '📞 *Para hacer tu pedido escribe:*',
+                    '"Quiero plátanos" o "Necesito tomates"',
+                    '',
+                    'O llama al: +56 9 7964 3935'
+                ].join('\n');
+                break;
+                
+            case 'categoria_limpieza':
+                productMessage = [
+                    '🧼 *Limpieza y Aseo*',
+                    '',
+                    '• Detergente Líquido 1L - $3.800',
+                    '• Papel Higiénico x4 - $4.200',
+                    '• Champú 400ml - $4.500',
+                    '• Pasta Dental 100ml - $2.800',
+                    '',
+                    '📞 *Para hacer tu pedido escribe:*',
+                    '"Quiero detergente" o "Necesito papel"',
+                    '',
+                    'O llama al: +56 9 7964 3935'
+                ].join('\n');
+                break;
+                
+            default:
+                productMessage = [
+                    '❌ *Categoría no encontrada*',
+                    '',
+                    '📱 *Categorías disponibles:*',
+                    '• Bebidas y Refrescos 🥤',
+                    '• Panadería y Cereales 🍞',
+                    '• Lácteos y Huevos 🥛',
+                    '• Abarrotes 🌾',
+                    '• Frutas y Verduras 🍎',
+                    '• Limpieza y Aseo 🧼',
+                    '',
+                    'Escribe "hola" para ver el catálogo nuevamente'
+                ].join('\n');
         }
+        
+        // Enviar mensaje de texto simple (más confiable)
+        await flowDynamic([productMessage]);
+        console.log('✅ Productos enviados como texto simple para:', categoryId);
         
     } catch (error) {
         console.error('💥 Error en flowProductCategories:', error);
-        await flowDynamic(['❌ Error técnico. Por favor intenta nuevamente o contacta al +56 9 7964 3935']);
+        
+        // Fallback ultra simple
+        const fallbackMessage = [
+            '❌ *Error mostrando productos*',
+            '',
+            '📞 *Llama directamente para hacer tu pedido:*',
+            '+56 9 7964 3935',
+            '',
+            '⏰ *Horario:* 2:00 PM - 10:00 PM',
+            '',
+            'O escribe "hola" para ver el catálogo nuevamente'
+        ].join('\n');
+        
+        await flowDynamic([fallbackMessage]);
     }
 });
 
@@ -1612,6 +1717,157 @@ const flowBackToCategories = addKeyword(['volver_categorias'])
     }
 });
 
+// 🔧 FLUJO GENERAL PARA CAPTURAR RESPUESTAS INTERACTIVAS (NUEVO)
+const flowInteractiveResponse = addKeyword([EVENTS.ACTION])
+.addAction(async (ctx, { flowDynamic }) => {
+    try {
+        console.log('📱 === RESPUESTA INTERACTIVA DETECTADA ===');
+        console.log('📋 Contexto completo:', JSON.stringify(ctx, null, 2));
+        console.log('📱 Body:', ctx.body);
+        console.log('📱 From:', ctx.from);
+        
+        const responseId = ctx.body;
+        
+        // Verificar si es una selección de categoría
+        if (responseId && responseId.startsWith('categoria_')) {
+            console.log('🛒 Detectada selección de categoría:', responseId);
+            
+            let productMessage = '';
+            
+            switch (responseId) {
+                case 'categoria_bebidas':
+                    productMessage = [
+                        '🥤 *Bebidas y Refrescos - TodoMarket*',
+                        '',
+                        '• Coca Cola Lata 350ml - $1.900',
+                        '• Pepsi Lata 350ml - $1.800', 
+                        '• Sprite Lata 350ml - $1.800',
+                        '• Agua Mineral 1.5L - $1.200',
+                        '• Jugo Watts Durazno 1L - $2.500',
+                        '',
+                        '📞 *Para hacer tu pedido escribe:*',
+                        '"Quiero 2 coca cola" o "Necesito 1 agua"',
+                        '',
+                        '📞 O llama al: +56 9 7964 3935',
+                        '⏰ Horario: 2:00 PM - 10:00 PM'
+                    ].join('\n');
+                    break;
+                    
+                case 'categoria_panaderia':
+                    productMessage = [
+                        '🍞 *Panadería y Cereales - TodoMarket*',
+                        '',
+                        '• Pan de Molde 500g - $1.600',
+                        '• Hallullas x6 unidades - $2.200',
+                        '• Cereal Corn Flakes 500g - $4.500',
+                        '• Avena Quaker 500g - $3.200',
+                        '',
+                        '📞 *Para hacer tu pedido escribe:*',
+                        '"Quiero pan de molde" o "Necesito hallullas"',
+                        '',
+                        '📞 O llama al: +56 9 7964 3935',
+                        '⏰ Horario: 2:00 PM - 10:00 PM'
+                    ].join('\n');
+                    break;
+                    
+                case 'categoria_lacteos':
+                    productMessage = [
+                        '🥛 *Lácteos y Huevos - TodoMarket*',
+                        '',
+                        '• Leche Entera 1L - $1.400',
+                        '• Yogurt Natural 150g - $800',
+                        '• Queso Gouda 200g - $4.200',
+                        '• Huevos Docena - $3.500',
+                        '',
+                        '📞 *Para hacer tu pedido escribe:*',
+                        '"Quiero leche" o "Necesito huevos"',
+                        '',
+                        '📞 O llama al: +56 9 7964 3935',
+                        '⏰ Horario: 2:00 PM - 10:00 PM'
+                    ].join('\n');
+                    break;
+                    
+                case 'categoria_abarrotes':
+                    productMessage = [
+                        '🌾 *Abarrotes - TodoMarket*',
+                        '',
+                        '• Arroz Grado 1 1kg - $2.800',
+                        '• Fideos Espagueti 500g - $1.900',
+                        '• Aceite Vegetal 1L - $3.200',
+                        '• Azúcar 1kg - $2.200',
+                        '',
+                        '📞 *Para hacer tu pedido escribe:*',
+                        '"Quiero arroz" o "Necesito aceite"',
+                        '',
+                        '📞 O llama al: +56 9 7964 3935',
+                        '⏰ Horario: 2:00 PM - 10:00 PM'
+                    ].join('\n');
+                    break;
+                    
+                case 'categoria_frutas':
+                    productMessage = [
+                        '🍎 *Frutas y Verduras - TodoMarket*',
+                        '',
+                        '• Plátanos x6 unidades - $2.500',
+                        '• Manzanas Rojas x4 - $2.800', 
+                        '• Tomates 1kg - $2.200',
+                        '• Papas 2kg - $3.500',
+                        '',
+                        '📞 *Para hacer tu pedido escribe:*',
+                        '"Quiero plátanos" o "Necesito tomates"',
+                        '',
+                        '📞 O llama al: +56 9 7964 3935',
+                        '⏰ Horario: 2:00 PM - 10:00 PM'
+                    ].join('\n');
+                    break;
+                    
+                case 'categoria_limpieza':
+                    productMessage = [
+                        '🧼 *Limpieza y Aseo - TodoMarket*',
+                        '',
+                        '• Detergente Líquido 1L - $3.800',
+                        '• Papel Higiénico x4 - $4.200',
+                        '• Champú 400ml - $4.500',
+                        '• Pasta Dental 100ml - $2.800',
+                        '',
+                        '📞 *Para hacer tu pedido escribe:*',
+                        '"Quiero detergente" o "Necesito papel"',
+                        '',
+                        '📞 O llama al: +56 9 7964 3935',
+                        '⏰ Horario: 2:00 PM - 10:00 PM'
+                    ].join('\n');
+                    break;
+                    
+                default:
+                    productMessage = [
+                        '❓ *Selección no reconocida*',
+                        '',
+                        'Escribe "hola" para ver el catálogo nuevamente',
+                        'O llama al: +56 9 7964 3935'
+                    ].join('\n');
+            }
+            
+            await flowDynamic([productMessage]);
+            console.log('✅ Productos enviados via EVENTS.ACTION para:', responseId);
+            
+        } else {
+            console.log('ℹ️ Respuesta interactiva no es categoría:', responseId);
+        }
+        
+    } catch (error) {
+        console.error('💥 Error en flowInteractiveResponse:', error);
+        
+        const errorMessage = [
+            '❌ *Error procesando selección*',
+            '',
+            'Escribe "hola" para ver el catálogo nuevamente',
+            'O llama al: +56 9 7964 3935'
+        ].join('\n');
+        
+        await flowDynamic([errorMessage]);
+    }
+});
+
 const main = async () => {
     
     
@@ -1626,7 +1882,8 @@ const main = async () => {
         flowOrder,          // Flujo para órdenes
         flowEndShoppingCart, // Flujo final del carrito
         flowValidMedia,     // Validación de media
-        flowProductCategories, // 🛒 Manejo de categorías de productos (SOLUCIÓN TEMPORAL)
+        flowInteractiveResponse, // 🔧 Manejo de respuestas interactivas (NUEVA SOLUCIÓN)
+        flowProductCategories, // 🛒 Manejo de categorías de productos (BACKUP)
         flowBackToCategories,  // 🔄 Flujo para volver a categorías
         idleFlow            // Flujo de inactividad
     ])
