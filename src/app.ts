@@ -27,6 +27,9 @@ import process from 'process';
 // Importar fetch para Node.js si no está disponible globalmente
 const fetch = globalThis.fetch || require('node-fetch')
 
+// Importar funciones alternativas para el catálogo
+import { createProductList, createCategoryProductList } from '../alternative-catalog'
+
 // Railway requires PORT as integer
 const PORT = parseInt(process.env.PORT || '3008', 10)
 
@@ -557,74 +560,86 @@ async function sendCatalogByType(provider: any, from: string, catalogType: strin
     }
 }
 
-// FUNCIÓN SENDCATALOG CON PLANTILLAS OFICIALES META
+// FUNCIÓN SENDCATALOG MEJORADA - SOLUCION INMEDIATA PARA ERROR WEBBRIDGE
 async function sendCatalog(provider: any, from: any, catalog: any, catalogType: string = 'main', useTemplate: boolean = false) {
-    console.log('🛒 === ENVIANDO CATÁLOGO CON MÉTODO CORREGIDO ===');
+    console.log('🛒 === ENVIANDO CATÁLOGO CON SOLUCIÓN WEBBRIDGE ===');
     console.log('📱 Destinatario:', from);
+    console.log('⚠️ SALTANDO catálogo oficial (causa error WebBridgeInput)');
     
     try {
-        console.log('✅ Enviando catálogo interactivo (método confirmado)...');
+        // ⚠️ SOLUCIÓN INMEDIATA: NO enviar catálogo oficial para evitar error WebBridgeInput
+        // El catálogo oficial causa "Serializer for class 'WebBridgeInput' is not found"
+        console.log('🔄 Enviando directamente lista de productos interactiva...');
         
-        const catalogPayload = {
-            messaging_product: "whatsapp",
-            to: from,
-            type: "interactive",
-            interactive: {
-                type: "catalog_message",
-                body: {
-                    text: "🛒 TodoMarket - Minimarket\n\n📦 Productos disponibles:\n• Papas Kryzpo - $2.400\n• Queso Llanero - $10.500\n\n👇 Presiona para ver el catálogo completo"
-                },
-                footer: {
-                    text: "Minimarket TodoMarket"
-                },
-                action: {
-                    name: "catalog_message",
-                    parameters: {
-                        thumbnail_product_retailer_id: "8b9dwc6jus"
-                    }
-                }
-            }
-        };
-        
+        const alternativePayload = createProductList(from);
         const accessToken = process.env.JWT_TOKEN;
         const phoneNumberId = process.env.NUMBER_ID;
         
-        const response = await fetch(`https://graph.facebook.com/v18.0/${phoneNumberId}/messages`, {
+        const alternativeResponse = await fetch(`https://graph.facebook.com/v18.0/${phoneNumberId}/messages`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${accessToken}`,
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify(catalogPayload)
+            body: JSON.stringify(alternativePayload)
         });
         
-        if (response.ok) {
-            const result = await response.json();
-            console.log('✅ CATÁLOGO ENVIADO EXITOSAMENTE:', result.messages[0].id);
+        if (alternativeResponse.ok) {
+            const result = await alternativeResponse.json();
+            console.log('✅ LISTA DE PRODUCTOS INTERACTIVA ENVIADA:', result.messages[0].id);
+            console.log('✅ ERROR WEBBRIDGE EVITADO - Usuario puede ver productos');
             return true;
         } else {
-            const errorText = await response.text();
-            console.error('❌ Error enviando catálogo:', errorText);
-            throw new Error(`Error: ${errorText}`);
+            const errorText = await alternativeResponse.text();
+            console.error('❌ Error enviando lista interactiva:', errorText);
+            throw new Error(`Error lista: ${errorText}`);
         }
         
     } catch (error) {
-        console.error('💥 Error en sendCatalog:', error);
+        console.error('💥 Error en lista interactiva, usando texto simple:', error);
         
-        // Fallback simple
+        // Fallback final: Mensaje de texto simple (último recurso)
         try {
-            console.log('🔄 Enviando mensaje fallback...');
+            console.log('🔄 Enviando mensaje de texto como último recurso...');
             
-            const fallbackMessage = "🛒 TodoMarket Catálogo\n\nProductos disponibles:\n• Papas Kryzpo - $2.400\n• Queso Llanero - $10.500\n\n📞 Contáctanos: +56 9 7964 3935";
+            const textMessage = [
+                "🛒 *TodoMarket - Catálogo de Productos*",
+                "",
+                "📱 *Bebidas y Refrescos:*",
+                "• Coca Cola Lata 350ml - $1.900",
+                "• Pepsi Lata 350ml - $1.800", 
+                "• Agua Mineral 1.5L - $1.200",
+                "",
+                "🍞 *Panadería:*",
+                "• Pan de molde 500g - $1.600",
+                "• Hallullas x6 - $2.200",
+                "",
+                "🥛 *Lácteos:*",
+                "• Leche entera 1L - $1.400",
+                "• Queso Gouda 200g - $4.200",
+                "• Huevos docena - $3.500",
+                "",
+                "🌾 *Abarrotes:*",
+                "• Arroz 1kg - $2.800",
+                "• Fideos 500g - $1.900",
+                "• Aceite 1L - $3.200",
+                "",
+                "📞 *Para hacer tu pedido:*",
+                "Escribe el nombre del producto y la cantidad",
+                "Ejemplo: \"Quiero 2 coca cola\"",
+                "",
+                "📞 *O llama directamente:* +56 9 7964 3935",
+                "⏰ *Horario:* 2:00 PM - 10:00 PM"
+            ].join('\n');
             
             const textPayload = {
                 messaging_product: "whatsapp",
                 to: from,
                 type: "text",
-                text: { body: fallbackMessage }
+                text: { body: textMessage }
             };
             
-            const fallbackResponse = await fetch(`https://graph.facebook.com/v18.0/${process.env.NUMBER_ID}/messages`, {
+            const textResponse = await fetch(`https://graph.facebook.com/v18.0/${process.env.NUMBER_ID}/messages`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${process.env.JWT_TOKEN}`,
@@ -633,12 +648,12 @@ async function sendCatalog(provider: any, from: any, catalog: any, catalogType: 
                 body: JSON.stringify(textPayload)
             });
             
-            if (fallbackResponse.ok) {
-                console.log('✅ Mensaje fallback enviado');
+            if (textResponse.ok) {
+                console.log('✅ Mensaje de texto final enviado exitosamente');
                 return true;
             }
-        } catch (fallbackError) {
-            console.error('❌ Error en fallback:', fallbackError);
+        } catch (textError) {
+            console.error('❌ Error en mensaje de texto final:', textError);
         }
         
         return false;
@@ -1517,6 +1532,86 @@ const flowTestCatalog = addKeyword(['catalog', 'catalogo', 'meta'])
     }
 });
 
+// 🛒 FLUJO PARA MANEJAR CATEGORÍAS DE PRODUCTOS (SOLUCIÓN TEMPORAL)
+const flowProductCategories = addKeyword(['categoria_bebidas', 'categoria_panaderia', 'categoria_lacteos', 'categoria_abarrotes', 'categoria_frutas', 'categoria_limpieza'])
+.addAction(async (ctx, { flowDynamic, provider }) => {
+    try {
+        console.log('🛒 === MANEJO DE CATEGORÍA DE PRODUCTOS ===');
+        console.log('📱 Usuario:', ctx.from);
+        console.log('📋 Categoría seleccionada:', ctx.body);
+        
+        const categoryId = ctx.body;
+        const from = ctx.from;
+        
+        // Crear lista de productos para la categoría seleccionada
+        const categoryProductList = createCategoryProductList(from, categoryId);
+        
+        if (categoryProductList) {
+            console.log('📤 Enviando lista de productos para:', categoryId);
+            
+            const accessToken = process.env.JWT_TOKEN;
+            const phoneNumberId = process.env.NUMBER_ID;
+            
+            const response = await fetch(`https://graph.facebook.com/v18.0/${phoneNumberId}/messages`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(categoryProductList)
+            });
+            
+            if (response.ok) {
+                const result = await response.json();
+                console.log('✅ Lista de productos enviada exitosamente:', result.messages[0].id);
+            } else {
+                const errorText = await response.text();
+                console.error('❌ Error enviando lista de productos:', errorText);
+                await flowDynamic(['❌ Error mostrando productos. Por favor intenta nuevamente.']);
+            }
+            
+        } else {
+            console.error('❌ Categoría no encontrada:', categoryId);
+            await flowDynamic(['❌ Categoría no encontrada. Por favor selecciona una categoría válida.']);
+        }
+        
+    } catch (error) {
+        console.error('💥 Error en flowProductCategories:', error);
+        await flowDynamic(['❌ Error técnico. Por favor intenta nuevamente o contacta al +56 9 7964 3935']);
+    }
+});
+
+// 🔄 FLUJO PARA VOLVER A CATEGORÍAS
+const flowBackToCategories = addKeyword(['volver_categorias'])
+.addAction(async (ctx, { provider }) => {
+    try {
+        console.log('🔄 Usuario regresando a categorías:', ctx.from);
+        
+        const from = ctx.from;
+        const categoryList = createProductList(from);
+        
+        const accessToken = process.env.JWT_TOKEN;
+        const phoneNumberId = process.env.NUMBER_ID;
+        
+        const response = await fetch(`https://graph.facebook.com/v18.0/${phoneNumberId}/messages`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(categoryList)
+        });
+        
+        if (response.ok) {
+            const result = await response.json();
+            console.log('✅ Lista de categorías enviada:', result.messages[0].id);
+        }
+        
+    } catch (error) {
+        console.error('💥 Error regresando a categorías:', error);
+    }
+});
+
 const main = async () => {
     
     
@@ -1531,6 +1626,8 @@ const main = async () => {
         flowOrder,          // Flujo para órdenes
         flowEndShoppingCart, // Flujo final del carrito
         flowValidMedia,     // Validación de media
+        flowProductCategories, // 🛒 Manejo de categorías de productos (SOLUCIÓN TEMPORAL)
+        flowBackToCategories,  // 🔄 Flujo para volver a categorías
         idleFlow            // Flujo de inactividad
     ])
     
