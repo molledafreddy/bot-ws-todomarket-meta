@@ -1509,7 +1509,7 @@ const flowValidTime = addKeyword<Provider, Database>(EVENTS.WELCOME)
         } else {
             console.log('❌ Fuera del horario de atención - Redirigiendo a flowDisable');
             console.log('🔄 Paso 6B: Ejecutando gotoFlow(flowDisable)');
-            return gotoFlow(flowDisable); // Flujo para horario no disponible
+            return gotoFlow(flowPrincipal); // Flujo para horario no disponible
         }
 
     } catch (error) {
