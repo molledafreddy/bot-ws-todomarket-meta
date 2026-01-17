@@ -6,6 +6,7 @@ import { MongoAdapter as Database } from '@builderbot/database-mongo'
 import { MetaProvider as Provider } from '@builderbot/provider-meta'
 import { idleFlow, reset, start, stop, IDLETIME } from './idle-custom'
 import { getCatalogConfig, CatalogConfig } from './catalog-config'
+import { carritoFlows } from './carrito-flows'
 import { 
     createTodoMarketCatalogTemplate, 
     createTodoMarketInteractiveCatalog,
@@ -1937,8 +1938,12 @@ const flowInteractiveResponse = addKeyword([EVENTS.ACTION])
 const main = async () => {
     
     
-    // Configurar flows: PRODUCCIÓN CON META API
+    // Configurar flows: PRODUCCIÓN CON SISTEMA DE CARRITO ESCALABLE
     const adapterFlow = createFlow([
+        // === FLOWS DEL SISTEMA DE CARRITO ESCALABLE ===
+        ...carritoFlows,    // 🛒 Sistema completo de carrito con MongoDB
+        
+        // === FLOWS EXISTENTES (MANTENIDOS PARA COMPATIBILIDAD) ===
         // flowTest,           // 🧪 Flujo de prueba - DESHABILITADO EN PRODUCCIÓN
         // flowTestCatalog,    // 🔍 Flujo de prueba del catálogo - DESHABILITADO EN PRODUCCIÓN
         flowValidTime,      // Flujo de validación de horario
