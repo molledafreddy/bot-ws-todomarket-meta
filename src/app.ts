@@ -6,7 +6,17 @@ import { MongoAdapter as Database } from '@builderbot/database-mongo'
 import { MetaProvider as Provider } from '@builderbot/provider-meta'
 import { idleFlow, reset, start, stop, IDLETIME } from './idle-custom'
 import { getCatalogConfig, CatalogConfig } from './catalog-config'
-import { carritoFlowsInteractivos, flowCarritoInteractivo } from './carrito-interactivo'
+// ===== NUEVA ESTRATEGIA: IMPORTACIONES INDIVIDUALES =====
+import { 
+    flowCarritoInteractivo,
+    flowVerCarritoInteractivo,
+    flowSeguirComprandoInteractivo,
+    flowVaciarCarritoInteractivo,
+    flowConfirmarPedidoInteractivo,
+    flowVolverCarrito,
+    flowFinalizarCompra
+} from './carrito-interactivo'
+import { flowAccionesCarrito } from './carrito-acciones'  // 🆕 Flow unificado para acciones
 import { flowPrincipalInteractivo } from './flowprincipal-interactivo'
 import { 
     syncAndGetProducts,
@@ -1956,10 +1966,17 @@ const flowInteractiveResponse = addKeyword([EVENTS.ACTION])
 const main = async () => {
     
     
-    // Configurar flows: PRODUCCIÓN CON SISTEMA DE CARRITO ESCALABLE
+    // Configurar flows: NUEVA ESTRATEGIA CON FLOWS INDIVIDUALES
     const adapterFlow = createFlow([
-        // === FLOWS DEL CARRITO CON LISTAS INTERACTIVAS (ALTA PRIORIDAD) ===
-        ...carritoFlowsInteractivos,    // 🛒 Sistema con listas interactivas para gestión visual
+        // === FLOWS DEL CARRITO - IMPORTADOS INDIVIDUALMENTE ===
+        flowCarritoInteractivo,         // 🛒 Flow principal del carrito
+        flowVerCarritoInteractivo,      // �️ Ver carrito detallado
+        flowSeguirComprandoInteractivo, // 🛍️ Continuar comprando
+        flowVaciarCarritoInteractivo,   // 🗑️ Vaciar carrito
+        flowConfirmarPedidoInteractivo, // ✅ Confirmar pedido
+        flowVolverCarrito,              // 🔙 Volver al carrito
+        flowFinalizarCompra,            // 🏁 Finalizar compra
+        flowAccionesCarrito,            // 🔧 Flow unificado para EVENTS.ACTION
         
         // === FLOWS PRINCIPALES ===
         flowValidTime,                  // Flujo de validación de horario
