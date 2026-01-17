@@ -1962,19 +1962,20 @@ const main = async () => {
         ...carritoFlowsInteractivos,    // 🛒 Sistema con listas interactivas para gestión visual
         
         // === FLOWS PRINCIPALES ===
-        // flowValidTime,      // Flujo de validación de horario
-        // flowPrincipalInteractivo,      // 🎯 Menú principal CON CARRITO INTEGRADO
-        // flowDisable,        // ⚠️ Flujo fuera de horario
-        FlowAgente2,        // Flujo para agente
-        // flowOrder,          // Flujo para órdenes
-        flowValidMedia,     // Validación de media
+        flowValidTime,                  // Flujo de validación de horario
+        flowPrincipalInteractivo,       // 🎯 Menú principal CON CARRITO INTEGRADO
+        flowPrincipal,                  // 🔄 Menú principal legacy (backup)
+        flowDisable,                    // ⚠️ Flujo fuera de horario
+        FlowAgente2,                    // Flujo para agente
+        flowOrder,                      // Flujo para órdenes
+        flowValidMedia,                 // Validación de media
         
         // === FLOWS DE COMPATIBILIDAD (BAJA PRIORIDAD) ===
-        flowEndShoppingCart, // Flujo final del carrito (legacy)
-        flowInteractiveResponse, // 🔧 Manejo de respuestas interactivas (BACKUP)
-        flowProductCategories, // 🛒 Manejo de categorías de productos (BACKUP)
-        flowBackToCategories,  // 🔄 Flujo para volver a categorías (BACKUP)
-        idleFlow            // Flujo de inactividad
+        flowEndShoppingCart,            // Flujo final del carrito (legacy)
+        flowInteractiveResponse,        // 🔧 Manejo de respuestas interactivas (BACKUP)
+        flowProductCategories,          // 🛒 Manejo de categorías de productos (BACKUP)
+        flowBackToCategories,           // 🔄 Flujo para volver a categorías (BACKUP)
+        idleFlow                        // Flujo de inactividad
     ])
     
     const adapterProvider = createProvider(Provider, {
