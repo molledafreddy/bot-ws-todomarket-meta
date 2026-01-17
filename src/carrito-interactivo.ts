@@ -716,17 +716,111 @@ export const flowFinalizarCompra = addKeyword<Provider, Database>(['finalizar_co
 
 // ===== EXPORTAR TODOS LOS FLOWS INTERACTIVOS =====
 
+// ===== FLOW UNIFICADO PARA MANEJAR TODAS LAS ACCIONES INTERACTIVAS =====
+// Este flow maneja todas las respuestas a listas interactivas para evitar conflictos
+export const flowAccionesInteractivasCarrito = addKeyword<Provider, Database>(EVENTS.ACTION)
+    .addAction(async (ctx, { state, provider }) => {
+        const userInput = ctx.body;
+        console.log('🔧 Flow unificado - Acción recibida:', userInput);
+
+        try {
+            // ===== MANEJAR CATEGORÍAS =====
+            if (userInput.startsWith('categoria_')) {
+                console.log('📋 Procesando categoría:', userInput);
+                const categoria = userInput.replace('categoria_', '');
+                const userState = await state.getMyState();
+                const productsByCategory = userState?.productsByCategory || {};
+                const productos = productsByCategory[categoria] || [];
+
+                if (productos.length === 0) {
+                    await provider.sendText(ctx.from, [
+                        '❌ *Categoría vacía*',
+                        '',
+                        `No hay productos disponibles en la categoría: ${categoria}`,
+                        '',
+                        'Inténtalo con otra categoría o llama al +56 9 7964 3935'
+                    ].join('\n'));
+                    return;
+                }
+
+                // Generar y enviar lista de productos
+                const productsList = generateProductsList(productos, categoria);
+                await sendInteractiveMessage(ctx.from, productsList);
+                console.log(`✅ Lista de productos enviada para categoría: ${categoria}`);
+                return;
+            }
+
+            // ===== MANEJAR PRODUCTOS =====
+            if (userInput.startsWith('producto_')) {
+                console.log('🛍️ Procesando producto:', userInput);
+                const productId = userInput.replace('producto_', '');
+                const userState = await state.getMyState();
+                const productsByCategory = userState?.productsByCategory || {};
+                
+                // Buscar el producto en todas las categorías
+                const producto = findProductByRetailerId(productsByCategory, productId);
+                
+                if (!producto) {
+                    await provider.sendText(ctx.from, [
+                        '❌ *Producto no encontrado*',
+                        '',
+                        'No pudimos encontrar ese producto.',
+                        'Inténtalo nuevamente o contacta al +56 9 7964 3935'
+                    ].join('\n'));
+                    return;
+                }
+
+                // Agregar al carrito
+                const carrito = userState?.carrito || [];
+                const nuevoCarrito = addToCart(carrito, producto, 1);
+                
+                await state.update({ 
+                    ...userState,
+                    carrito: nuevoCarrito 
+                });
+
+                await provider.sendText(ctx.from, [
+                    '✅ *Producto agregado al carrito*',
+                    '',
+                    `📦 **${producto.name}**`,
+                    '🛒 Cantidad: 1 unidad',
+                    '',
+                    '🎯 *Opciones disponibles:*',
+                    '• Escribe "ver_carrito_detallado" para ver tu carrito',
+                    '• Escribe "seguir_comprando" para más productos',
+                    '• Escribe "confirmar_pedido" para finalizar'
+                ].join('\n'));
+
+                console.log(`✅ Producto agregado: ${producto.name}`);
+                return;
+            }
+
+            // ===== OTRAS ACCIONES =====
+            console.log('ℹ️ Acción no reconocida en flow unificado:', userInput);
+
+        } catch (error) {
+            console.error('❌ Error en flow unificado de acciones:', error);
+            await provider.sendText(ctx.from, [
+                '❌ *Error procesando la acción*',
+                '',
+                'Hubo un problema procesando tu selección.',
+                'Inténtalo nuevamente o contacta al +56 9 7964 3935'
+            ].join('\n'));
+        }
+    });
+
 export const carritoFlowsInteractivos = [
     flowCarritoInteractivo,               // Flow principal
-    flowCategoriasInteractivas,           // Manejo de categorías
-    flowAgregarProductoInteractivo,       // Agregar productos desde lista
+    // flowCategoriasInteractivas,           // Manejo de categorías (COMENTADO - EVENTS.ACTION conflict)
+    // flowAgregarProductoInteractivo,       // Agregar productos desde lista (COMENTADO - EVENTS.ACTION conflict)
     flowVerCarritoInteractivo,           // Ver carrito con lista interactiva
-    flowGestionarProducto,               // Gestionar productos individuales
-    flowCambiarCantidadInteractiva,      // Cambiar cantidades desde lista
-    flowEliminarProductoInteractivo,     // Eliminar productos desde lista
+    // flowGestionarProducto,               // Gestionar productos individuales (COMENTADO - EVENTS.ACTION conflict)
+    // flowCambiarCantidadInteractiva,      // Cambiar cantidades desde lista (COMENTADO - EVENTS.ACTION conflict)
+    // flowEliminarProductoInteractivo,     // Eliminar productos desde lista (COMENTADO - EVENTS.ACTION conflict)
     flowSeguirComprandoInteractivo,      // Continuar comprando
     flowVaciarCarritoInteractivo,        // Vaciar carrito
     flowConfirmarPedidoInteractivo,      // Confirmar pedido
     flowVolverCarrito,                   // Volver al carrito
-    flowFinalizarCompra                  // Finalizar compra
+    flowFinalizarCompra,                 // Finalizar compra
+    flowAccionesInteractivasCarrito      // ✅ Flow unificado para EVENTS.ACTION
 ];
