@@ -7,6 +7,11 @@ import { MetaProvider as Provider } from '@builderbot/provider-meta'
 import { idleFlow, reset, start, stop, IDLETIME } from './idle-custom'
 import { getCatalogConfig, CatalogConfig } from './catalog-config'
 import { carritoFlowsInteractivos, flowCarritoInteractivo } from './carrito-interactivo'
+import { flowPrincipalInteractivo } from './flowprincipal-interactivo'
+import { 
+    syncAndGetProducts,
+    generateCategoriesList
+} from './carrito-simple'
 import { 
     createTodoMarketCatalogTemplate, 
     createTodoMarketInteractiveCatalog,
@@ -425,6 +430,35 @@ const flowEndShoppingCart = addKeyword(utils.setEvent('END_SHOPPING_CART'))
         }
     }
 );
+
+// ===== FUNCIÓN HELPER PARA ENVIAR LISTAS INTERACTIVAS =====
+async function sendInteractiveMessageDirect(phoneNumber: string, payload: any): Promise<void> {
+    const ACCESS_TOKEN = process.env.JWT_TOKEN!;
+    try {
+        const response = await fetch(`https://graph.facebook.com/v18.0/${process.env.NUMBER_ID}/messages`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${ACCESS_TOKEN}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                ...payload,
+                to: phoneNumber
+            })
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            console.error('❌ Error enviando mensaje interactivo:', errorData);
+            throw new Error('Error API Meta');
+        }
+        
+        console.log('✅ Lista interactiva enviada exitosamente');
+    } catch (error) {
+        console.error('❌ Error en sendInteractiveMessageDirect:', error);
+        throw error;
+    }
+}
 
  // const flowPrincipal = addKeyword("welcome")
 const flowPrincipal = addKeyword<Provider, Database>(utils.setEvent('welcome'))
@@ -1924,22 +1958,22 @@ const main = async () => {
     
     // Configurar flows: PRODUCCIÓN CON SISTEMA DE CARRITO ESCALABLE
     const adapterFlow = createFlow([
-        // === FLOWS DEL CARRITO CON LISTAS INTERACTIVAS ===
+        // === FLOWS DEL CARRITO CON LISTAS INTERACTIVAS (ALTA PRIORIDAD) ===
         ...carritoFlowsInteractivos,    // 🛒 Sistema con listas interactivas para gestión visual
         
-        // === FLOWS EXISTENTES (MANTENIDOS PARA COMPATIBILIDAD) ===
-        // flowTest,           // 🧪 Flujo de prueba - DESHABILITADO EN PRODUCCIÓN
-        // flowTestCatalog,    // 🔍 Flujo de prueba del catálogo - DESHABILITADO EN PRODUCCIÓN
+        // === FLOWS PRINCIPALES ===
         flowValidTime,      // Flujo de validación de horario
-        flowPrincipal,      // 🎯 Menú principal - DEBE IR PRIMERO
-        flowDisable,        // ⚠️ Flujo fuera de horario - ANTES de FlowAgente2 para evitar conflictos
+        flowPrincipalInteractivo,      // 🎯 Menú principal CON CARRITO INTEGRADO
+        flowDisable,        // ⚠️ Flujo fuera de horario
         FlowAgente2,        // Flujo para agente
         flowOrder,          // Flujo para órdenes
-        flowEndShoppingCart, // Flujo final del carrito
         flowValidMedia,     // Validación de media
-        flowInteractiveResponse, // 🔧 Manejo de respuestas interactivas (NUEVA SOLUCIÓN)
+        
+        // === FLOWS DE COMPATIBILIDAD (BAJA PRIORIDAD) ===
+        flowEndShoppingCart, // Flujo final del carrito (legacy)
+        flowInteractiveResponse, // 🔧 Manejo de respuestas interactivas (BACKUP)
         flowProductCategories, // 🛒 Manejo de categorías de productos (BACKUP)
-        flowBackToCategories,  // 🔄 Flujo para volver a categorías
+        flowBackToCategories,  // 🔄 Flujo para volver a categorías (BACKUP)
         idleFlow            // Flujo de inactividad
     ])
     

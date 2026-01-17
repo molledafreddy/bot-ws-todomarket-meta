@@ -269,7 +269,7 @@ function generateQuantityOptions(productName: string, currentQuantity: number, i
 
 // ===== FLOW PRINCIPAL DEL CARRITO CON LISTAS INTERACTIVAS =====
 
-export const flowCarritoInteractivo = addKeyword<Provider, Database>(['carrito_interactivo', 'tienda'])
+export const flowCarritoInteractivo = addKeyword<Provider, Database>(['carrito_interactivo', 'tienda', 'compras_nuevas'])
     .addAction(async (ctx, { state, provider }) => {
         console.log('🛒 === INICIANDO CARRITO INTERACTIVO ===');
 
