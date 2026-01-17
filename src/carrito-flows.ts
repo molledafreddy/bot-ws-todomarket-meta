@@ -52,7 +52,7 @@ async function sendInteractiveMessage(phoneNumber: string, payload: any): Promis
 
 // ===== FLOW PRINCIPAL DEL CARRITO =====
 
-export const flowCarritoMenu = addKeyword<Provider, Database>(['1'])
+export const flowCarritoMenu = addKeyword<Provider, Database>(['carrito_menu', 'catalogo_productos'])
     .addAction(async (ctx, { state, provider }) => {
         console.log('🛒 === INICIANDO CARRITO DE COMPRAS ===');
         console.log('👤 Usuario:', ctx.from, ctx.pushName);

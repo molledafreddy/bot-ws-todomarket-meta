@@ -6,7 +6,7 @@ import { MongoAdapter as Database } from '@builderbot/database-mongo'
 import { MetaProvider as Provider } from '@builderbot/provider-meta'
 import { idleFlow, reset, start, stop, IDLETIME } from './idle-custom'
 import { getCatalogConfig, CatalogConfig } from './catalog-config'
-import { carritoFlows } from './carrito-flows'
+import { carritoFlows, flowCarritoMenu } from './carrito-flows'
 import { 
     createTodoMarketCatalogTemplate, 
     createTodoMarketInteractiveCatalog,
@@ -445,30 +445,14 @@ const flowPrincipal = addKeyword<Provider, Database>(utils.setEvent('welcome'))
         console.log('ctx.body flowPrincipal', ctx.body)
         const userInput = ctx.body.toLowerCase().trim();
         
-        // Opción 1: Catálogo (ACTUALIZADA)
+        // Opción 1: Carrito de compras (NUEVO SISTEMA ESCALABLE)
         if (userInput === '1') {
             stop(ctx)
-            console.log('🛒 Usuario seleccionó opción 1 - Catálogo');
+            console.log('🛒 Usuario seleccionó opción 1 - Carrito de compras');
+            console.log('� Redirigiendo al sistema de carrito escalable...');
             
-            const numAgente = ctx.from;
-            console.log('👤 Enviando catálogo a:', numAgente)
-        
-            // ACTIVAR MÉTODO QUE FUNCIONA (basado en diagnóstico exitoso)
-            const useMetaTemplate = false; // ❌ DESACTIVADO - Las plantillas fallan con error 131008
-            
-            await sendCatalog(provider, numAgente, {
-                title: "Catalogo Principal",
-                message: "Mira todos nuestros productos aqui 👇🏼",
-            }, 'main', useMetaTemplate); // ← Usa método interactivo que SÍ funciona
-
-            return endFlow([
-                '✅ ¡Catálogo enviado! 🛒',
-                '',
-                '📱 Revisa tu conversación para ver el catálogo.',
-                '🛒 Selecciona los productos que desees.',
-                '',
-                '💡 Si tienes problemas para ver el catálogo, escribe "hola" para más opciones.'
-            ].join('\n'));
+            // Redirigir al nuevo flow del carrito que maneja todo automáticamente
+            return gotoFlow(flowCarritoMenu);
         }
    
         // Opción 2: Agente
