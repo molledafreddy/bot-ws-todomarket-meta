@@ -128,8 +128,10 @@ export const flowCategoriaSeleccion = addKeyword<Provider, Database>(EVENTS.ACTI
                 currentProducts: productos
             });
 
-            // Generar lista de productos
-            const productsList = generateProductsList(productos, categoria);
+            // Generar lista de productos (incluyendo info del carrito)
+            const userState2 = await state.getMyState();
+            const currentCart: ItemCarrito[] = userState2?.cart || [];
+            const productsList = generateProductsList(productos, categoria, currentCart);
 
             if (!productsList) {
                 return await provider.sendText(ctx.from,
@@ -189,22 +191,24 @@ export const flowProductoSeleccion = addKeyword<Provider, Database>(EVENTS.ACTIO
 
             console.log(`✅ Producto agregado: ${product.name} - Total carrito: $${total}`);
 
-            // Respuesta de confirmación
+            // Respuesta de confirmación con opciones del carrito
             await provider.sendText(ctx.from, [
                 `✅ *Producto agregado al carrito*`,
                 '',
                 `🛍️ *${product.name}*`,
                 `💰 Precio: $${product.price.toLocaleString()} ${product.currency}`,
-                `📦 Cantidad: 1 unidad`,
                 '',
-                `🛒 *Resumen del carrito:*`,
-                `📊 Total productos: ${itemCount} items`,
+                `🛒 *Estado del carrito:*`,
+                `� Total productos: ${itemCount} items`,
                 `💰 Total a pagar: $${total.toLocaleString()} CLP`,
                 '',
-                `💡 *¿Qué deseas hacer?*`,
-                `• Escribe "carrito" para ver resumen completo`,
-                `• Escribe "1" para seguir comprando`,
-                `• Escribe "confirmar" para finalizar pedido`
+                `💡 *¿Qué deseas hacer ahora?*`,
+                '',
+                `📋 *Opciones disponibles:*`,
+                `• Escribe "ver carrito" para revisar tu carrito`,
+                `• Escribe "seguir comprando" para más productos`,
+                `• Escribe "confirmar pedido" para finalizar`,
+                `• Escribe "vaciar carrito" para empezar de nuevo`
             ].join('\n'));
 
         } catch (error) {
@@ -244,18 +248,67 @@ export const flowVolverCategorias = addKeyword<Provider, Database>(['volver_cate
         }
     });
 
-// ===== FLOW PARA VER CARRITO =====
+// ===== FLOW PARA VER CARRITO DETALLADO =====
 
-export const flowVerCarrito = addKeyword<Provider, Database>(['ver_carrito', 'carrito'])
+export const flowVerCarrito = addKeyword<Provider, Database>(['ver_carrito', 'carrito', 'ver carrito', 'mi carrito'])
     .addAction(async (ctx, { state, provider }) => {
-        console.log('🛒 === VER CARRITO ===');
+        console.log('🛒 === VER CARRITO DETALLADO ===');
         
         try {
             const userState = await state.getMyState();
             const currentCart: ItemCarrito[] = userState?.cart || [];
 
-            const cartSummary = generateCartSummary(currentCart);
-            await provider.sendText(ctx.from, cartSummary);
+            if (currentCart.length === 0) {
+                return await provider.sendText(ctx.from, [
+                    '🛒 *Tu carrito está vacío*',
+                    '',
+                    'No tienes productos en tu carrito aún.',
+                    '',
+                    '💡 *Para agregar productos:*',
+                    '• Escribe "1" para ver el catálogo',
+                    '• Selecciona una categoría',
+                    '• Elige los productos que desees'
+                ].join('\n'));
+            }
+
+            // Generar resumen detallado del carrito
+            const { total, itemCount } = getCartTotal(currentCart);
+            
+            let cartDetails = [
+                '🛒 *TU CARRITO DE COMPRAS*',
+                '═══════════════════════════',
+                ''
+            ];
+            
+            currentCart.forEach((item, index) => {
+                cartDetails.push(`${index + 1}. *${item.productName}*`);
+                cartDetails.push(`   💰 Precio: $${item.price.toLocaleString()} c/u`);
+                cartDetails.push(`   📦 Cantidad: ${item.quantity} unidad(es)`);
+                cartDetails.push(`   💵 Subtotal: $${(item.price * item.quantity).toLocaleString()}`);
+                cartDetails.push(`   🆔 ID: ${item.retailerId}`);
+                cartDetails.push('');
+            });
+            
+            cartDetails.push('═══════════════════════════');
+            cartDetails.push(`📊 *RESUMEN TOTAL:*`);
+            cartDetails.push(`📦 Total productos: ${itemCount} items`);
+            cartDetails.push(`💰 *TOTAL A PAGAR: $${total.toLocaleString()} CLP*`);
+            cartDetails.push('');
+            cartDetails.push('🎛️ *OPCIONES DEL CARRITO:*');
+            cartDetails.push('');
+            cartDetails.push('📝 *Gestionar carrito:*');
+            cartDetails.push('• "eliminar [número]" - Quitar producto');
+            cartDetails.push('• "cantidad [número] [nueva cantidad]" - Cambiar cantidad');
+            cartDetails.push('• "vaciar carrito" - Vaciar todo');
+            cartDetails.push('');
+            cartDetails.push('🛍️ *Continuar comprando:*');
+            cartDetails.push('• "seguir comprando" - Volver al catálogo');
+            cartDetails.push('• "1" - Ver categorías');
+            cartDetails.push('');
+            cartDetails.push('✅ *Finalizar:*');
+            cartDetails.push('• "confirmar pedido" - Proceder al checkout');
+
+            await provider.sendText(ctx.from, cartDetails.join('\n'));
 
         } catch (error) {
             console.error('❌ Error en flowVerCarrito:', error);
@@ -265,7 +318,203 @@ export const flowVerCarrito = addKeyword<Provider, Database>(['ver_carrito', 'ca
         }
     });
 
-// ===== FLOW PARA VACIAR CARRITO =====
+// ===== FLOW PARA ELIMINAR PRODUCTO ESPECÍFICO DEL CARRITO =====
+
+export const flowEliminarProducto = addKeyword<Provider, Database>(['eliminar'])
+    .addAction(async (ctx, { state, provider }) => {
+        const userInput = ctx.body.toLowerCase().trim();
+        
+        // Extraer número del comando "eliminar 1", "eliminar 2", etc.
+        const match = userInput.match(/eliminar\s+(\d+)/);
+        
+        if (!match) {
+            return await provider.sendText(ctx.from, [
+                '❓ *Comando de eliminación*',
+                '',
+                'Para eliminar un producto específico:',
+                '• "eliminar 1" - Eliminar primer producto',
+                '• "eliminar 2" - Eliminar segundo producto',
+                '',
+                'Escribe "ver carrito" para ver la lista numerada.'
+            ].join('\n'));
+        }
+
+        const itemNumber = parseInt(match[1]);
+        
+        console.log(`🗑️ === ELIMINAR PRODUCTO ${itemNumber} ===`);
+        
+        try {
+            const userState = await state.getMyState();
+            const currentCart: ItemCarrito[] = userState?.cart || [];
+
+            if (currentCart.length === 0) {
+                return await provider.sendText(ctx.from,
+                    '🛒 *Carrito vacío*\n\nNo tienes productos para eliminar.\n\nEscribe "1" para ver el catálogo.'
+                );
+            }
+
+            if (itemNumber < 1 || itemNumber > currentCart.length) {
+                return await provider.sendText(ctx.from,
+                    `❌ *Número inválido*\n\nTienes ${currentCart.length} productos en tu carrito.\n\nEscribe un número entre 1 y ${currentCart.length}.`
+                );
+            }
+
+            // Obtener el producto a eliminar (array index = itemNumber - 1)
+            const productToRemove = currentCart[itemNumber - 1];
+            
+            // Eliminar el producto
+            const updatedCart = currentCart.filter((_, index) => index !== (itemNumber - 1));
+            
+            // Actualizar state
+            await state.update({ cart: updatedCart });
+
+            // Calcular nuevos totales
+            const { total, itemCount } = getCartTotal(updatedCart);
+
+            await provider.sendText(ctx.from, [
+                `🗑️ *Producto eliminado*`,
+                '',
+                `❌ Eliminado: *${productToRemove.productName}*`,
+                `💰 Valor eliminado: $${(productToRemove.price * productToRemove.quantity).toLocaleString()}`,
+                '',
+                `🛒 *Carrito actualizado:*`,
+                `📦 Productos restantes: ${itemCount} items`,
+                `💰 Nuevo total: $${total.toLocaleString()} CLP`,
+                '',
+                `💡 *Opciones:*`,
+                `• "ver carrito" - Ver carrito actualizado`,
+                `• "seguir comprando" - Agregar más productos`,
+                `• "confirmar pedido" - Finalizar compra`
+            ].join('\n'));
+
+        } catch (error) {
+            console.error('❌ Error en flowEliminarProducto:', error);
+            await provider.sendText(ctx.from,
+                '❌ *Error técnico*\n\nNo se pudo eliminar el producto.\n\nIntenta nuevamente.'
+            );
+        }
+    });
+
+// ===== FLOW PARA CAMBIAR CANTIDAD DE PRODUCTO =====
+
+export const flowCambiarCantidad = addKeyword<Provider, Database>(['cantidad'])
+    .addAction(async (ctx, { state, provider }) => {
+        const userInput = ctx.body.toLowerCase().trim();
+        
+        // Extraer número y cantidad del comando "cantidad 1 3", "cantidad 2 5", etc.
+        const match = userInput.match(/cantidad\s+(\d+)\s+(\d+)/);
+        
+        if (!match) {
+            return await provider.sendText(ctx.from, [
+                '❓ *Comando de cantidad*',
+                '',
+                'Para cambiar la cantidad de un producto:',
+                '• "cantidad 1 3" - Cambiar producto 1 a 3 unidades',
+                '• "cantidad 2 5" - Cambiar producto 2 a 5 unidades',
+                '',
+                'Escribe "ver carrito" para ver la lista numerada.'
+            ].join('\n'));
+        }
+
+        const itemNumber = parseInt(match[1]);
+        const newQuantity = parseInt(match[2]);
+        
+        if (newQuantity < 1) {
+            return await provider.sendText(ctx.from,
+                '❌ *Cantidad inválida*\n\nLa cantidad debe ser mayor a 0.\n\nSi quieres eliminar el producto, usa "eliminar [número]".'
+            );
+        }
+
+        console.log(`📦 === CAMBIAR CANTIDAD PRODUCTO ${itemNumber} a ${newQuantity} ===`);
+        
+        try {
+            const userState = await state.getMyState();
+            const currentCart: ItemCarrito[] = userState?.cart || [];
+
+            if (currentCart.length === 0) {
+                return await provider.sendText(ctx.from,
+                    '🛒 *Carrito vacío*\n\nNo tienes productos para modificar.\n\nEscribe "1" para ver el catálogo.'
+                );
+            }
+
+            if (itemNumber < 1 || itemNumber > currentCart.length) {
+                return await provider.sendText(ctx.from,
+                    `❌ *Número inválido*\n\nTienes ${currentCart.length} productos en tu carrito.\n\nEscribe un número entre 1 y ${currentCart.length}.`
+                );
+            }
+
+            // Actualizar la cantidad del producto
+            const updatedCart = [...currentCart];
+            const oldQuantity = updatedCart[itemNumber - 1].quantity;
+            updatedCart[itemNumber - 1].quantity = newQuantity;
+            
+            // Actualizar state
+            await state.update({ cart: updatedCart });
+
+            // Calcular nuevos totales
+            const { total, itemCount } = getCartTotal(updatedCart);
+            const product = updatedCart[itemNumber - 1];
+
+            await provider.sendText(ctx.from, [
+                `📦 *Cantidad actualizada*`,
+                '',
+                `🛍️ *${product.productName}*`,
+                `📊 Cantidad anterior: ${oldQuantity}`,
+                `📦 Cantidad nueva: ${newQuantity}`,
+                `💰 Nuevo subtotal: $${(product.price * newQuantity).toLocaleString()}`,
+                '',
+                `🛒 *Carrito actualizado:*`,
+                `📦 Total productos: ${itemCount} items`,
+                `💰 Total a pagar: $${total.toLocaleString()} CLP`,
+                '',
+                `💡 *Opciones:*`,
+                `• "ver carrito" - Ver carrito completo`,
+                `• "seguir comprando" - Agregar más productos`,
+                `• "confirmar pedido" - Finalizar compra`
+            ].join('\n'));
+
+        } catch (error) {
+            console.error('❌ Error en flowCambiarCantidad:', error);
+            await provider.sendText(ctx.from,
+                '❌ *Error técnico*\n\nNo se pudo cambiar la cantidad.\n\nIntenta nuevamente.'
+            );
+        }
+    });
+
+// ===== FLOW PARA SEGUIR COMPRANDO =====
+
+export const flowSeguirComprando = addKeyword<Provider, Database>(['seguir comprando', 'seguir', 'continuar comprando', 'mas productos'])
+    .addAction(async (ctx, { state, provider, gotoFlow }) => {
+        console.log('🛍️ === SEGUIR COMPRANDO ===');
+        
+        try {
+            const userState = await state.getMyState();
+            const productsByCategory = userState?.productsByCategory || {};
+
+            if (Object.keys(productsByCategory).length === 0) {
+                return gotoFlow(flowCarritoMenu);
+            }
+
+            // Generar lista de categorías
+            const categoriesList = generateCategoriesList(productsByCategory);
+            
+            if (!categoriesList) {
+                return gotoFlow(flowCarritoMenu);
+            }
+
+            await provider.sendText(ctx.from, [
+                '🛍️ *Continuar comprando*',
+                '',
+                'Selecciona una categoría para agregar más productos a tu carrito:'
+            ].join('\n'));
+
+            await sendInteractiveMessage(ctx.from, categoriesList);
+
+        } catch (error) {
+            console.error('❌ Error en flowSeguirComprando:', error);
+            return gotoFlow(flowCarritoMenu);
+        }
+    });
 
 export const flowVaciarCarrito = addKeyword<Provider, Database>(['vaciar', 'limpiar carrito', 'vaciar carrito'])
     .addAction(async (ctx, { state, provider }) => {
@@ -422,6 +671,9 @@ export const carritoFlows = [
     flowProductoSeleccion,
     flowVolverCategorias,
     flowVerCarrito,
+    flowEliminarProducto,
+    flowCambiarCantidad,
+    flowSeguirComprando,
     flowVaciarCarrito,
     flowConfirmarPedido,
     flowBuscarProductos

@@ -189,7 +189,7 @@ export function generateCategoriesList(productsByCategory: Record<string, Produc
     };
 }
 
-export function generateProductsList(productos: ProductoCarrito[], categoria: string) {
+export function generateProductsList(productos: ProductoCarrito[], categoria: string, currentCart: ItemCarrito[] = []) {
     if (productos.length === 0) {
         return null;
     }
@@ -199,6 +199,12 @@ export function generateProductsList(productos: ProductoCarrito[], categoria: st
 
     // Limitar a 10 productos para no sobrepasar límites de WhatsApp
     const limitedProducts = productos.slice(0, 10);
+
+    // Crear información adicional sobre productos ya en el carrito
+    const getCartInfo = (retailerId: string) => {
+        const inCart = currentCart.find(item => item.retailerId === retailerId);
+        return inCart ? ` (${inCart.quantity} en carrito)` : '';
+    };
 
     return {
         messaging_product: "whatsapp",
@@ -210,7 +216,7 @@ export function generateProductsList(productos: ProductoCarrito[], categoria: st
                 text: title
             },
             body: {
-                text: `Selecciona los productos que deseas agregar a tu carrito:\n\n💡 *Tip:* Puedes seleccionar múltiples productos`
+                text: `Selecciona productos para agregar a tu carrito:\n\n💡 *Tip:* Los productos ya en el carrito muestran la cantidad actual`
             },
             footer: {
                 text: "TodoMarket - Tu minimarket de confianza"
@@ -223,21 +229,21 @@ export function generateProductsList(productos: ProductoCarrito[], categoria: st
                         rows: limitedProducts.map(product => ({
                             id: `producto_${product.retailerId}`,
                             title: product.name,
-                            description: `$${product.price.toLocaleString()} ${product.currency} - ${product.description || 'Disponible'}`
+                            description: `$${product.price.toLocaleString()} ${product.currency}${getCartInfo(product.retailerId)} - ${product.description || 'Disponible'}`
                         }))
                     },
                     {
-                        title: "Navegación",
+                        title: "Navegación y Carrito",
                         rows: [
+                            {
+                                id: "ver_carrito",
+                                title: "🛒 Ver Mi Carrito",
+                                description: `${currentCart.length} productos en carrito`
+                            },
                             {
                                 id: "volver_categorias",
                                 title: "← Volver a Categorías",
                                 description: "Ver todas las categorías"
-                            },
-                            {
-                                id: "ver_carrito",
-                                title: "🛒 Ver Carrito",
-                                description: "Revisar productos seleccionados"
                             }
                         ]
                     }
