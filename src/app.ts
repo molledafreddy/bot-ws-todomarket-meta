@@ -6,7 +6,7 @@ import { MongoAdapter as Database } from '@builderbot/database-mongo'
 import { MetaProvider as Provider } from '@builderbot/provider-meta'
 import { idleFlow, reset, start, stop, IDLETIME } from './idle-custom'
 import { getCatalogConfig, CatalogConfig } from './catalog-config'
-import { carritoFlows, flowCarritoMenu } from './carrito-flows'
+import { carritoFlowsSimple, flowCarritoSimple } from './carrito-simple-flows'
 import { 
     createTodoMarketCatalogTemplate, 
     createTodoMarketInteractiveCatalog,
@@ -451,8 +451,8 @@ const flowPrincipal = addKeyword<Provider, Database>(utils.setEvent('welcome'))
             console.log('🛒 Usuario seleccionó opción 1 - Carrito de compras');
             console.log('� Redirigiendo al sistema de carrito escalable...');
             
-            // Redirigir al nuevo flow del carrito que maneja todo automáticamente
-            return gotoFlow(flowCarritoMenu);
+            // Redirigir al nuevo flow del carrito simplificado
+            return gotoFlow(flowCarritoSimple);
         }
    
         // Opción 2: Agente
@@ -1924,8 +1924,8 @@ const main = async () => {
     
     // Configurar flows: PRODUCCIÓN CON SISTEMA DE CARRITO ESCALABLE
     const adapterFlow = createFlow([
-        // === FLOWS DEL SISTEMA DE CARRITO ESCALABLE ===
-        ...carritoFlows,    // 🛒 Sistema completo de carrito con MongoDB
+        // === FLOWS DEL SISTEMA DE CARRITO SIMPLIFICADO ===
+        ...carritoFlowsSimple,    // 🛒 Sistema simplificado y funcional
         
         // === FLOWS EXISTENTES (MANTENIDOS PARA COMPATIBILIDAD) ===
         // flowTest,           // 🧪 Flujo de prueba - DESHABILITADO EN PRODUCCIÓN
