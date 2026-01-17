@@ -1962,11 +1962,11 @@ const main = async () => {
         ...carritoFlowsInteractivos,    // 🛒 Sistema con listas interactivas para gestión visual
         
         // === FLOWS PRINCIPALES ===
-        flowValidTime,      // Flujo de validación de horario
-        flowPrincipalInteractivo,      // 🎯 Menú principal CON CARRITO INTEGRADO
-        flowDisable,        // ⚠️ Flujo fuera de horario
+        // flowValidTime,      // Flujo de validación de horario
+        // flowPrincipalInteractivo,      // 🎯 Menú principal CON CARRITO INTEGRADO
+        // flowDisable,        // ⚠️ Flujo fuera de horario
         FlowAgente2,        // Flujo para agente
-        flowOrder,          // Flujo para órdenes
+        // flowOrder,          // Flujo para órdenes
         flowValidMedia,     // Validación de media
         
         // === FLOWS DE COMPATIBILIDAD (BAJA PRIORIDAD) ===
