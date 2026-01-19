@@ -267,6 +267,146 @@ function generateQuantityOptions(productName: string, currentQuantity: number, i
     };
 }
 
+// ===== GENERAR BOTONES RÁPIDOS PARA CANTIDADES =====
+function generateQuickActionButtons(product: ProductoCarrito, currentQuantity: number): any {
+    const { name, price, retailerId } = product;
+    
+    return {
+        type: "interactive",
+        interactive: {
+            type: "button",
+            header: {
+                type: "text",
+                text: `📦 ${name}`
+            },
+            body: {
+                text: `💰 Precio: $${price.toLocaleString()}\n🛒 En carrito: ${currentQuantity} unidades\n\n¿Qué quieres hacer?`
+            },
+            footer: {
+                text: "TodoMarket - Acciones rápidas"
+            },
+            action: {
+                buttons: [
+                    {
+                        type: "reply",
+                        reply: {
+                            id: `quick_add_1_${retailerId}`,
+                            title: "➕ Agregar 1"
+                        }
+                    },
+                    {
+                        type: "reply", 
+                        reply: {
+                            id: `quick_remove_1_${retailerId}`,
+                            title: "➖ Quitar 1"
+                        }
+                    },
+                    {
+                        type: "reply",
+                        reply: {
+                            id: `set_quantity_${retailerId}`,
+                            title: "🔢 Cantidad específica"
+                        }
+                    }
+                ]
+            }
+        }
+    };
+}
+
+// ===== GENERAR LISTA HÍBRIDA DE PRODUCTOS CON ACCIONES RÁPIDAS =====
+function generateHybridProductsList(products: ProductoCarrito[], categoria: string, currentCart: ItemCarrito[]): any {
+    const rows = products.map((product, index) => {
+        const cartItem = currentCart.find(item => item.retailerId === product.retailerId);
+        const currentQuantity = cartItem ? cartItem.quantity : 0;
+        
+        return {
+            id: `hybrid_${product.retailerId}`,
+            title: `${product.name}`,
+            description: `$${product.price.toLocaleString()} | En carrito: ${currentQuantity} | Toca para acciones rápidas`
+        };
+    });
+
+    // Agregar opciones de gestión del carrito mejoradas
+    rows.push({
+        id: 'ver_carrito_detallado',
+        title: '🛒 Ver Carrito Completo',
+        description: 'Gestionar todos los productos del carrito'
+    });
+
+    rows.push({
+        id: 'finalizar_compra',
+        title: '✅ Finalizar Compra',
+        description: 'Confirmar pedido y proceder al pago'
+    });
+
+    return {
+        type: "interactive",
+        interactive: {
+            type: "list",
+            header: {
+                type: "text",
+                text: `🛍️ ${categoria.toUpperCase()}`
+            },
+            body: {
+                text: "Selecciona un producto para acciones rápidas (+1, -1, cantidad específica) o gestiona tu carrito:"
+            },
+            footer: {
+                text: "TodoMarket - Acciones rápidas disponibles"
+            },
+            action: {
+                button: "Ver opciones",
+                sections: [
+                    {
+                        title: "Productos disponibles",
+                        rows: rows.slice(0, -2)
+                    },
+                    {
+                        title: "Gestión del carrito",
+                        rows: rows.slice(-2)
+                    }
+                ]
+            }
+        }
+    };
+}
+
+// ===== FUNCIÓN PARA FEEDBACK DINÁMICO =====
+async function sendCartFeedback(phoneNumber: string, action: string, productName: string, quantity: number, cartTotal: number): Promise<void> {
+    const feedbackMessages = {
+        add: `✅ *Agregado al carrito*\n\n📦 ${productName}\n🔢 Cantidad: ${quantity}\n💰 Total carrito: $${cartTotal.toLocaleString()}`,
+        remove: `➖ *Quitado del carrito*\n\n📦 ${productName}\n🔢 Nueva cantidad: ${quantity}\n💰 Total carrito: $${cartTotal.toLocaleString()}`,
+        set: `🔢 *Cantidad actualizada*\n\n📦 ${productName}\n🔢 Nueva cantidad: ${quantity}\n💰 Total carrito: $${cartTotal.toLocaleString()}`,
+        delete: `🗑️ *Producto eliminado*\n\n📦 ${productName} removido del carrito\n💰 Total carrito: $${cartTotal.toLocaleString()}`
+    };
+
+    const message = feedbackMessages[action] || `🛒 Carrito actualizado - Total: $${cartTotal.toLocaleString()}`;
+    
+    try {
+        const response = await fetch(`https://graph.facebook.com/v18.0/${process.env.NUMBER_ID}/messages`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${ACCESS_TOKEN}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                messaging_product: "whatsapp",
+                to: phoneNumber,
+                type: "text",
+                text: {
+                    body: message
+                }
+            })
+        });
+
+        if (!response.ok) {
+            console.error('❌ Error enviando feedback:', await response.json());
+        }
+    } catch (error) {
+        console.error('❌ Error en sendCartFeedback:', error);
+    }
+}
+
 // ===== FLOW PRINCIPAL DEL CARRITO CON LISTAS INTERACTIVAS =====
 
 export const flowCarritoInteractivo = addKeyword<Provider, Database>(EVENTS.WELCOME)
@@ -342,10 +482,10 @@ export const flowCategoriasInteractivas = addKeyword<Provider, Database>(EVENTS.
             // Obtener carrito actual
             const currentCart: ItemCarrito[] = userState?.cart || [];
             
-            // Generar lista de productos con cantidades visibles
-            const productsList = generateProductListWithQuantities(productos, categoria, currentCart);
+            // Generar lista híbrida de productos con acciones rápidas
+            const productsList = generateHybridProductsList(productos, categoria, currentCart);
 
-            console.log(`✅ Enviando ${productos.length} productos de: ${categoria}`);
+            console.log(`✅ Enviando ${productos.length} productos de: ${categoria} con acciones rápidas`);
             await sendInteractiveMessage(ctx.from, productsList);
 
         } catch (error) {
@@ -360,6 +500,81 @@ export const flowAgregarProductoInteractivo = addKeyword<Provider, Database>(EVE
     .addAction(async (ctx, { state, provider }) => {
         const userInput = ctx.body;
 
+        // === MANEJO DE BOTONES RÁPIDOS ===
+        if (userInput.startsWith('quick_add_1_') || userInput.startsWith('quick_remove_1_') || userInput.startsWith('hybrid_')) {
+            console.log('� Acción rápida detectada:', userInput);
+
+            try {
+                const userState = await state.getMyState();
+                const productsByCategory = userState?.productsByCategory || {};
+                const currentCart: ItemCarrito[] = userState?.cart || [];
+
+                let retailerId = '';
+                let action = '';
+
+                if (userInput.startsWith('quick_add_1_')) {
+                    retailerId = userInput.replace('quick_add_1_', '');
+                    action = 'add';
+                } else if (userInput.startsWith('quick_remove_1_')) {
+                    retailerId = userInput.replace('quick_remove_1_', '');
+                    action = 'remove';
+                } else if (userInput.startsWith('hybrid_')) {
+                    retailerId = userInput.replace('hybrid_', '');
+                    action = 'buttons'; // Mostrar botones rápidos
+                }
+
+                // Buscar el producto
+                const product = findProductByRetailerId(productsByCategory, retailerId);
+                if (!product) {
+                    return await provider.sendText(ctx.from, '❌ Producto no disponible.');
+                }
+
+                const existingItem = currentCart.find(item => item.retailerId === retailerId);
+                let updatedCart: ItemCarrito[] = currentCart;
+                let currentQuantity = existingItem ? existingItem.quantity : 0;
+
+                if (action === 'buttons') {
+                    // Mostrar botones rápidos
+                    const quickButtons = generateQuickActionButtons(product, currentQuantity);
+                    await sendInteractiveMessage(ctx.from, quickButtons);
+                    return;
+                } else if (action === 'add') {
+                    // Agregar 1 unidad
+                    if (existingItem) {
+                        existingItem.quantity += 1;
+                        currentQuantity = existingItem.quantity;
+                    } else {
+                        updatedCart = addToCart(currentCart, product, 1);
+                        currentQuantity = 1;
+                    }
+                } else if (action === 'remove') {
+                    // Quitar 1 unidad
+                    if (existingItem && existingItem.quantity > 1) {
+                        existingItem.quantity -= 1;
+                        currentQuantity = existingItem.quantity;
+                    } else if (existingItem && existingItem.quantity === 1) {
+                        updatedCart = removeFromCart(currentCart, retailerId);
+                        currentQuantity = 0;
+                    } else {
+                        return await provider.sendText(ctx.from, '❌ El producto no está en el carrito.');
+                    }
+                }
+
+                // Actualizar carrito
+                await state.update({ cart: updatedCart });
+
+                // Enviar feedback dinámico
+                const { total } = getCartTotal(updatedCart);
+                await sendCartFeedback(ctx.from, action, product.name, currentQuantity, total);
+
+                return;
+            } catch (error) {
+                console.error('❌ Error en acción rápida:', error);
+                return await provider.sendText(ctx.from, '❌ Error procesando acción. Intenta de nuevo.');
+            }
+        }
+
+        // === MANEJO TRADICIONAL DE PRODUCTOS ===
         if (!userInput.startsWith('product_')) {
             return; // No es un producto
         }
@@ -378,48 +593,16 @@ export const flowAgregarProductoInteractivo = addKeyword<Provider, Database>(EVE
                 return await provider.sendText(ctx.from, '❌ Producto no disponible.');
             }
 
-            // Agregar al carrito (o aumentar cantidad si ya existe)
             const existingItem = currentCart.find(item => item.retailerId === retailerId);
-            let updatedCart: ItemCarrito[];
+            const currentQuantity = existingItem ? existingItem.quantity : 0;
 
-            if (existingItem) {
-                // Aumentar cantidad
-                existingItem.quantity += 1;
-                updatedCart = currentCart;
-            } else {
-                // Agregar nuevo producto
-                updatedCart = addToCart(currentCart, product, 1);
-            }
-            
-            await state.update({ cart: updatedCart });
-
-            // Calcular totales
-            const { total, itemCount } = getCartTotal(updatedCart);
-            const currentQuantity = updatedCart.find(item => item.retailerId === retailerId)?.quantity || 0;
-
-            console.log(`✅ Producto agregado: ${product.name} (${currentQuantity} unidades) - Total: $${total}`);
-
-            // Mostrar confirmación y volver a la lista de productos actualizada
-            await provider.sendText(ctx.from, [
-                `✅ *¡${product.name} agregado!*`,
-                '',
-                `📦 Cantidad en carrito: ${currentQuantity}`,
-                `💰 Subtotal: $${(product.price * currentQuantity).toLocaleString()}`,
-                '',
-                `🛒 *Total carrito: $${total.toLocaleString()} (${itemCount} productos)*`
-            ].join('\n'));
-
-            // Volver a mostrar la lista de productos actualizada
-            const categoria = userState?.currentCategory || '';
-            const productos = userState?.currentProducts || [];
-            if (productos.length > 0) {
-                const productsList = generateProductListWithQuantities(productos, categoria, updatedCart);
-                await sendInteractiveMessage(ctx.from, productsList);
-            }
+            // Mostrar botones rápidos en lugar de agregar directamente
+            const quickButtons = generateQuickActionButtons(product, currentQuantity);
+            await sendInteractiveMessage(ctx.from, quickButtons);
 
         } catch (error) {
-            console.error('❌ Error agregando producto:', error);
-            await provider.sendText(ctx.from, '❌ Error agregando producto.');
+            console.error('❌ Error en flowAgregarProductoInteractivo:', error);
+            await provider.sendText(ctx.from, '❌ Error agregando producto. Intenta de nuevo.');
         }
     });
 
@@ -482,6 +665,37 @@ export const flowCambiarCantidadInteractiva = addKeyword<Provider, Database>(EVE
     .addAction(async (ctx, { state, provider }) => {
         const userInput = ctx.body;
 
+        // === MANEJO DE CANTIDAD ESPECÍFICA ===
+        if (userInput.startsWith('set_quantity_')) {
+            console.log('🔢 Solicitando cantidad específica:', userInput);
+
+            try {
+                const retailerId = userInput.replace('set_quantity_', '');
+                const userState = await state.getMyState();
+                const productsByCategory = userState?.productsByCategory || {};
+                const currentCart: ItemCarrito[] = userState?.cart || [];
+
+                // Buscar el producto
+                const product = findProductByRetailerId(productsByCategory, retailerId);
+                if (!product) {
+                    return await provider.sendText(ctx.from, '❌ Producto no disponible.');
+                }
+
+                const existingItem = currentCart.find(item => item.retailerId === retailerId);
+                const currentQuantity = existingItem ? existingItem.quantity : 0;
+
+                // Mostrar opciones de cantidad específica
+                const quantityList = generateQuantityOptions(product.name, currentQuantity, -1); // Usar -1 para indicar que es cantidad específica
+                await sendInteractiveMessage(ctx.from, quantityList);
+
+                return;
+            } catch (error) {
+                console.error('❌ Error en cantidad específica:', error);
+                return await provider.sendText(ctx.from, '❌ Error procesando cantidad. Intenta de nuevo.');
+            }
+        }
+
+        // === MANEJO TRADICIONAL DE CANTIDADES ===
         if (!userInput.startsWith('quantity_')) {
             return; // No es cambio de cantidad
         }
