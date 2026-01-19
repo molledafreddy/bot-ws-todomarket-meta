@@ -1627,7 +1627,12 @@ const flowTestCatalog = addKeyword(['catalog', 'catalogo', 'meta'])
     }
 });
 
-// 🛒 FLUJO PARA MANEJAR TODAS LAS INTERACCIONES (SOLUCIÓN ROBUSTA)
+// ═══════════════════════════════════════════════════════════════
+// 🛒 FLUJO DE CATEGORÍAS DE PRODUCTOS - flowProductCategories
+// ═══════════════════════════════════════════════════════════════
+// Flow funcional para manejar la navegación por categorías de productos
+// ═══════════════════════════════════════════════════════════════
+
 const flowProductCategories = addKeyword(['categoria_bebidas', 'categoria_panaderia', 'categoria_lacteos', 'categoria_abarrotes', 'categoria_frutas', 'categoria_limpieza'])
 .addAction(async (ctx, { flowDynamic, provider }) => {
     try {
@@ -1812,6 +1817,7 @@ const flowBackToCategories = addKeyword(['volver_categorias'])
     }
 });
 
+
 // 🔧 FLUJO GENERAL PARA CAPTURAR RESPUESTAS INTERACTIVAS (NUEVO)
 const flowInteractiveResponse = addKeyword([EVENTS.ACTION])
 .addAction(async (ctx, { flowDynamic }) => {
@@ -1968,7 +1974,8 @@ const main = async () => {
     
     // Configurar flows: NUEVA ESTRATEGIA CON FLOWS INDIVIDUALES
     const adapterFlow = createFlow([
-        // === FLOWS DEL CARRITO - IMPORTADOS INDIVIDUALMENTE ===
+        // === FLOWS DEL CARRITO - ACTIVACIÓN PROGRESIVA ===
+        // FASE 1 - ACTIVOS: Funcionalidad básica del carrito
         flowCarritoInteractivo,         // 🛒 Flow principal del carrito
         flowVerCarritoInteractivo,      // �️ Ver carrito detallado
         flowSeguirComprandoInteractivo, // 🛍️ Continuar comprando
@@ -1979,19 +1986,19 @@ const main = async () => {
         flowAccionesCarrito,            // 🔧 Flow unificado para EVENTS.ACTION
         
         // === FLOWS PRINCIPALES ===
-        flowValidTime,                  // Flujo de validación de horario
-        flowPrincipalInteractivo,       // 🎯 Menú principal CON CARRITO INTEGRADO
-        flowPrincipal,                  // 🔄 Menú principal legacy (backup)
-        flowDisable,                    // ⚠️ Flujo fuera de horario
-        FlowAgente2,                    // Flujo para agente
-        flowOrder,                      // Flujo para órdenes
-        flowValidMedia,                 // Validación de media
+        // flowValidTime,                  // Flujo de validación de horario
+        // flowPrincipalInteractivo,       // 🎯 Menú principal CON CARRITO INTEGRADO
+        // flowPrincipal,                  // 🔄 Menú principal legacy (backup)
+        // flowDisable,                    // ⚠️ Flujo fuera de horario
+        // FlowAgente2,                    // Flujo para agente
+        // flowOrder,                      // Flujo para órdenes
+        // flowValidMedia,                 // Validación de media
         
-        // === FLOWS DE COMPATIBILIDAD (BAJA PRIORIDAD) ===
-        flowEndShoppingCart,            // Flujo final del carrito (legacy)
-        flowInteractiveResponse,        // 🔧 Manejo de respuestas interactivas (BACKUP)
-        flowProductCategories,          // 🛒 Manejo de categorías de productos (BACKUP)
-        flowBackToCategories,           // 🔄 Flujo para volver a categorías (BACKUP)
+        // === FLOWS DE COMPATIBILIDAD Y CATEGORÍAS ===
+        flowProductCategories,          // 🛒 Manejo de categorías de productos (RESTAURADO)
+        // flowEndShoppingCart,            // Flujo final del carrito (legacy) - COMENTADO
+        // flowInteractiveResponse,        // 🔧 Manejo de respuestas interactivas (BACKUP) - COMENTADO
+        // flowBackToCategories,           // 🔄 Flujo para volver a categorías (BACKUP) - COMENTADO
         idleFlow                        // Flujo de inactividad
     ])
     
