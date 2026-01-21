@@ -11,6 +11,7 @@ import {
     flowCarritoInteractivo,
     flowCategoriasInteractivas,
     flowAgregarProductoInteractivo,
+    flowSeleccionInteractiva,
     flowGestionarProducto,
     flowCambiarCantidadInteractiva,
     flowEliminarProductoInteractivo,
@@ -1984,6 +1985,7 @@ const main = async () => {
         flowCarritoInteractivo,         // 🛒 Flow principal del carrito
         flowCategoriasInteractivas,     // 📋 Manejo de selección de categorías
         flowAgregarProductoInteractivo, // ➕ Agregar productos con botones rápidos
+        flowSeleccionInteractiva,       // 🎯 Sistema completo de selección interactiva
         flowGestionarProducto,          // ⚙️ Gestión individual de productos
         flowCambiarCantidadInteractiva, // 🔢 Cambio de cantidades
         flowEliminarProductoInteractivo,// 🗑️ Eliminación de productos
@@ -2001,8 +2003,8 @@ const main = async () => {
         
         // === FLOWS PRINCIPALES ===
         // flowValidTime,                  // Flujo de validación de horario
-        flowPrincipalInteractivo,       // 🎯 Menú principal CON CARRITO INTEGRADO
-        flowPrincipal,                  // 🔄 Menú principal legacy (backup)
+        // flowPrincipalInteractivo,       // 🎯 Menú principal CON CARRITO INTEGRADO
+        // flowPrincipal,                  // 🔄 Menú principal legacy (backup)
         // flowDisable,                    // ⚠️ Flujo fuera de horario
         // FlowAgente2,                    // Flujo para agente
         // flowOrder,                      // Flujo para órdenes

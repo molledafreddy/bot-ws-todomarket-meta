@@ -50,31 +50,41 @@ async function sendInteractiveMessage(phoneNumber: string, payload: any): Promis
     }
 }
 
-// ===== GENERAR LISTA INTERACTIVA DE PRODUCTOS CON CANTIDADES =====
-function generateProductListWithQuantities(products: ProductoCarrito[], categoria: string, currentCart: ItemCarrito[]): any {
+// ===== GENERAR LISTA INTERACTIVA DE PRODUCTOS CON CARRITO VISIBLE =====
+function generateProductsListWithCart(products: ProductoCarrito[], categoria: string, currentCart: ItemCarrito[]): any {
+    const { total, itemCount } = getCartTotal(currentCart);
+    
     const rows = products.map((product, index) => {
-        // Buscar si el producto ya está en el carrito
         const cartItem = currentCart.find(item => item.retailerId === product.retailerId);
         const currentQuantity = cartItem ? cartItem.quantity : 0;
         
         return {
-            id: `product_${product.retailerId}`,
+            id: `select_${product.retailerId}`,
             title: `${product.name}`,
-            description: `$${product.price.toLocaleString()} - En carrito: ${currentQuantity}`
+            description: `$${product.price.toLocaleString()} - En carrito: ${currentQuantity} | Tocar para seleccionar`
         };
     });
 
-    // Agregar opciones de gestión del carrito
+    // Agregar resumen del carrito en la lista
+    if (itemCount > 0) {
+        rows.push({
+            id: 'view_cart_summary',
+            title: `🛒 Ver Carrito (${itemCount} productos)`,
+            description: `Total: $${total.toLocaleString()} - Gestionar carrito`
+        });
+    }
+
+    // Agregar opciones de navegación
     rows.push({
-        id: 'ver_carrito_detallado',
-        title: '🛒 Ver Carrito Completo',
-        description: 'Ver y gestionar productos del carrito'
+        id: 'back_to_categories',
+        title: '⬅️ Volver a Categorías',
+        description: 'Seleccionar otra categoría'
     });
 
     rows.push({
-        id: 'finalizar_compra',
+        id: 'finalize_purchase',
         title: '✅ Finalizar Compra',
-        description: 'Confirmar pedido y proceder al pago'
+        description: 'Continuar con el pedido'
     });
 
     return {
@@ -86,21 +96,178 @@ function generateProductListWithQuantities(products: ProductoCarrito[], categori
                 text: `🛍️ ${categoria.toUpperCase()}`
             },
             body: {
-                text: "Selecciona un producto para agregarlo al carrito o gestiona tu pedido:"
+                text: itemCount > 0 
+                    ? `Productos disponibles:\n\n🛒 Carrito actual: ${itemCount} productos - $${total.toLocaleString()}\n\nSelecciona un producto para agregarlo:`
+                    : "Selecciona productos para agregar al carrito:"
             },
             footer: {
-                text: "TodoMarket - Selecciona una opción"
+                text: "TodoMarket - Carrito Interactivo"
             },
             action: {
                 button: "Ver opciones",
                 sections: [
                     {
                         title: "Productos disponibles",
-                        rows: rows.slice(0, -2) // Productos sin las opciones del carrito
+                        rows: rows.slice(0, products.length)
                     },
                     {
-                        title: "Gestión del carrito",
-                        rows: rows.slice(-2) // Solo las opciones del carrito
+                        title: "Opciones",
+                        rows: rows.slice(products.length)
+                    }
+                ]
+            }
+        }
+    };
+}
+
+// ===== GENERAR SELECTOR DE CANTIDAD PARA PRODUCTO =====
+function generateQuantitySelector(product: ProductoCarrito, currentQuantity: number = 0): any {
+    const quantities = [1, 2, 3, 4, 5, 10];
+    
+    const rows = quantities.map(qty => ({
+        id: `add_qty_${product.retailerId}_${qty}`,
+        title: `Agregar ${qty} unidad${qty > 1 ? 'es' : ''}`,
+        description: qty === 1 ? 'Cantidad básica' : `${qty} productos al carrito`
+    }));
+
+    // Si ya tiene productos, agregar opción para eliminar
+    if (currentQuantity > 0) {
+        rows.push({
+            id: `remove_all_${product.retailerId}`,
+            title: '🗑️ Quitar del carrito',
+            description: `Eliminar ${currentQuantity} unidad${currentQuantity > 1 ? 'es' : ''}`
+        });
+    }
+
+    // Agregar opción para volver
+    rows.push({
+        id: 'back_to_products',
+        title: '⬅️ Volver a productos',
+        description: 'Regresar a la lista de productos'
+    });
+
+    return {
+        type: "interactive",
+        interactive: {
+            type: "list",
+            header: {
+                type: "text",
+                text: `📦 ${product.name}`
+            },
+            body: {
+                text: `💰 Precio: $${product.price.toLocaleString()}\n🛒 En carrito: ${currentQuantity} unidades\n\n¿Cuántas unidades quieres agregar?`
+            },
+            footer: {
+                text: "TodoMarket - Seleccionar cantidad"
+            },
+            action: {
+                button: "Seleccionar cantidad",
+                sections: [
+                    {
+                        title: "Agregar al carrito",
+                        rows: rows.slice(0, -2)
+                    },
+                    {
+                        title: "Opciones",
+                        rows: rows.slice(-2)
+                    }
+                ]
+            }
+        }
+    };
+}
+
+// ===== GENERAR RESUMEN DETALLADO DEL CARRITO =====
+function generateCartDetailView(currentCart: ItemCarrito[]): any {
+    if (currentCart.length === 0) {
+        return {
+            type: "interactive",
+            interactive: {
+                type: "list",
+                header: {
+                    type: "text",
+                    text: "🛒 Carrito Vacío"
+                },
+                body: {
+                    text: "Tu carrito está vacío.\n\n¡Agrega algunos productos para comenzar!"
+                },
+                footer: {
+                    text: "TodoMarket"
+                },
+                action: {
+                    button: "Ver opciones",
+                    sections: [
+                        {
+                            title: "Opciones",
+                            rows: [
+                                {
+                                    id: 'back_to_categories',
+                                    title: '🛍️ Ver Productos',
+                                    description: 'Explorar categorías y productos'
+                                }
+                            ]
+                        }
+                    ]
+                }
+            }
+        };
+    }
+
+    const { total, itemCount } = getCartTotal(currentCart);
+    
+    // Crear filas para cada producto en el carrito
+    const productRows = currentCart.map((item, index) => {
+        const subtotal = item.price * item.quantity;
+        return {
+            id: `edit_cart_item_${index}`,
+            title: `${item.productName}`,
+            description: `${item.quantity} x $${item.price.toLocaleString()} = $${subtotal.toLocaleString()}`
+        };
+    });
+
+    // Opciones del carrito
+    const actionRows = [
+        {
+            id: 'continue_shopping',
+            title: '🛍️ Seguir Comprando',
+            description: 'Agregar más productos al carrito'
+        },
+        {
+            id: 'clear_cart',
+            title: '🗑️ Vaciar Carrito',
+            description: 'Eliminar todos los productos'
+        },
+        {
+            id: 'checkout_order',
+            title: '✅ Confirmar Pedido',
+            description: `Finalizar compra - Total: $${total.toLocaleString()}`
+        }
+    ];
+
+    return {
+        type: "interactive",
+        interactive: {
+            type: "list",
+            header: {
+                type: "text",
+                text: `🛒 Tu Carrito - ${itemCount} productos`
+            },
+            body: {
+                text: `Resumen de tu pedido:\n\n💰 Total: $${total.toLocaleString()}\n\nSelecciona un producto para editarlo o elige una acción:`
+            },
+            footer: {
+                text: "TodoMarket - Gestión del carrito"
+            },
+            action: {
+                button: "Gestionar carrito",
+                sections: [
+                    {
+                        title: "Productos en tu carrito",
+                        rows: productRows
+                    },
+                    {
+                        title: "Acciones del carrito",
+                        rows: actionRows
                     }
                 ]
             }
@@ -482,10 +649,24 @@ export const flowCategoriasInteractivas = addKeyword<Provider, Database>(EVENTS.
             // Obtener carrito actual
             const currentCart: ItemCarrito[] = userState?.cart || [];
             
-            // Generar lista híbrida de productos con acciones rápidas
-            const productsList = generateHybridProductsList(productos, categoria, currentCart);
+            // Enviar mensaje de estado del carrito si tiene productos
+            const { total, itemCount } = getCartTotal(currentCart);
+            if (itemCount > 0) {
+                await provider.sendText(ctx.from, [
+                    `🛒 *Estado del Carrito*`,
+                    '',
+                    `📦 Productos: ${itemCount}`,
+                    `💰 Total: $${total.toLocaleString()}`,
+                    '',
+                    `📋 Explorando: ${categoria.toUpperCase()}`,
+                    'Selecciona productos para agregar:'
+                ].join('\n'));
+            }
 
-            console.log(`✅ Enviando ${productos.length} productos de: ${categoria} con acciones rápidas`);
+            // Generar lista de productos con carrito visible
+            const productsList = generateProductsListWithCart(productos, categoria, currentCart);
+
+            console.log(`✅ Enviando ${productos.length} productos de: ${categoria} con carrito visible`);
             await sendInteractiveMessage(ctx.from, productsList);
 
         } catch (error) {
@@ -942,3 +1123,184 @@ export const carritoFlowsInteractivos = [
     flowFinalizarCompra                  // Finalizar compra
     // NOTA: Los flows con EVENTS.ACTION se movieron a carrito-acciones.ts
 ];
+
+// ===== NUEVO FLOW MEJORADO PARA SELECCIÓN INTERACTIVA =====
+export const flowSeleccionInteractiva = addKeyword<Provider, Database>(EVENTS.ACTION)
+    .addAction(async (ctx, { state, provider }) => {
+        const userInput = ctx.body;
+
+        console.log('🛍️ === PROCESANDO SELECCIÓN INTERACTIVA ===');
+        console.log('📱 Input recibido:', userInput);
+
+        try {
+            const userState = await state.getMyState();
+            const productsByCategory = userState?.productsByCategory || {};
+            const currentCart: ItemCarrito[] = userState?.cart || [];
+
+            // === MANEJAR SELECCIÓN DE PRODUCTO ===
+            if (userInput.startsWith('select_')) {
+                const retailerId = userInput.replace('select_', '');
+                console.log('📦 Producto seleccionado:', retailerId);
+
+                // Buscar el producto
+                const product = findProductByRetailerId(productsByCategory, retailerId);
+                if (!product) {
+                    return await provider.sendText(ctx.from, '❌ Producto no disponible.');
+                }
+
+                // Obtener cantidad actual en carrito
+                const existingItem = currentCart.find(item => item.retailerId === retailerId);
+                const currentQuantity = existingItem ? existingItem.quantity : 0;
+
+                // Mostrar selector de cantidad
+                const quantitySelector = generateQuantitySelector(product, currentQuantity);
+                await sendInteractiveMessage(ctx.from, quantitySelector);
+                return;
+            }
+
+            // === MANEJAR AGREGAR CANTIDAD ===
+            if (userInput.startsWith('add_qty_')) {
+                const parts = userInput.split('_');
+                if (parts.length !== 4) return;
+
+                const retailerId = parts[2];
+                const quantity = parseInt(parts[3]);
+                
+                console.log(`📦 Agregando ${quantity} unidades del producto:`, retailerId);
+
+                // Buscar el producto
+                const product = findProductByRetailerId(productsByCategory, retailerId);
+                if (!product) {
+                    return await provider.sendText(ctx.from, '❌ Producto no disponible.');
+                }
+
+                // Agregar al carrito
+                let updatedCart = [...currentCart];
+                const existingItem = updatedCart.find(item => item.retailerId === retailerId);
+
+                if (existingItem) {
+                    existingItem.quantity += quantity;
+                } else {
+                    updatedCart = addToCart(currentCart, product, quantity);
+                }
+
+                await state.update({ cart: updatedCart });
+
+                // Calcular totales
+                const { total, itemCount } = getCartTotal(updatedCart);
+                const newQuantity = updatedCart.find(item => item.retailerId === retailerId)?.quantity || 0;
+
+                // Enviar confirmación con estado del carrito
+                await provider.sendText(ctx.from, [
+                    `✅ *Producto agregado al carrito*`,
+                    '',
+                    `📦 ${product.name}`,
+                    `🔢 Cantidad agregada: ${quantity}`,
+                    `📊 Total en carrito: ${newQuantity} unidades`,
+                    `💰 Subtotal: $${(product.price * newQuantity).toLocaleString()}`,
+                    '',
+                    `🛒 *Carrito Total: ${itemCount} productos - $${total.toLocaleString()}*`,
+                    '',
+                    '👇 *¿Qué quieres hacer ahora?*'
+                ].join('\n'));
+
+                // Volver a mostrar productos de la categoría actual con carrito actualizado
+                const categoria = userState?.currentCategory || '';
+                const productos = userState?.currentProducts || [];
+                
+                if (productos.length > 0) {
+                    await new Promise(resolve => setTimeout(resolve, 1000)); // Pausa breve
+                    const productsList = generateProductsListWithCart(productos, categoria, updatedCart);
+                    await sendInteractiveMessage(ctx.from, productsList);
+                }
+                return;
+            }
+
+            // === MANEJAR OTRAS ACCIONES ===
+            if (userInput.startsWith('remove_all_')) {
+                const retailerId = userInput.replace('remove_all_', '');
+                console.log('🗑️ Eliminando producto del carrito:', retailerId);
+
+                const productName = currentCart.find(item => item.retailerId === retailerId)?.productName || 'Producto';
+                const updatedCart = removeFromCart(currentCart, retailerId);
+                
+                await state.update({ cart: updatedCart });
+
+                const { total, itemCount } = getCartTotal(updatedCart);
+
+                await provider.sendText(ctx.from, [
+                    `🗑️ *Producto eliminado del carrito*`,
+                    '',
+                    `📦 ${productName}`,
+                    '',
+                    `🛒 *Carrito: ${itemCount} productos - $${total.toLocaleString()}*`
+                ].join('\n'));
+
+                // Volver a mostrar productos
+                const categoria = userState?.currentCategory || '';
+                const productos = userState?.currentProducts || [];
+                
+                if (productos.length > 0) {
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    const productsList = generateProductsListWithCart(productos, categoria, updatedCart);
+                    await sendInteractiveMessage(ctx.from, productsList);
+                }
+                return;
+            }
+
+            if (userInput === 'back_to_products') {
+                const categoria = userState?.currentCategory || '';
+                const productos = userState?.currentProducts || [];
+                
+                if (productos.length > 0) {
+                    const productsList = generateProductsListWithCart(productos, categoria, currentCart);
+                    await sendInteractiveMessage(ctx.from, productsList);
+                }
+                return;
+            }
+
+            if (userInput === 'view_cart_summary') {
+                const cartView = generateCartDetailView(currentCart);
+                await sendInteractiveMessage(ctx.from, cartView);
+                return;
+            }
+
+            if (userInput === 'back_to_categories') {
+                const categoriesList = generateCategoriesList(productsByCategory);
+                if (categoriesList) {
+                    await sendInteractiveMessage(ctx.from, categoriesList);
+                }
+                return;
+            }
+
+            if (userInput === 'finalize_purchase' || userInput === 'checkout_order') {
+                if (currentCart.length === 0) {
+                    return await provider.sendText(ctx.from, '❌ Tu carrito está vacío. Agrega productos antes de finalizar la compra.');
+                }
+
+                console.log('✅ Iniciando proceso de checkout');
+                
+                const { total, itemCount } = getCartTotal(currentCart);
+                const orderSummary = generateCartSummary(currentCart);
+
+                await provider.sendText(ctx.from, [
+                    '🛒 *Resumen de tu pedido*',
+                    '',
+                    orderSummary,
+                    '',
+                    `📦 Total de productos: ${itemCount}`,
+                    `💰 Total a pagar: $${total.toLocaleString()}`,
+                    '',
+                    '📍 *Siguiente paso: Dirección de entrega*',
+                    '',
+                    'Ingresa tu dirección completa:'
+                ].join('\n'));
+
+                return;
+            }
+
+        } catch (error) {
+            console.error('❌ Error en flowSeleccionInteractiva:', error);
+            await provider.sendText(ctx.from, '❌ Error procesando selección. Intenta de nuevo.');
+        }
+    });
