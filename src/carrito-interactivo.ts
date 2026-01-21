@@ -581,19 +581,125 @@ export const flowCarritoInteractivo = addKeyword<Provider, Database>(EVENTS.WELC
         console.log('🛒 === INICIANDO CARRITO INTERACTIVO ===');
 
         try {
+            // ✅ PASO 1: ENVIAR CATÁLOGO OFICIAL DE WHATSAPP PRIMERO
+            console.log('📋 Enviando catálogo oficial de WhatsApp...');
+            
+            const catalogPayload = {
+                messaging_product: "whatsapp",
+                to: ctx.from,
+                type: "interactive",
+                interactive: {
+                    type: "catalog_message",
+                    body: {
+                        text: "🛒 *TodoMarket - Catálogo Oficial*\n\n📦 Explora nuestros productos y agrega al carrito:\n\n👇 Presiona para abrir el catálogo"
+                    },
+                    footer: {
+                        text: "Selecciona productos → Genera pedido automáticamente"
+                    },
+                    action: {
+                        name: "catalog_message"
+                        // Note: No incluimos catalog_id para usar el catálogo por defecto
+                    }
+                }
+            };
+
+            const accessToken = process.env.JWT_TOKEN;
+            const phoneNumberId = process.env.NUMBER_ID;
+            
+            const catalogResponse = await fetch(`https://graph.facebook.com/v18.0/${phoneNumberId}/messages`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(catalogPayload)
+            });
+
+            if (catalogResponse.ok) {
+                const result = await catalogResponse.json();
+                console.log('✅ CATÁLOGO OFICIAL ENVIADO:', result.messages[0].id);
+                
+                // ✅ PASO 2: Enviar mensaje de seguimiento para navegación alternativa
+                setTimeout(async () => {
+                    await provider.sendText(ctx.from, 
+                        '📱 *¿Problemas para ver el catálogo?*\n\nTambién puedes navegar por categorías usando el sistema interactivo:\n\n👇 Responde "categorias" para ver las opciones'
+                    );
+                }, 2000);
+                
+            } else {
+                const errorData = await catalogResponse.json();
+                console.error('❌ Error enviando catálogo oficial:', errorData);
+                
+                // Si falla el catálogo, usar el sistema de categorías como fallback
+                throw new Error('Catálogo oficial no disponible');
+            }
+
+        } catch (error) {
+            console.error('❌ Error con catálogo oficial, usando sistema de categorías:', error);
+            
+            // ✅ FALLBACK: Sistema de categorías interactivas
+            try {
+                // Sincronizar productos desde Meta API
+                const productsByCategory = await syncAndGetProducts(CATALOG_ID, ACCESS_TOKEN);
+                
+                if (Object.keys(productsByCategory).length === 0) {
+                    return await provider.sendText(ctx.from, 
+                        '❌ *Error temporal*\n\nNo pudimos cargar el catálogo.\nIntenta en unos minutos o contacta al +56 9 7964 3935'
+                    );
+                }
+
+                // Guardar productos en el state
+                await state.update({ 
+                    productsByCategory,
+                    lastSync: new Date().toISOString()
+                });
+
+                // Generar y enviar lista de categorías como alternativa
+                const categoriesList = generateCategoriesList(productsByCategory);
+                
+                if (!categoriesList) {
+                    return await provider.sendText(ctx.from,
+                        '⚠️ *Catálogo vacío*\n\nContacta al +56 9 7964 3935'
+                    );
+                }
+
+                await provider.sendText(ctx.from,
+                    '🛒 *Navegación por categorías*\n\nComo alternativa, puedes explorar nuestros productos por categorías:'
+                );
+
+                console.log('✅ Enviando categorías del carrito interactivo...');
+                await sendInteractiveMessage(ctx.from, categoriesList);
+
+            } catch (fallbackError) {
+                console.error('❌ Error en fallback de categorías:', fallbackError);
+                await provider.sendText(ctx.from,
+                    '❌ *Error técnico*\n\nContacta al +56 9 7964 3935'
+                );
+            }
+        }
+    });
+
+// ===== FLOW PARA ACTIVAR CATEGORÍAS CUANDO EL CATÁLOGO NO FUNCIONA =====
+
+export const flowActivarCategorias = addKeyword<Provider, Database>(['categorias', 'categorías', 'categoria', 'categoría', 'menu', 'productos'])
+    .addAction(async (ctx, { state, provider }) => {
+        console.log('📋 Usuario solicita navegación por categorías...');
+
+        try {
             // Sincronizar productos desde Meta API
             const productsByCategory = await syncAndGetProducts(CATALOG_ID, ACCESS_TOKEN);
             
             if (Object.keys(productsByCategory).length === 0) {
                 return await provider.sendText(ctx.from, 
-                    '❌ *Error temporal*\n\nNo pudimos cargar el catálogo.\nIntenta en unos minutos o contacta al +56 9 7964 3935'
+                    '❌ *Error temporal*\n\nNo pudimos cargar las categorías.\nIntenta en unos minutos o contacta al +56 9 7964 3935'
                 );
             }
 
             // Guardar productos en el state
             await state.update({ 
                 productsByCategory,
-                lastSync: new Date().toISOString()
+                lastSync: new Date().toISOString(),
+                navigationType: 'categories' // Indicar que está usando navegación por categorías
             });
 
             // Generar y enviar lista de categorías
@@ -601,15 +707,19 @@ export const flowCarritoInteractivo = addKeyword<Provider, Database>(EVENTS.WELC
             
             if (!categoriesList) {
                 return await provider.sendText(ctx.from,
-                    '⚠️ *Catálogo vacío*\n\nContacta al +56 9 7964 3935'
+                    '⚠️ *Categorías vacías*\n\nContacta al +56 9 7964 3935'
                 );
             }
 
-            console.log('✅ Enviando categorías del carrito interactivo...');
+            await provider.sendText(ctx.from,
+                '🛒 *Sistema de navegación por categorías*\n\nSelecciona una categoría para ver los productos disponibles:'
+            );
+
+            console.log('✅ Enviando categorías por solicitud del usuario...');
             await sendInteractiveMessage(ctx.from, categoriesList);
 
         } catch (error) {
-            console.error('❌ Error en flowCarritoInteractivo:', error);
+            console.error('❌ Error activando categorías:', error);
             await provider.sendText(ctx.from,
                 '❌ *Error técnico*\n\nContacta al +56 9 7964 3935'
             );

@@ -12,6 +12,7 @@ import {
     flowCategoriasInteractivas,
     flowAgregarProductoInteractivo,
     flowSeleccionInteractiva,
+    flowActivarCategorias,
     flowGestionarProducto,
     flowCambiarCantidadInteractiva,
     flowEliminarProductoInteractivo,
@@ -495,14 +496,23 @@ const flowPrincipal = addKeyword<Provider, Database>(utils.setEvent('welcome'))
         console.log('ctx.body flowPrincipal', ctx.body)
         const userInput = ctx.body.toLowerCase().trim();
         
-        // Opción 1: Carrito de compras (NUEVO SISTEMA ESCALABLE)
+        // Opción 1: Catálogo oficial de Meta (ENVÍO DIRECTO)
         if (userInput === '1') {
             stop(ctx)
-            console.log('🛒 Usuario seleccionó opción 1 - Carrito de compras');
-            console.log('� Redirigiendo al sistema de carrito escalable...');
+            console.log('🛒 Usuario seleccionó opción 1 - Catálogo oficial');
+            console.log('📋 Enviando catálogo oficial de Meta...');
             
-            // Redirigir al nuevo carrito con listas interactivas
-            return gotoFlow(flowCarritoInteractivo);
+            try {
+                // Enviar catálogo oficial directamente
+                await sendCatalog(provider, ctx.from, null, 'main', false);
+                console.log('✅ Catálogo oficial enviado exitosamente');
+            } catch (error) {
+                console.error('❌ Error enviando catálogo:', error);
+                await provider.sendText(ctx.from,
+                    '❌ *Error temporal con el catálogo*\n\nContacta al +56 9 7964 3935'
+                );
+            }
+            return;
         }
    
         // Opción 2: Agente
@@ -1981,8 +1991,9 @@ const main = async () => {
     // Configurar flows: NUEVA ESTRATEGIA CON FLOWS INDIVIDUALES
     const adapterFlow = createFlow([
         // === FLOWS DEL CARRITO - ACTIVACIÓN PROGRESIVA ===
-        // FASE 1 - ACTIVOS: Funcionalidad básica del carrito
-        // flowCarritoInteractivo,         // 🛒 Flow principal del carrito
+        // FASE 1 - DESACTIVADOS: Funcionalidad del carrito interactivo
+        // flowCarritoInteractivo,         // 🛒 Flow principal del carrito (DESACTIVADO)
+        // flowActivarCategorias,          // 📋 Activación manual de categorías cuando el catálogo no funciona (DESACTIVADO)
         // flowCategoriasInteractivas,     // 📋 Manejo de selección de categorías
         // flowAgregarProductoInteractivo, // ➕ Agregar productos con botones rápidos
         // flowSeleccionInteractiva,       // 🎯 Sistema completo de selección interactiva
@@ -1991,12 +2002,12 @@ const main = async () => {
         // flowEliminarProductoInteractivo,// 🗑️ Eliminación de productos
         // flowAccionesCarrito,            // 🔧 Flow unificado para EVENTS.ACTION
         
-        // FASE 2 - ACTIVOS: Funciones de gestión del carrito
+        // FASE 2 - DESACTIVADOS: Funciones de gestión del carrito
         // flowVerCarritoInteractivo,      // Ver carrito detallado
         // flowSeguirComprandoInteractivo, // Continuar comprando
         // flowVaciarCarritoInteractivo,   // Vaciar carrito
         
-        // FASE 3 - ACTIVOS: Finalización de compras  
+        // FASE 3 - DESACTIVADOS: Finalización de compras  
         // flowConfirmarPedidoInteractivo, // Confirmar pedido
         // flowVolverCarrito,              // Volver al carrito
         // flowFinalizarCompra,            // Finalizar compra
