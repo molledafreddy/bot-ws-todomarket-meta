@@ -2023,7 +2023,7 @@ const main = async () => {
         
         // === FLOWS DE COMPATIBILIDAD Y CATEGORÍAS ===
         flowProductCategories,          // 🛒 Manejo de categorías de productos (RESTAURADO)
-        // flowEndShoppingCart,            // Flujo final del carrito (legacy) - COMENTADO
+        flowEndShoppingCart,            // Flujo final del carrito (legacy) - COMENTADO
         // flowInteractiveResponse,        // 🔧 Manejo de respuestas interactivas (BACKUP) - COMENTADO
         // flowBackToCategories,           // 🔄 Flujo para volver a categorías (BACKUP) - COMENTADO
         idleFlow                        // Flujo de inactividad
