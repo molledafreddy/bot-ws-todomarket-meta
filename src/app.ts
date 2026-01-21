@@ -7,45 +7,45 @@ import { MetaProvider as Provider } from '@builderbot/provider-meta'
 import { idleFlow, reset, start, stop, IDLETIME } from './idle-custom'
 import { getCatalogConfig, CatalogConfig } from './catalog-config'
 // ===== NUEVA ESTRATEGIA: IMPORTACIONES INDIVIDUALES =====
-import { 
-    flowCarritoInteractivo,
-    flowCategoriasInteractivas,
-    flowAgregarProductoInteractivo,
-    flowSeleccionInteractiva,
-    flowActivarCategorias,
-    flowGestionarProducto,
-    flowCambiarCantidadInteractiva,
-    flowEliminarProductoInteractivo,
-    flowVerCarritoInteractivo,
-    flowSeguirComprandoInteractivo,
-    flowVaciarCarritoInteractivo,
-    flowConfirmarPedidoInteractivo,
-    flowVolverCarrito,
-    flowFinalizarCompra
-} from './carrito-interactivo'
-import { flowAccionesCarrito } from './carrito-acciones'  // 🆕 Flow unificado para acciones
-import { flowPrincipalInteractivo } from './flowprincipal-interactivo'
-import { 
-    syncAndGetProducts,
-    generateCategoriesList
-} from './carrito-simple'
-import { 
-    createTodoMarketCatalogTemplate, 
-    createTodoMarketInteractiveCatalog,
-    validateTemplatePayload,
-    validateInteractivePayload,
-    LANGUAGE_CODES,
-    TODOMARKET_TEMPLATES 
-} from './catalog-template'
-import {
-    TODOMARKET_TEMPLATES as META_TEMPLATES,
-    getApprovedTemplatePayload,
-    detectTemplateNameFromMeta,
-    getAllBusinessTemplates,
-    checkTemplateStatus,
-    DEFAULT_TEMPLATE_CONFIG
-} from './meta-templates'
-import process from 'process';
+// import { 
+//     flowCarritoInteractivo,
+//     flowCategoriasInteractivas,
+//     flowAgregarProductoInteractivo,
+//     flowSeleccionInteractiva,
+//     flowActivarCategorias,
+//     flowGestionarProducto,
+//     flowCambiarCantidadInteractiva,
+//     flowEliminarProductoInteractivo,
+//     flowVerCarritoInteractivo,
+//     flowSeguirComprandoInteractivo,
+//     flowVaciarCarritoInteractivo,
+//     flowConfirmarPedidoInteractivo,
+//     flowVolverCarrito,
+//     flowFinalizarCompra
+// } from './carrito-interactivo'
+// import { flowAccionesCarrito } from './carrito-acciones'  // 🆕 Flow unificado para acciones
+// import { flowPrincipalInteractivo } from './flowprincipal-interactivo'
+// import { 
+//     syncAndGetProducts,
+//     generateCategoriesList
+// } from './carrito-simple'
+// import { 
+//     createTodoMarketCatalogTemplate, 
+//     createTodoMarketInteractiveCatalog,
+//     validateTemplatePayload,
+//     validateInteractivePayload,
+//     LANGUAGE_CODES,
+//     TODOMARKET_TEMPLATES 
+// } from './catalog-template'
+// import {
+//     TODOMARKET_TEMPLATES as META_TEMPLATES,
+//     getApprovedTemplatePayload,
+//     detectTemplateNameFromMeta,
+//     getAllBusinessTemplates,
+//     checkTemplateStatus,
+//     DEFAULT_TEMPLATE_CONFIG
+// } from './meta-templates'
+// import process from 'process';
 
 // Importar fetch para Node.js si no está disponible globalmente
 const fetch = globalThis.fetch || require('node-fetch')
