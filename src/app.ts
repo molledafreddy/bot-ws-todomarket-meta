@@ -2013,6 +2013,7 @@ const main = async () => {
         // flowFinalizarCompra,            // Finalizar compra
         
         // === FLOWS PRINCIPALES ===
+        flowEndShoppingCart,
         flowValidTime,                  // Flujo de validación de horario
         // flowPrincipalInteractivo,       // 🎯 Menú principal CON CARRITO INTEGRADO
         flowPrincipal,                  // 🔄 Menú principal legacy (backup)
@@ -2021,9 +2022,9 @@ const main = async () => {
         flowOrder,                      // Flujo para órdenes
         flowValidMedia,                 // Validación de media
         
+        
         // === FLOWS DE COMPATIBILIDAD Y CATEGORÍAS ===
         flowProductCategories,          // 🛒 Manejo de categorías de productos (RESTAURADO)
-        flowEndShoppingCart,            // Flujo final del carrito (legacy) - COMENTADO
         // flowInteractiveResponse,        // 🔧 Manejo de respuestas interactivas (BACKUP) - COMENTADO
         // flowBackToCategories,           // 🔄 Flujo para volver a categorías (BACKUP) - COMENTADO
         idleFlow                        // Flujo de inactividad
