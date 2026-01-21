@@ -6,46 +6,6 @@ import { MongoAdapter as Database } from '@builderbot/database-mongo'
 import { MetaProvider as Provider } from '@builderbot/provider-meta'
 import { idleFlow, reset, start, stop, IDLETIME } from './idle-custom'
 import { getCatalogConfig, CatalogConfig } from './catalog-config'
-// ===== NUEVA ESTRATEGIA: IMPORTACIONES INDIVIDUALES =====
-// import { 
-//     flowCarritoInteractivo,
-//     flowCategoriasInteractivas,
-//     flowAgregarProductoInteractivo,
-//     flowSeleccionInteractiva,
-//     flowActivarCategorias,
-//     flowGestionarProducto,
-//     flowCambiarCantidadInteractiva,
-//     flowEliminarProductoInteractivo,
-//     flowVerCarritoInteractivo,
-//     flowSeguirComprandoInteractivo,
-//     flowVaciarCarritoInteractivo,
-//     flowConfirmarPedidoInteractivo,
-//     flowVolverCarrito,
-//     flowFinalizarCompra
-// } from './carrito-interactivo'
-// import { flowAccionesCarrito } from './carrito-acciones'  // 🆕 Flow unificado para acciones
-// import { flowPrincipalInteractivo } from './flowprincipal-interactivo'
-// import { 
-//     syncAndGetProducts,
-//     generateCategoriesList
-// } from './carrito-simple'
-// import { 
-//     createTodoMarketCatalogTemplate, 
-//     createTodoMarketInteractiveCatalog,
-//     validateTemplatePayload,
-//     validateInteractivePayload,
-//     LANGUAGE_CODES,
-//     TODOMARKET_TEMPLATES 
-// } from './catalog-template'
-// import {
-//     TODOMARKET_TEMPLATES as META_TEMPLATES,
-//     getApprovedTemplatePayload,
-//     detectTemplateNameFromMeta,
-//     getAllBusinessTemplates,
-//     checkTemplateStatus,
-//     DEFAULT_TEMPLATE_CONFIG
-// } from './meta-templates'
-// import process from 'process';
 
 // Importar fetch para Node.js si no está disponible globalmente
 const fetch = globalThis.fetch || require('node-fetch')
@@ -449,33 +409,33 @@ const flowEndShoppingCart = addKeyword(utils.setEvent('END_SHOPPING_CART'))
 );
 
 // ===== FUNCIÓN HELPER PARA ENVIAR LISTAS INTERACTIVAS =====
-async function sendInteractiveMessageDirect(phoneNumber: string, payload: any): Promise<void> {
-    const ACCESS_TOKEN = process.env.JWT_TOKEN!;
-    try {
-        const response = await fetch(`https://graph.facebook.com/v18.0/${process.env.NUMBER_ID}/messages`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${ACCESS_TOKEN}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                ...payload,
-                to: phoneNumber
-            })
-        });
+// async function sendInteractiveMessageDirect(phoneNumber: string, payload: any): Promise<void> {
+//     const ACCESS_TOKEN = process.env.JWT_TOKEN!;
+//     try {
+//         const response = await fetch(`https://graph.facebook.com/v18.0/${process.env.NUMBER_ID}/messages`, {
+//             method: 'POST',
+//             headers: {
+//                 'Authorization': `Bearer ${ACCESS_TOKEN}`,
+//                 'Content-Type': 'application/json'
+//             },
+//             body: JSON.stringify({
+//                 ...payload,
+//                 to: phoneNumber
+//             })
+//         });
 
-        if (!response.ok) {
-            const errorData = await response.json();
-            console.error('❌ Error enviando mensaje interactivo:', errorData);
-            throw new Error('Error API Meta');
-        }
+//         if (!response.ok) {
+//             const errorData = await response.json();
+//             console.error('❌ Error enviando mensaje interactivo:', errorData);
+//             throw new Error('Error API Meta');
+//         }
         
-        console.log('✅ Lista interactiva enviada exitosamente');
-    } catch (error) {
-        console.error('❌ Error en sendInteractiveMessageDirect:', error);
-        throw error;
-    }
-}
+//         console.log('✅ Lista interactiva enviada exitosamente');
+//     } catch (error) {
+//         console.error('❌ Error en sendInteractiveMessageDirect:', error);
+//         throw error;
+//     }
+// }
 
  // const flowPrincipal = addKeyword("welcome")
 const flowPrincipal = addKeyword<Provider, Database>(utils.setEvent('welcome'))
