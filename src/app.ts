@@ -1982,33 +1982,33 @@ const main = async () => {
     const adapterFlow = createFlow([
         // === FLOWS DEL CARRITO - ACTIVACIÓN PROGRESIVA ===
         // FASE 1 - ACTIVOS: Funcionalidad básica del carrito
-        flowCarritoInteractivo,         // 🛒 Flow principal del carrito
-        flowCategoriasInteractivas,     // 📋 Manejo de selección de categorías
-        flowAgregarProductoInteractivo, // ➕ Agregar productos con botones rápidos
-        flowSeleccionInteractiva,       // 🎯 Sistema completo de selección interactiva
-        flowGestionarProducto,          // ⚙️ Gestión individual de productos
-        flowCambiarCantidadInteractiva, // 🔢 Cambio de cantidades
-        flowEliminarProductoInteractivo,// 🗑️ Eliminación de productos
-        flowAccionesCarrito,            // 🔧 Flow unificado para EVENTS.ACTION
+        // flowCarritoInteractivo,         // 🛒 Flow principal del carrito
+        // flowCategoriasInteractivas,     // 📋 Manejo de selección de categorías
+        // flowAgregarProductoInteractivo, // ➕ Agregar productos con botones rápidos
+        // flowSeleccionInteractiva,       // 🎯 Sistema completo de selección interactiva
+        // flowGestionarProducto,          // ⚙️ Gestión individual de productos
+        // flowCambiarCantidadInteractiva, // 🔢 Cambio de cantidades
+        // flowEliminarProductoInteractivo,// 🗑️ Eliminación de productos
+        // flowAccionesCarrito,            // 🔧 Flow unificado para EVENTS.ACTION
         
         // FASE 2 - ACTIVOS: Funciones de gestión del carrito
-        flowVerCarritoInteractivo,      // Ver carrito detallado
-        flowSeguirComprandoInteractivo, // Continuar comprando
-        flowVaciarCarritoInteractivo,   // Vaciar carrito
+        // flowVerCarritoInteractivo,      // Ver carrito detallado
+        // flowSeguirComprandoInteractivo, // Continuar comprando
+        // flowVaciarCarritoInteractivo,   // Vaciar carrito
         
         // FASE 3 - ACTIVOS: Finalización de compras  
-        flowConfirmarPedidoInteractivo, // Confirmar pedido
-        flowVolverCarrito,              // Volver al carrito
-        flowFinalizarCompra,            // Finalizar compra
+        // flowConfirmarPedidoInteractivo, // Confirmar pedido
+        // flowVolverCarrito,              // Volver al carrito
+        // flowFinalizarCompra,            // Finalizar compra
         
         // === FLOWS PRINCIPALES ===
-        // flowValidTime,                  // Flujo de validación de horario
-        // flowPrincipalInteractivo,       // 🎯 Menú principal CON CARRITO INTEGRADO
-        // flowPrincipal,                  // 🔄 Menú principal legacy (backup)
-        // flowDisable,                    // ⚠️ Flujo fuera de horario
-        // FlowAgente2,                    // Flujo para agente
-        // flowOrder,                      // Flujo para órdenes
-        // flowValidMedia,                 // Validación de media
+        flowValidTime,                  // Flujo de validación de horario
+        flowPrincipalInteractivo,       // 🎯 Menú principal CON CARRITO INTEGRADO
+        flowPrincipal,                  // 🔄 Menú principal legacy (backup)
+        flowDisable,                    // ⚠️ Flujo fuera de horario
+        FlowAgente2,                    // Flujo para agente
+        flowOrder,                      // Flujo para órdenes
+        flowValidMedia,                 // Validación de media
         
         // === FLOWS DE COMPATIBILIDAD Y CATEGORÍAS ===
         flowProductCategories,          // 🛒 Manejo de categorías de productos (RESTAURADO)
