@@ -2003,7 +2003,7 @@ const main = async () => {
         
         // === FLOWS PRINCIPALES ===
         flowValidTime,                  // Flujo de validación de horario
-        flowPrincipalInteractivo,       // 🎯 Menú principal CON CARRITO INTEGRADO
+        // flowPrincipalInteractivo,       // 🎯 Menú principal CON CARRITO INTEGRADO
         flowPrincipal,                  // 🔄 Menú principal legacy (backup)
         flowDisable,                    // ⚠️ Flujo fuera de horario
         FlowAgente2,                    // Flujo para agente
