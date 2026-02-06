@@ -6,12 +6,25 @@ import { MongoAdapter as Database } from '@builderbot/database-mongo'
 import { MetaProvider as Provider } from '@builderbot/provider-meta'
 import { idleFlow, reset, start, stop, IDLETIME } from './idle-custom'
 import { getCatalogConfig, CatalogConfig } from './catalog-config'
+import { flowCatalogSelection } from './flows/catalog-selection-flow';
+import { validateCatalogConfig } from './config/multi-catalog-config';
+
+import { flowCatalogOrder, flowViewCart, flowMultiCatalogCheckout } from './flows/catalog-order-flow';
+import { flowWelcome, flowThanks, flowContactSupport, flowHelp } from './flows/additional-flows';
+
+// Validar configuración al iniciar
+const configValidation = validateCatalogConfig();
+if (!configValidation.valid) {
+    console.error('❌ Configuración de catálogos inválida:', configValidation.errors);
+    process.exit(1);
+}
 
 // Importar fetch para Node.js si no está disponible globalmente
 const fetch = globalThis.fetch || require('node-fetch')
 
 // Importar funciones alternativas para el catálogo
-import { createProductList, createCategoryProductList } from '../alternative-catalog'
+import { ENABLED_CATALOGS, sendSpecificCatalog } from './config/multi-catalog-config';
+
 
 // Railway requires PORT as integer
 const PORT = parseInt(process.env.PORT || '3008', 10)
@@ -81,6 +94,77 @@ if (process.env.NODE_ENV === 'production') {
     }
 }
 
+
+/**
+ * Crea un payload de lista interactiva con categorías de productos
+ * @param phoneNumber Número del destinatario
+ * @returns Payload para envío directo a Meta API
+ */
+function createProductList(phoneNumber: string) {
+    return {
+        messaging_product: "whatsapp",
+        to: phoneNumber,
+        type: "interactive",
+        interactive: {
+            type: "list",
+            header: {
+                type: "text",
+                text: "🛍️ TodoMarket - Catálogo"
+            },
+            body: {
+                text: "Selecciona una categoría de productos para ver los artículos disponibles:"
+            },
+            footer: {
+                text: "Selecciona una opción de la lista"
+            },
+            action: {
+                button: "Ver Categorías",
+                sections: [
+                    {
+                        title: "🛒 Categorías Principales",
+                        rows: [
+                            {
+                                id: "categoria_bebidas",
+                                title: "🥤 Bebidas",
+                                description: "Refrescos, jugos, aguas"
+                            },
+                            {
+                                id: "categoria_panaderia", 
+                                title: "🍞 Panadería",
+                                description: "Pan, cereales, galletas"
+                            },
+                            {
+                                id: "categoria_lacteos",
+                                title: "🥛 Lácteos",
+                                description: "Leche, queso, yogurt, huevos"
+                            }
+                        ]
+                    },
+                    {
+                        title: "🍎 Más Categorías",
+                        rows: [
+                            {
+                                id: "categoria_abarrotes",
+                                title: "🌾 Abarrotes", 
+                                description: "Arroz, fideos, aceite, azúcar"
+                            },
+                            {
+                                id: "categoria_frutas",
+                                title: "🍎 Frutas y Verduras",
+                                description: "Frutas frescas y verduras"
+                            },
+                            {
+                                id: "categoria_limpieza",
+                                title: "🧼 Limpieza",
+                                description: "Detergente, jabón, papel"
+                            }
+                        ]
+                    }
+                ]
+            }
+        }
+    };
+}
 
 
 const FlowAgente2 = addKeyword(['Agente', 'AGENTE', 'agente'])
@@ -438,56 +522,91 @@ const flowEndShoppingCart = addKeyword(utils.setEvent('END_SHOPPING_CART'))
 // }
 
  // const flowPrincipal = addKeyword("welcome")
-const flowPrincipal = addKeyword<Provider, Database>(utils.setEvent('welcome'))
- .addAction(async (ctx, { gotoFlow }) => start(ctx, gotoFlow, IDLETIME))
- .addAnswer([
-    '🚚 Hola, Bienvenido a *Minimarket TodoMarket* 🛵', 
-    '⌛ Horario disponible desde las 2:00 PM hasta las 10:00 PM. ⌛',
-    '📝 a través de este canal te ofrecemos los siguientes servicios de compra:'
-], { delay: 1000 })
- .addAnswer(
-     [
-        '*Indica el Número de la opción que desees:*', 
-        '👉 #1 Carrito de compra whatsApp', 
-        '👉 #2 Conversar con un Agente', 
-    ].join('\n'),
-    { capture: true, delay: 2000, idle: 900000 },
-    async (ctx,{ provider, fallBack, gotoFlow, state, endFlow}) => {
-        console.log('ctx.body flowPrincipal', ctx.body)
-        const userInput = ctx.body.toLowerCase().trim();
+// const flowPrincipal = addKeyword<Provider, Database>(utils.setEvent('welcome'))
+//  .addAction(async (ctx, { gotoFlow }) => start(ctx, gotoFlow, IDLETIME))
+//  .addAnswer([
+//     '🚚 Hola, Bienvenido a *Minimarket TodoMarket* 🛵', 
+//     '⌛ Horario disponible desde las 2:00 PM hasta las 10:00 PM. ⌛',
+//     '📝 a través de este canal te ofrecemos los siguientes servicios de compra:'
+// ], { delay: 1000 })
+//  .addAnswer(
+//      [
+//         '*Indica el Número de la opción que desees:*', 
+//         '👉 #1 Carrito de compra whatsApp', 
+//         '👉 #2 Conversar con un Agente', 
+//     ].join('\n'),
+//     { capture: true, delay: 2000, idle: 900000 },
+//     async (ctx,{ provider, fallBack, gotoFlow, state, endFlow}) => {
+//         console.log('ctx.body flowPrincipal', ctx.body)
+//         const userInput = ctx.body.toLowerCase().trim();
         
-        // Opción 1: Catálogo oficial de Meta (ENVÍO DIRECTO)
-        if (userInput === '1') {
-            stop(ctx)
-            console.log('🛒 Usuario seleccionó opción 1 - Catálogo oficial');
-            console.log('📋 Enviando catálogo oficial de Meta...');
+//         // Opción 1: Catálogo oficial de Meta (ENVÍO DIRECTO)
+//         if (userInput === '1') {
+//             stop(ctx)
+//             console.log('🛒 Usuario seleccionó opción 1 - Catálogo oficial');
+//             console.log('📋 Enviando catálogo oficial de Meta...');
             
-            try {
-                // Enviar catálogo oficial directamente
-                await sendCatalog(provider, ctx.from, null, 'main', false);
-                console.log('✅ Catálogo oficial enviado exitosamente');
-            } catch (error) {
-                console.error('❌ Error enviando catálogo:', error);
-                await provider.sendText(ctx.from,
-                    '❌ *Error temporal con el catálogo*\n\nContacta al +56 9 7964 3935'
-                );
-            }
-            return;
-        }
+//             try {
+//                 // Enviar catálogo oficial directamente
+//                 await sendCatalog(provider, ctx.from, null, 'main', false);
+//                 console.log('✅ Catálogo oficial enviado exitosamente');
+//             } catch (error) {
+//                 console.error('❌ Error enviando catálogo:', error);
+//                 await provider.sendText(ctx.from,
+//                     '❌ *Error temporal con el catálogo*\n\nContacta al +56 9 7964 3935'
+//                 );
+//             }
+//             return;
+//         }
    
-        // Opción 2: Agente
-        if (userInput === '2' || userInput.includes('agente')) {
-            stop(ctx)
-            console.log('👥 Usuario seleccionó opción 2 - Agente');
-            return gotoFlow(FlowAgente2);
-        }
+//         // Opción 2: Agente
+//         if (userInput === '2' || userInput.includes('agente')) {
+//             stop(ctx)
+//             console.log('👥 Usuario seleccionó opción 2 - Agente');
+//             return gotoFlow(FlowAgente2);
+//         }
         
-        // Opción inválida
-        console.log('❌ Opción inválida recibida:', ctx.body);
-        reset(ctx, gotoFlow, IDLETIME)
-        return fallBack("*Opcion no valida*, \nPor favor seleccione una opcion valida:\n👉 #1 Carrito de compra\n👉 #2 Conversar con un Agente");
-     }
- );
+//         // Opción inválida
+//         console.log('❌ Opción inválida recibida:', ctx.body);
+//         reset(ctx, gotoFlow, IDLETIME)
+//         return fallBack("*Opcion no valida*, \nPor favor seleccione una opcion valida:\n👉 #1 Carrito de compra\n👉 #2 Conversar con un Agente");
+//      }
+//  );
+
+const flowPrincipal = addKeyword("welcome")
+    .addAnswer([
+        '🙌 ¡Hola! Bienvenido a TodoMarket',
+        '',
+        'Elige una opción:',
+        '',
+        '1️⃣ 🛍️ Explorar Catálogos',
+        '2️⃣ 🛒 Ver mi carrito', 
+        '3️⃣ 📞 Contactar soporte',
+        '4️⃣ ❓ Ayuda',
+        '',
+        '💡 Escribe el número de tu opción'
+    ])
+    .addAction(async (ctx, { flowDynamic, gotoFlow }) => {
+        const userInput = ctx.body?.trim();
+        
+        switch (userInput) {
+            case '1':
+                return gotoFlow(flowCatalogSelection);
+            case '2':
+                return gotoFlow(flowViewCart);
+            case '3':
+                return gotoFlow(flowContactSupport);
+            case '4':
+                return gotoFlow(flowHelp);
+            default:
+                await flowDynamic([
+                    '🤔 No entendí tu opción.',
+                    '👆 Por favor selecciona un número del 1 al 4'
+                ]);
+                return;
+        }
+    });
+
 
 /**
  * Función mejorada para enviar catálogos usando configuración centralizada
@@ -1987,7 +2106,14 @@ const main = async () => {
         flowProductCategories,          // 🛒 Manejo de categorías de productos (RESTAURADO)
         // flowInteractiveResponse,        // 🔧 Manejo de respuestas interactivas (BACKUP) - COMENTADO
         // flowBackToCategories,           // 🔄 Flujo para volver a categorías (BACKUP) - COMENTADO
-        idleFlow                        // Flujo de inactividad
+        idleFlow,
+        flowCatalogSelection,
+        flowCatalogOrder,
+        flowViewCart,
+        flowWelcome,
+        flowThanks,
+        flowContactSupport,
+        flowHelp,
     ])
     
     const adapterProvider = createProvider(Provider, {
