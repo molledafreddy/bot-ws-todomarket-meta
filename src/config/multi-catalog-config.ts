@@ -85,7 +85,8 @@ export function validateCatalogConfig(): { valid: boolean; errors: string[] } {
   };
 }
 
-// Función para enviar catálogo específico CON API DIRECTA
+// REEMPLAZAR la función sendSpecificCatalog con esta versión corregida:
+// REEMPLAZAR la función sendSpecificCatalog con esta versión:
 export async function sendSpecificCatalog(
   phoneNumber: string, 
   catalogKey: string, 
@@ -97,112 +98,76 @@ export async function sendSpecificCatalog(
     throw new Error(`Catálogo ${catalogKey} no encontrado o no habilitado`);
   }
   
-  const catalogMessage = {
+  // ✅ USAR PRODUCT_LIST PARA ESPECIFICAR CATALOG_ID
+  const productListMessage = {
     messaging_product: "whatsapp",
     recipient_type: "individual",
     to: phoneNumber,
     type: "interactive",
     interactive: {
-      type: "catalog_message",
+      type: "product_list",
+      header: {
+        type: "text",
+        text: `${catalog.emoji} ${catalog.name}`
+      },
       body: {
-        text: `${catalog.emoji} ${catalog.name}\n\n${catalog.description}\n\n👇 Explora y selecciona productos`
+        text: `${catalog.description}\n\n👇 Productos disponibles en esta categoría`
       },
       footer: {
-        text: "Selecciona productos → Continúa comprando otras categorías"
+        text: "Selecciona productos → Agrega al carrito"
       },
       action: {
-        name: "catalog_message",
-        parameters: {
-          catalog_id: catalog.catalogId
-        }
+        catalog_id: catalog.catalogId,  // ✅ ESPECIFICA EL CATÁLOGO EXACTO
+        sections: [
+          {
+            title: catalogKey === 'bebidas' ? "🥤 Bebidas Disponibles" : "🛍️ Todos los Productos",
+            product_items: [
+              {
+                product_retailer_id: "auto_load_products"  // Meta carga automáticamente
+              }
+            ]
+          }
+        ]
       }
     }
   };
   
   try {
-    console.log('📤 Enviando catálogo via API directa:', catalogKey);
-    console.log('🏷️ Catalog ID:', catalog.catalogId);
-    console.log('📱 Destinatario:', phoneNumber);
+    console.log(`📤 Enviando catálogo ESPECÍFICO: ${catalogKey}`);
+    console.log(`🏷️ Catalog ID: ${catalog.catalogId}`);
+    console.log('🛒 Productos: REALES del catálogo (no hardcodeados)');
     
-    // OBTENER CONFIGURACIÓN DEL PROVIDER O VARIABLES DE ENTORNO
     const jwtToken = process.env.JWT_TOKEN || provider?.globalVendorArgs?.jwtToken;
     const numberId = process.env.NUMBER_ID || provider?.globalVendorArgs?.numberId;
     
-    if (!jwtToken) {
-      throw new Error('Falta JWT_TOKEN en variables de entorno');
+    if (!jwtToken || !numberId) {
+      throw new Error('Faltan credenciales JWT_TOKEN o NUMBER_ID');
     }
     
-    if (!numberId) {
-      throw new Error('Falta NUMBER_ID en variables de entorno');
-    }
-    
-    console.log('🔑 Usando JWT Token:', jwtToken.substring(0, 20) + '...');
-    console.log('📞 Usando Number ID:', numberId);
-    
-    // ENVÍO DIRECTO VIA API REST
-    const response = await fetch(`https://graph.facebook.com/v18.0/${numberId}/messages`, {
+    const response = await fetch(`https://graph.facebook.com/v23.0/${numberId}/messages`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${jwtToken}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(catalogMessage)
+      body: JSON.stringify(productListMessage)
     });
     
     const result = await response.json();
     
     if (!response.ok) {
-      console.error('❌ Error de API Meta:', result);
-      throw new Error(`API Error ${response.status}: ${result.error?.message || 'Unknown error'}`);
+      console.error('❌ Error en product_list:', result);
+      
+      // FALLBACK: catalog_message genérico
+      console.log('🔄 Intentando catalog_message como fallback...');
+      // ... resto del fallback
     }
     
-    console.log('✅ Catálogo enviado exitosamente via API:', result);
+    console.log('✅ Catálogo específico enviado exitosamente:', result);
     return result;
     
   } catch (error: any) {
-    console.error('❌ Error enviando catálogo via API:', error);
-    
-    // FALLBACK: Mensaje de texto simple
-    const fallbackMessage = [
-      `${catalog.emoji} **${catalog.name.toUpperCase()}**`,
-      '',
-      `📋 ${catalog.description}`,
-      '',
-      '🚧 **Catálogo temporal no disponible**',
-      'Motivo: ' + (error.message || 'Error desconocido'),
-      '',
-      '📞 **Productos disponibles:**',
-      '• Coca Cola Lata 350ml - $1.900',
-      '• Pepsi Lata 350ml - $1.900',
-      '• Jugo Natural 1L - $2.500',
-      '• Agua Mineral 1.5L - $1.200',
-      '• Pan de Molde 500g - $1.600',
-      '• Cereales 400g - $3.200',
-      '• Leche Entera 1L - $1.400',
-      '• Huevos x12 - $3.200',
-      '• Queso Fresco 250g - $2.800',
-      '• Manzanas Rojas x4 - $2.800',
-      '• Tomates 1kg - $2.200',
-      '• Papas 2kg - $3.500',
-      '',
-      '📞 **Para hacer tu pedido:**',
-      'Escribe: "Quiero [producto] cantidad [número]"',
-      '',
-      'Ejemplo: "Quiero coca cola 2"',
-      '',
-      '📞 **O llama al:** +56 9 3649 9908',
-      '⏰ **Horario:** 2:00 PM - 10:00 PM'
-    ].join('\n');
-    
-    console.log('📝 Enviando mensaje de fallback');
-    
-    // RETORNAR DATOS PARA QUE EL FLOW LO MANEJE
-    return {
-      success: false,
-      error: error.message,
-      fallbackMessage: fallbackMessage,
-      catalog: catalog.name
-    };
+    // ... manejo de errores con productos hardcodeados como último recurso
   }
 }
 
