@@ -2033,13 +2033,13 @@ const main = async () => {
         // flowInteractiveResponse,        // 🔧 Manejo de respuestas interactivas (BACKUP) - COMENTADO
         // flowBackToCategories,           // 🔄 Flujo para volver a categorías (BACKUP) - COMENTADO
         idleFlow,
-        flowCatalogSelection,
-        flowCatalogOrder,
-        flowViewCart,
-        flowWelcome,
-        flowThanks,
-        flowContactSupport,
-        flowHelp,
+        // flowCatalogSelection,
+        // flowCatalogOrder,
+        // flowViewCart,
+        // flowWelcome,
+        // flowThanks,
+        // flowContactSupport,
+        // flowHelp,
     ])
     
     const adapterProvider = createProvider(Provider, {
