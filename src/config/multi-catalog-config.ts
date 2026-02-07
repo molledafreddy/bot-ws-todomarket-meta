@@ -157,8 +157,8 @@ export async function sendSpecificCatalog(
       filteredProducts = products;
     }
 
-    // 🔧 LIMITAR A MÁXIMO 30 PRODUCTOS (limitación de WhatsApp)
-    const maxProducts = 30;
+    // 🔧 LIMITAR A MÁXIMO 35 PRODUCTOS (limitación de WhatsApp)
+    const maxProducts = 35;
     const selectedProducts = filteredProducts.slice(0, maxProducts);
     
     console.log(`📋 Productos seleccionados para mostrar: ${selectedProducts.length}`);
