@@ -518,90 +518,90 @@ const flowEndShoppingCart = addKeyword(utils.setEvent('END_SHOPPING_CART'))
 // }
 
  // const flowPrincipal = addKeyword("welcome")
-// const flowPrincipal = addKeyword<Provider, Database>(utils.setEvent('welcome'))
-//  .addAction(async (ctx, { gotoFlow }) => start(ctx, gotoFlow, IDLETIME))
-//  .addAnswer([
-//     '🚚 Hola, Bienvenido a *Minimarket TodoMarket* 🛵', 
-//     '⌛ Horario disponible desde las 2:00 PM hasta las 10:00 PM. ⌛',
-//     '📝 a través de este canal te ofrecemos los siguientes servicios de compra:'
-// ], { delay: 1000 })
-//  .addAnswer(
-//      [
-//         '*Indica el Número de la opción que desees:*', 
-//         '👉 #1 Carrito de compra whatsApp', 
-//         '👉 #2 Conversar con un Agente', 
-//     ].join('\n'),
-//     { capture: true, delay: 2000, idle: 900000 },
-//     async (ctx,{ provider, fallBack, gotoFlow, state, endFlow}) => {
-//         console.log('ctx.body flowPrincipal', ctx.body)
-//         const userInput = ctx.body.toLowerCase().trim();
+const flowPrincipal = addKeyword<Provider, Database>(utils.setEvent('welcome'))
+ .addAction(async (ctx, { gotoFlow }) => start(ctx, gotoFlow, IDLETIME))
+ .addAnswer([
+    '🚚 Hola, Bienvenido a *Minimarket TodoMarket* 🛵', 
+    '⌛ Horario disponible desde las 2:00 PM hasta las 10:00 PM. ⌛',
+    '📝 a través de este canal te ofrecemos los siguientes servicios de compra:'
+], { delay: 1000 })
+ .addAnswer(
+     [
+        '*Indica el Número de la opción que desees:*', 
+        '👉 #1 Carrito de compra whatsApp', 
+        '👉 #2 Conversar con un Agente', 
+    ].join('\n'),
+    { capture: true, delay: 1000, idle: 900000 },
+    async (ctx,{ provider, fallBack, gotoFlow, state, endFlow}) => {
+        console.log('ctx.body flowPrincipal', ctx.body)
+        const userInput = ctx.body.toLowerCase().trim();
         
-//         // Opción 1: Catálogo oficial de Meta (ENVÍO DIRECTO)
-//         if (userInput === '1') {
-//             stop(ctx)
-//             console.log('🛒 Usuario seleccionó opción 1 - Catálogo oficial');
-//             console.log('📋 Enviando catálogo oficial de Meta...');
+        // Opción 1: Catálogo oficial de Meta (ENVÍO DIRECTO)
+        if (userInput === '1') {
+            stop(ctx)
+            console.log('🛒 Usuario seleccionó opción 1 - Catálogo oficial');
+            console.log('📋 Enviando catálogo oficial de Meta...');
             
-//             try {
-//                 // Enviar catálogo oficial directamente
-//                 await sendCatalog(provider, ctx.from, null, 'main', false);
-//                 console.log('✅ Catálogo oficial enviado exitosamente');
-//             } catch (error) {
-//                 console.error('❌ Error enviando catálogo:', error);
-//                 await provider.sendText(ctx.from,
-//                     '❌ *Error temporal con el catálogo*\n\nContacta al +56 9 7964 3935'
-//                 );
-//             }
-//             return;
-//         }
-   
-//         // Opción 2: Agente
-//         if (userInput === '2' || userInput.includes('agente')) {
-//             stop(ctx)
-//             console.log('👥 Usuario seleccionó opción 2 - Agente');
-//             return gotoFlow(FlowAgente2);
-//         }
-        
-//         // Opción inválida
-//         console.log('❌ Opción inválida recibida:', ctx.body);
-//         reset(ctx, gotoFlow, IDLETIME)
-//         return fallBack("*Opcion no valida*, \nPor favor seleccione una opcion valida:\n👉 #1 Carrito de compra\n👉 #2 Conversar con un Agente");
-//      }
-//  );
-
-const flowPrincipal = addKeyword("welcome")
-    .addAnswer([
-        '🙌 ¡Hola! Bienvenido a TodoMarket',
-        '',
-        'Elige una opción:',
-        '',
-        '1️⃣ 🛍️ Explorar Catálogos',
-        '2️⃣ 🛒 Ver mi carrito', 
-        '3️⃣ 📞 Contactar soporte',
-        '4️⃣ ❓ Ayuda',
-        '',
-        '💡 Escribe el número de tu opción'
-    ])
-    .addAction(async (ctx, { flowDynamic, gotoFlow }) => {
-        const userInput = ctx.body?.trim();
-        
-        switch (userInput) {
-            case '1':
-                return gotoFlow(flowCatalogSelection);
-            case '2':
-                return gotoFlow(flowViewCart);
-            case '3':
-                return gotoFlow(flowContactSupport);
-            case '4':
-                return gotoFlow(flowHelp);
-            default:
-                await flowDynamic([
-                    '🤔 No entendí tu opción.',
-                    '👆 Por favor selecciona un número del 1 al 4'
-                ]);
-                return;
+            try {
+                // Enviar catálogo oficial directamente
+                await sendCatalog(provider, ctx.from, null, 'main', false);
+                console.log('✅ Catálogo oficial enviado exitosamente');
+            } catch (error) {
+                console.error('❌ Error enviando catálogo:', error);
+                await provider.sendText(ctx.from,
+                    '❌ *Error temporal con el catálogo*\n\nContacta al +56 9 7964 3935'
+                );
+            }
+            return;
         }
-    });
+   
+        // Opción 2: Agente
+        if (userInput === '2' || userInput.includes('agente')) {
+            stop(ctx)
+            console.log('👥 Usuario seleccionó opción 2 - Agente');
+            return gotoFlow(FlowAgente2);
+        }
+        
+        // Opción inválida
+        console.log('❌ Opción inválida recibida:', ctx.body);
+        reset(ctx, gotoFlow, IDLETIME)
+        return fallBack("*Opcion no valida*, \nPor favor seleccione una opcion valida:\n👉 #1 Carrito de compra\n👉 #2 Conversar con un Agente");
+     }
+ );
+
+// const flowPrincipal = addKeyword("welcome")
+//     .addAnswer([
+//         '🙌 ¡Hola! Bienvenido a TodoMarket',
+//         '',
+//         'Elige una opción:',
+//         '',
+//         '1️⃣ 🛍️ Explorar Catálogos',
+//         '2️⃣ 🛒 Ver mi carrito', 
+//         '3️⃣ 📞 Contactar soporte',
+//         '4️⃣ ❓ Ayuda',
+//         '',
+//         '💡 Escribe el número de tu opción'
+//     ])
+//     .addAction(async (ctx, { flowDynamic, gotoFlow }) => {
+//         const userInput = ctx.body?.trim();
+        
+//         switch (userInput) {
+//             case '1':
+//                 return gotoFlow(flowCatalogSelection);
+//             case '2':
+//                 return gotoFlow(flowViewCart);
+//             case '3':
+//                 return gotoFlow(flowContactSupport);
+//             case '4':
+//                 return gotoFlow(flowHelp);
+//             default:
+//                 await flowDynamic([
+//                     '🤔 No entendí tu opción.',
+//                     '👆 Por favor selecciona un número del 1 al 4'
+//                 ]);
+//                 return;
+//         }
+//     });
 
 
 /**
