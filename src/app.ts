@@ -5,9 +5,8 @@ import { createBot, createProvider, createFlow, addKeyword, utils, EVENTS } from
 import { MongoAdapter as Database } from '@builderbot/database-mongo'
 import { MetaProvider as Provider } from '@builderbot/provider-meta'
 import { idleFlow, reset, start, stop, IDLETIME } from './idle-custom'
-import { getCatalogConfig, CatalogConfig } from './catalog-config'
+import { getCatalogConfig, CatalogConfig, ENABLED_CATALOGS, validateCatalogConfig } from './config/multi-catalog-config'
 import { flowCatalogSelection } from './flows/catalog-selection-flow';
-import { validateCatalogConfig } from './config/multi-catalog-config';
 
 import { flowCatalogOrder, flowViewCart, flowMultiCatalogCheckout } from './flows/catalog-order-flow';
 import { flowWelcome, flowThanks, flowContactSupport, flowHelp } from './flows/additional-flows';
@@ -21,9 +20,6 @@ if (!configValidation.valid) {
 
 // Importar fetch para Node.js si no está disponible globalmente
 const fetch = globalThis.fetch || require('node-fetch')
-
-// Importar funciones alternativas para el catálogo
-import { ENABLED_CATALOGS, sendSpecificCatalog } from './config/multi-catalog-config';
 
 
 // Railway requires PORT as integer
@@ -615,7 +611,7 @@ const flowPrincipal = addKeyword("welcome")
  * @param catalogType Tipo de catálogo ('main', 'offers', 'premium', etc.)
  */
 async function sendCatalogByType(provider: any, from: string, catalogType: string) {
-    const catalogConfig = getCatalogConfig(catalogType);
+    const catalogConfig = getCatalogConfig();
     
     if (!catalogConfig) {
         console.error(`❌ Configuración de catálogo no encontrada para tipo: ${catalogType}`);
