@@ -156,9 +156,9 @@ export async function sendSpecificCatalog(
       console.log('⚠️ No hay productos filtrados, usando todos los disponibles');
       filteredProducts = products;
     }
-    
-    // 🔧 LIMITAR A MÁXIMO 10 PRODUCTOS (limitación de WhatsApp)
-    const maxProducts = 10;
+
+    // 🔧 LIMITAR A MÁXIMO 30 PRODUCTOS (limitación de WhatsApp)
+    const maxProducts = 30;
     const selectedProducts = filteredProducts.slice(0, maxProducts);
     
     console.log(`📋 Productos seleccionados para mostrar: ${selectedProducts.length}`);
