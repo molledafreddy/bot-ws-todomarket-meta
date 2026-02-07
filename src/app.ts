@@ -10,8 +10,6 @@ import { getCatalogConfig, CatalogConfig } from './catalog-config'
 // Importar fetch para Node.js si no está disponible globalmente
 const fetch = globalThis.fetch || require('node-fetch')
 
-// Importar funciones alternativas para el catálogo
-import { createProductList, createCategoryProductList } from '../alternative-catalog'
 
 // Railway requires PORT as integer
 const PORT = parseInt(process.env.PORT || '3008', 10)
@@ -536,7 +534,7 @@ async function sendCatalogByType(provider: any, from: string, catalogType: strin
         
         const result = await provider.sendMessageMeta(catalogPayload);
         console.log(`✅ Catálogo ${catalogType} enviado exitosamente`);
-        
+
         return result;
         
     } catch (error: any) {
@@ -658,77 +656,6 @@ async function sendCatalog(provider: any, from: any, catalog: any, catalogType: 
         
     } catch (error) {
         console.error('💥 Error en catálogo oficial, usando alternativa temporal:', error);
-        
-        // 🔄 FALLBACK: Lista interactiva temporal (mientras se corrige el token)
-        try {
-            console.log('🔄 Enviando lista interactiva como alternativa temporal...');
-            
-            const alternativePayload = createProductList(from);
-            const accessToken = process.env.JWT_TOKEN;
-            const phoneNumberId = process.env.NUMBER_ID;
-            
-            const alternativeResponse = await fetch(`https://graph.facebook.com/v18.0/${phoneNumberId}/messages`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${accessToken}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(alternativePayload)
-            });
-            
-            if (alternativeResponse.ok) {
-                const result = await alternativeResponse.json();
-                console.log('✅ LISTA TEMPORAL ENVIADA:', result.messages[0].id);
-                console.log('� Esta es una solución temporal hasta corregir el catálogo oficial');
-                return true;
-            } else {
-                console.error('❌ Error en lista temporal');
-                throw new Error('Fallo en método alternativo');
-            }
-            
-        } catch (alternativeError) {
-            console.error('❌ Error en método alternativo:', alternativeError);
-            
-            // 📞 ÚLTIMO RECURSO: Mensaje de texto con información de contacto
-            const contactMessage = [
-                '❌ *Catálogo temporalmente no disponible*',
-                '',
-                '📞 *Haz tu pedido directamente:*',
-                '+56 9 7964 3935',
-                '',
-                '💬 *O escribe tu pedido aquí:*',
-                '"Quiero [producto] cantidad [número]"',
-                '',
-                '⏰ *Horario:* 2:00 PM - 10:00 PM',
-                '',
-                '🔧 Estamos solucionando el catálogo'
-            ].join('\n');
-            
-            const contactPayload = {
-                messaging_product: "whatsapp",
-                to: from,
-                type: "text",
-                text: { body: contactMessage }
-            };
-            
-            try {
-                await fetch(`https://graph.facebook.com/v18.0/${process.env.NUMBER_ID}/messages`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${process.env.JWT_TOKEN}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(contactPayload)
-                });
-                
-                console.log('✅ Mensaje de contacto directo enviado');
-                return true;
-                
-            } catch (contactError) {
-                console.error('❌ Error total en envío:', contactError);
-                return false;
-            }
-        }
     }
 }
 
@@ -1764,35 +1691,35 @@ const flowProductCategories = addKeyword(['categoria_bebidas', 'categoria_panade
 });
 
 // 🔄 FLUJO PARA VOLVER A CATEGORÍAS
-const flowBackToCategories = addKeyword(['volver_categorias'])
-.addAction(async (ctx, { provider }) => {
-    try {
-        console.log('🔄 Usuario regresando a categorías:', ctx.from);
+// const flowBackToCategories = addKeyword(['volver_categorias'])
+// .addAction(async (ctx, { provider }) => {
+//     try {
+//         console.log('🔄 Usuario regresando a categorías:', ctx.from);
         
-        const from = ctx.from;
-        const categoryList = createProductList(from);
+//         const from = ctx.from;
+//         const categoryList = createProductList(from);
         
-        const accessToken = process.env.JWT_TOKEN;
-        const phoneNumberId = process.env.NUMBER_ID;
+//         const accessToken = process.env.JWT_TOKEN;
+//         const phoneNumberId = process.env.NUMBER_ID;
         
-        const response = await fetch(`https://graph.facebook.com/v18.0/${phoneNumberId}/messages`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${accessToken}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(categoryList)
-        });
+//         const response = await fetch(`https://graph.facebook.com/v18.0/${phoneNumberId}/messages`, {
+//             method: 'POST',
+//             headers: {
+//                 'Authorization': `Bearer ${accessToken}`,
+//                 'Content-Type': 'application/json'
+//             },
+//             body: JSON.stringify(categoryList)
+//         });
         
-        if (response.ok) {
-            const result = await response.json();
-            console.log('✅ Lista de categorías enviada:', result.messages[0].id);
-        }
+//         if (response.ok) {
+//             const result = await response.json();
+//             console.log('✅ Lista de categorías enviada:', result.messages[0].id);
+//         }
         
-    } catch (error) {
-        console.error('💥 Error regresando a categorías:', error);
-    }
-});
+//     } catch (error) {
+//         console.error('💥 Error regresando a categorías:', error);
+//     }
+// });
 
 
 // 🔧 FLUJO GENERAL PARA CAPTURAR RESPUESTAS INTERACTIVAS (NUEVO)
