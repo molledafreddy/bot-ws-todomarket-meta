@@ -536,6 +536,7 @@ async function sendCatalogByType(provider: any, from: string, catalogType: strin
         
         const result = await provider.sendMessageMeta(catalogPayload);
         console.log(`✅ Catálogo ${catalogType} enviado exitosamente`);
+        
         return result;
         
     } catch (error: any) {
