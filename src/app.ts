@@ -1543,7 +1543,7 @@ const flowValidTime = addKeyword<Provider, Database>(EVENTS.WELCOME)
 
         // Validación de horario
         const horaActual = moment();
-        const horario = "10:00-24:00"; // Horario de atención (2:00 PM - 10:00 PM)
+        const horario = "01:00-11:00"; // Horario de atención (2:00 PM - 10:00 PM)
         const rangoHorario = horario.split("-");
         const horaInicio = moment(rangoHorario[0], "HH:mm");
         const horaFin = moment(rangoHorario[1], "HH:mm");
@@ -1559,7 +1559,7 @@ const flowValidTime = addKeyword<Provider, Database>(EVENTS.WELCOME)
         } else {
             console.log('❌ Fuera del horario de atención - Redirigiendo a flowDisable');
             console.log('🔄 Paso 6B: Ejecutando gotoFlow(flowDisable)');
-            return gotoFlow(flowPrincipal); // Flujo para horario no disponible
+            return gotoFlow(flowDisable); // Flujo para horario no disponible
         }
 
     } catch (error) {
