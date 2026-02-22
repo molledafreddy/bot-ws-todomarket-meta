@@ -684,10 +684,10 @@ async function sendCatalogByType(provider: any, from: string, catalogType: strin
 
 
 /**
- * NUEVA FUNCIÓN: Enviar catálogo con 100 productos organizados por categoría
- * ✅ Consulta categorías reales de Meta Business
- * ✅ Organiza en múltiples secciones (máximo 3 por mensaje)
- * ✅ Respeta límites de Meta
+ * NUEVA FUNCIÓN: Enviar catálogo con 100 productos en MÚLTIPLES MENSAJES
+ * ✅ Respeta límite de Meta (30 items por mensaje)
+ * ✅ Envía automáticamente múltiples mensajes
+ * ✅ Sin duplicados
  */
 export async function sendCatalogWith30Products(
   phoneNumber: string,
@@ -708,9 +708,8 @@ export async function sendCatalogWith30Products(
   }
 
   try {
-    console.log(`📤 PASO 1: Consultando 100 productos del catálogo ${catalogKey}...`);
+    console.log(`\n📤 PASO 1: Consultando productos del catálogo ${catalogKey}...`);
     
-    // 🔍 CONSULTAR TODOS LOS PRODUCTOS CON CATEGORÍA
     const productsResponse = await fetch(
       `https://graph.facebook.com/v23.0/${catalog.catalogId}/products?fields=id,name,description,price,currency,retailer_id,category,availability&limit=100`,
       {
@@ -735,74 +734,106 @@ export async function sendCatalogWith30Products(
       throw new Error('No hay productos en el catálogo');
     }
 
-    // 📋 FILTRAR Y ORGANIZAR POR CATEGORÍA REAL
+    // 📋 CATEGORIZAR PRODUCTOS
     const organizedByCategory = categorizeProductsCorrectly(allProducts, catalogKey);
     
-    console.log(`📑 Categorías encontradas: ${Object.keys(organizedByCategory).length}`);
+    console.log(`\n📑 Categorías encontradas: ${Object.keys(organizedByCategory).length}`);
     Object.entries(organizedByCategory).forEach(([category, products]) => {
       console.log(`  • ${category}: ${(products as any[]).length} productos`);
     });
 
-    // 🎯 CREAR SECCIONES RESPETANDO LÍMITES DE META
-    // Meta permite: máximo 3 secciones, máximo 10 items por sección = 30 máximo por mensaje
-    // PERO como tenemos 100 productos, enviaremos 4 mensajes (cada uno con 3 secciones/30 items)
+    // 🔧 CREAR TODOS LOS LOTES DE MENSAJES
+    const messageLotes = createAllCategorizedSectionLotes(organizedByCategory);
     
-    const sections = createCategorizedSections(organizedByCategory);
+    console.log(`\n📤 PASO 2: Preparando ${messageLotes.length} mensaje(s) para envío...`);
     
-    console.log(`📊 Secciones creadas: ${sections.length}`);
+    let successCount = 0;
+    let failureCount = 0;
 
-    // ✅ ENVIAR PRODUCTO_LIST CON PRODUCTOS CATEGORIZADOS
-    const productListMessage = {
-      messaging_product: "whatsapp",
-      recipient_type: "individual",
-      to: phoneNumber,
-      type: "interactive",
-      interactive: {
-        type: "product_list",
-        header: {
-          type: "text",
-          text: `${catalog.emoji} ${catalog.name} - Catálogo Completo`
-        },
-        body: {
-          text: `${catalog.description}\n\n📦 ${allProducts.length} productos disponibles\n\n👇 Selecciona por categoría`
-        },
-        footer: {
-          text: "Agrega al carrito → Finaliza tu compra"
-        },
-        action: {
-          catalog_id: catalog.catalogId,
-          sections: sections
+    // 📤 ENVIAR CADA LOTE EN UN MENSAJE SEPARADO
+    for (const lote of messageLotes) {
+      console.log(`\n📨 Enviando Lote ${lote.loteNumber}/${messageLotes.length}...`);
+      console.log(`   • Items: ${lote.itemsCount}`);
+      console.log(`   • Secciones: ${lote.sections.length}`);
+
+      const productListMessage = {
+        messaging_product: "whatsapp",
+        recipient_type: "individual",
+        to: phoneNumber,
+        type: "interactive",
+        interactive: {
+          type: "product_list",
+          header: {
+            type: "text",
+            text: `${catalog.emoji} ${catalog.name} (${lote.loteNumber}/${messageLotes.length})`
+          },
+          body: {
+            text: `${catalog.description}\n\n📦 Parte ${lote.loteNumber} de ${messageLotes.length}\n${lote.itemsCount} productos en esta sección\n\n👇 Selecciona por categoría`
+          },
+          footer: {
+            text: "Agrega al carrito → Finaliza tu compra"
+          },
+          action: {
+            catalog_id: catalog.catalogId,
+            sections: lote.sections
+          }
         }
+      };
+
+      try {
+        const response = await fetch(
+          `https://graph.facebook.com/v23.0/${numberId}/messages`,
+          {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${jwtToken}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(productListMessage)
+          }
+        );
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          console.error(`❌ Error en Lote ${lote.loteNumber}:`, result);
+          failureCount++;
+          
+          // Intentar enviar igualmente para no detener los siguientes
+          if (result.error?.error_data?.details) {
+            console.error('   Detalle:', result.error.error_data.details);
+          }
+        } else {
+          console.log(`✅ Lote ${lote.loteNumber} enviado exitosamente`);
+          successCount++;
+          
+          // Esperar 500ms entre mensajes para no saturar Meta
+          if (lote.loteNumber < messageLotes.length) {
+            console.log('⏳ Esperando antes del siguiente mensaje...');
+            await new Promise(resolve => setTimeout(resolve, 500));
+          }
+        }
+
+      } catch (error) {
+        console.error(`❌ Error enviando Lote ${lote.loteNumber}:`, error);
+        failureCount++;
       }
-    };
-
-    console.log(`📤 PASO 2: Enviando product_list con ${allProducts.length} productos en ${sections.length} secciones...`);
-
-    // 📤 ENVIAR VÍA API REST
-    const response = await fetch(
-      `https://graph.facebook.com/v23.0/${numberId}/messages`,
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${jwtToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(productListMessage)
-      }
-    );
-
-    const result = await response.json();
-
-    if (!response.ok) {
-      console.error('❌ Error enviando product_list:', result);
-      throw new Error(`API Error: ${result.error?.message}`);
     }
 
-    console.log(`✅ Catálogo con ${allProducts.length} productos enviado exitosamente`);
-    return result;
+    console.log(`\n🎉 ENVÍO COMPLETADO:`);
+    console.log(`   ✅ Éxito: ${successCount}/${messageLotes.length} mensajes`);
+    console.log(`   ❌ Fallos: ${failureCount}/${messageLotes.length} mensajes`);
+    console.log(`   📦 Total de productos: ${allProducts.length}`);
+
+    return {
+      success: successCount > 0,
+      messagesCount: messageLotes.length,
+      successCount,
+      productsCount: allProducts.length
+    };
 
   } catch (error: any) {
-    console.error('❌ Error:', error.message);
+    console.error('❌ Error general:', error.message);
     return {
       success: false,
       error: error.message,
@@ -965,51 +996,205 @@ function categorizeProductsCorrectly(products: any[], catalogKey: string) {
 }
 
 /**
- * FUNCIÓN AUXILIAR: Crear secciones respetando límites de Meta
- * Meta permite máximo 3 secciones con máximo 10 items cada una
+ * FUNCIÓN CORREGIDA: Crear secciones SIN EXCEDER 30 ITEMS
+ * ✅ Respeta LÍMITE DURO de Meta (máximo 30 items por mensaje)
+ * ✅ Retorna array de "lotes" de secciones
  */
 function createCategorizedSections(categorizedProducts: Record<string, any[]>) {
-  const sections = [];
-  const maxItemsPerSection = 20;
-  const maxSections = 3;
-  let currentSectionItems = 0;
-  let currentSection: any = null;
+  const maxItemsPerMessage = 30;      // ⚠️ LÍMITE DURO DE META
+  const maxSectionsPerMessage = 3;    // Meta permite máximo 3 secciones
+  const maxItemsPerSection = 10;      // Meta permite máximo 10 items por sección
+  
+  // Aplanar todos los productos sin repetir
+  const allProductsFlat: any[] = [];
+  const categoryOrder: string[] = [];
 
-  // Procesar cada categoría
   Object.entries(categorizedProducts).forEach(([categoryName, products]) => {
-    // Para cada categoría, crear subsecciones si es necesario
-    for (let i = 0; i < (products as any[]).length; i += maxItemsPerSection) {
-      // Si la sección actual está llena, crear una nueva
-      if (currentSectionItems >= maxItemsPerSection || !currentSection) {
-        if (sections.length < maxSections) {
-          currentSection = {
-            title: categoryName,
-            product_items: []
-          };
-          sections.push(currentSection);
-          currentSectionItems = 0;
-        } else {
-          // Ya alcanzamos el máximo de secciones, salir
-          console.log(`⚠️ Máximo de 3 secciones alcanzado. Los productos restantes se mostrarán en el siguiente mensaje.`);
-          return;
-        }
-      }
-
-      // Agregar productos a la sección actual
-      const itemsToAdd = (products as any[]).slice(i, i + maxItemsPerSection);
-      itemsToAdd.forEach((product: any) => {
-        if (currentSectionItems < maxItemsPerSection) {
-          currentSection.product_items.push({
-            product_retailer_id: product.retailer_id || product.id
-          });
-          currentSectionItems++;
-        }
-      });
-    }
+    categoryOrder.push(categoryName);
+    allProductsFlat.push(...(products as any[]));
   });
 
-  console.log(`📊 ${sections.length} secciones creadas (máximo 3 permitidas por Meta)`);
-  return sections;
+  console.log(`\n📊 DISTRIBUCIÓN DE PRODUCTOS:`);
+  console.log(`   • Total de productos: ${allProductsFlat.length}`);
+  console.log(`   • Límite por mensaje: ${maxItemsPerMessage}`);
+  console.log(`   • Mensajes necesarios: ${Math.ceil(allProductsFlat.length / maxItemsPerMessage)}`);
+
+  // 🔧 CREAR LOTES DE MENSAJES (cada uno con máximo 30 items)
+  const messageLotes = [];
+  let currentLoteIndex = 0;
+  let itemsInCurrentLote = 0;
+  let currentMessageSections = [];
+  let currentSection: any = null;
+  let itemsInCurrentSection = 0;
+
+  for (const product of allProductsFlat) {
+    // Si el lote actual está lleno (30 items), crear nuevo lote
+    if (itemsInCurrentLote >= maxItemsPerMessage) {
+      console.log(`✅ Lote ${currentLoteIndex + 1} completado: ${itemsInCurrentLote} items`);
+      
+      messageLotes.push({
+        loteNumber: currentLoteIndex + 1,
+        sections: currentMessageSections,
+        itemsCount: itemsInCurrentLote
+      });
+
+      currentLoteIndex++;
+      itemsInCurrentLote = 0;
+      currentMessageSections = [];
+      currentSection = null;
+      itemsInCurrentSection = 0;
+    }
+
+    // Si la sección actual está llena, crear nueva sección
+    if (itemsInCurrentSection >= maxItemsPerSection) {
+      currentSection = null;
+      itemsInCurrentSection = 0;
+    }
+
+    // Si no hay sección actual, crear una
+    if (!currentSection) {
+      // Si ya alcanzamos máximo de secciones por mensaje, crear nueva
+      if (currentMessageSections.length >= maxSectionsPerMessage) {
+        console.log(`⚠️ Máximo de ${maxSectionsPerMessage} secciones por mensaje alcanzado`);
+        
+        messageLotes.push({
+          loteNumber: currentLoteIndex + 1,
+          sections: currentMessageSections,
+          itemsCount: itemsInCurrentLote
+        });
+
+        currentLoteIndex++;
+        itemsInCurrentLote = 0;
+        currentMessageSections = [];
+        itemsInCurrentSection = 0;
+      }
+
+      // Crear nueva sección
+      const categoryForSection = categoryOrder[currentMessageSections.length] || '📦 Productos';
+      currentSection = {
+        title: categoryForSection.substring(0, 30), // Meta limita a 30 caracteres
+        product_items: []
+      };
+      currentMessageSections.push(currentSection);
+      itemsInCurrentSection = 0;
+    }
+
+    // Agregar producto a la sección actual
+    currentSection.product_items.push({
+      product_retailer_id: product.retailer_id || product.id
+    });
+
+    itemsInCurrentSection++;
+    itemsInCurrentLote++;
+  }
+
+  // Agregar el último lote si tiene items
+  if (currentMessageSections.length > 0) {
+    messageLotes.push({
+      loteNumber: currentLoteIndex + 1,
+      sections: currentMessageSections,
+      itemsCount: itemsInCurrentLote
+    });
+
+    console.log(`✅ Lote ${currentLoteIndex + 1} completado: ${itemsInCurrentLote} items`);
+  }
+
+  console.log(`\n📤 RESUMEN DE LOTES PARA ENVIAR:`);
+  messageLotes.forEach((lote) => {
+    console.log(`   • Lote ${lote.loteNumber}: ${lote.itemsCount} items en ${lote.sections.length} secciones`);
+    lote.sections.forEach((section: any) => {
+      console.log(`     └─ ${section.title}: ${section.product_items.length} items`);
+    });
+  });
+
+  // Retornar solo el PRIMER lote (para usar en la función actual)
+  // Los demás se enviarán en mensajes posteriores
+  return messageLotes[0]?.sections || [];
+}
+
+/**
+ * FUNCIÓN AUXILIAR: Obtener todos los lotes para envío progresivo
+ */
+function createAllCategorizedSectionLotes(categorizedProducts: Record<string, any[]>) {
+  const maxItemsPerMessage = 30;
+  const maxSectionsPerMessage = 3;
+  const maxItemsPerSection = 10;
+  
+  const allProductsFlat: any[] = [];
+  const categoryOrder: string[] = [];
+
+  Object.entries(categorizedProducts).forEach(([categoryName, products]) => {
+    categoryOrder.push(categoryName);
+    allProductsFlat.push(...(products as any[]));
+  });
+
+  const messageLotes = [];
+  let currentLoteIndex = 0;
+  let itemsInCurrentLote = 0;
+  let currentMessageSections = [];
+  let currentSection: any = null;
+  let itemsInCurrentSection = 0;
+
+  for (const product of allProductsFlat) {
+    if (itemsInCurrentLote >= maxItemsPerMessage) {
+      messageLotes.push({
+        loteNumber: currentLoteIndex + 1,
+        sections: currentMessageSections,
+        itemsCount: itemsInCurrentLote
+      });
+
+      currentLoteIndex++;
+      itemsInCurrentLote = 0;
+      currentMessageSections = [];
+      currentSection = null;
+      itemsInCurrentSection = 0;
+    }
+
+    if (itemsInCurrentSection >= maxItemsPerSection) {
+      currentSection = null;
+      itemsInCurrentSection = 0;
+    }
+
+    if (!currentSection) {
+      if (currentMessageSections.length >= maxSectionsPerMessage) {
+        messageLotes.push({
+          loteNumber: currentLoteIndex + 1,
+          sections: currentMessageSections,
+          itemsCount: itemsInCurrentLote
+        });
+
+        currentLoteIndex++;
+        itemsInCurrentLote = 0;
+        currentMessageSections = [];
+        itemsInCurrentSection = 0;
+      }
+
+      const categoryForSection = categoryOrder[currentMessageSections.length] || '📦 Productos';
+      currentSection = {
+        title: categoryForSection.substring(0, 30),
+        product_items: []
+      };
+      currentMessageSections.push(currentSection);
+      itemsInCurrentSection = 0;
+    }
+
+    currentSection.product_items.push({
+      product_retailer_id: product.retailer_id || product.id
+    });
+
+    itemsInCurrentSection++;
+    itemsInCurrentLote++;
+  }
+
+  if (currentMessageSections.length > 0) {
+    messageLotes.push({
+      loteNumber: currentLoteIndex + 1,
+      sections: currentMessageSections,
+      itemsCount: itemsInCurrentLote
+    });
+  }
+
+  return messageLotes;
 }
 
 /**
