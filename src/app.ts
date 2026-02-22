@@ -733,7 +733,7 @@ export async function sendCatalogWith30Products(
     }
 
     // 📋 FILTRAR SOLO 30 PRODUCTOS MÁXIMO
-    const selectedProducts = allProducts.slice(0, 30);
+    const selectedProducts = allProducts.slice(0, 40);
     console.log(`📊 Productos seleccionados para enviar: ${selectedProducts.length}`);
 
     // 🏷️ ORGANIZAR PRODUCTOS EN SECCIONES (máximo 3 secciones, máximo 10 items por sección)
