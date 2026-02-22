@@ -811,9 +811,10 @@ export async function sendCatalogWith30Products(
 }
 
 /**
- * FUNCIÓN AUXILIAR: Categorizar productos CORRECTAMENTE
- * ✅ Usa categoría real de Meta, no solo keywords
- * ✅ Filtrado inteligente según el catálogo seleccionado
+ * FUNCIÓN MEJORADA: Categorizar productos CORRECTAMENTE
+ * ✅ Filtrado más preciso
+ * ✅ Menos productos en "Otros"
+ * ✅ Categorías reales de Meta priorizadas
  */
 function categorizeProductsCorrectly(products: any[], catalogKey: string) {
   const categorized: Record<string, any[]> = {};
@@ -863,50 +864,79 @@ function categorizeProductsCorrectly(products: any[], catalogKey: string) {
     'other': '📦 Otros'
   };
 
-  // Procesar cada producto
+  // Procesar cada producto CON MEJOR LÓGICA
   products.forEach((product: any) => {
     let category = '📦 Otros'; // Categoría por defecto
     
     // PRIORIDAD 1: Usar categoría de Meta (si existe)
     if (product.category) {
-      const metaCategory = product.category.toLowerCase();
-      category = categoryNames[metaCategory] || `📦 ${product.category}`;
+      const metaCategory = product.category.toLowerCase().trim();
+      
+      // Búsqueda exacta primero
+      if (categoryNames[metaCategory]) {
+        category = categoryNames[metaCategory];
+        console.log(`✅ Categoría Meta encontrada: ${metaCategory} → ${category}`);
+      } else {
+        // Búsqueda parcial
+        const partialMatch = Object.keys(categoryNames).find(key =>
+          metaCategory.includes(key) || key.includes(metaCategory)
+        );
+        
+        if (partialMatch) {
+          category = categoryNames[partialMatch];
+          console.log(`✅ Categoría parcial encontrada: ${metaCategory} → ${category}`);
+        } else {
+          category = `📦 ${product.category}`;
+          console.log(`⚠️ Categoría desconocida: ${metaCategory} → ${category}`);
+        }
+      }
     }
-    // PRIORIDAD 2: Filtrado inteligente por nombre + descripción
+    // PRIORIDAD 2: Filtrado inteligente por nombre + descripción (MEJORADO)
     else {
       const productName = (product.name || '').toLowerCase();
       const productDesc = (product.description || '').toLowerCase();
       const fullText = `${productName} ${productDesc}`;
 
-      // Búsqueda más precisa (palabras completas, no subcadenas)
+      // Expresiones regulares más específicas
       if (catalogKey === 'bebidas') {
-        // Catálogo de SOLO bebidas
-        if (fullText.match(/\b(coca|pepsi|sprite|fanta|gaseosa|refresco)\b/)) category = '🥤 Gaseosas';
-        else if (fullText.match(/\b(agua|purificada|mineral|saborizada)\b/)) category = '💧 Aguas';
-        else if (fullText.match(/\b(jugo|néctar|concentrate)\b/)) category = '🧃 Jugos';
-        else if (fullText.match(/\b(café|coffee|té|tea)\b/)) category = '☕ Café y Té';
-        else if (fullText.match(/\b(cerveza|beer|vino|wine|pisco)\b/)) category = '🍺 Alcohólicas';
-        else if (fullText.match(/\b(energética|energy|gatorade|powerade)\b/)) category = '⚡ Energéticas';
-        else category = '🥤 Otras Bebidas';
+        // Catálogo de SOLO bebidas - ORDEN IMPORTA
+        if (fullText.match(/\b(coca|pepsi|sprite|fanta|7up|soda)\b/)) 
+          category = '🥤 Gaseosas';
+        else if (fullText.match(/\b(agua|mineral|purificad|saborizada)\b/)) 
+          category = '💧 Aguas';
+        else if (fullText.match(/\b(jugo|néctar|concentrate|watts)\b/)) 
+          category = '🧃 Jugos';
+        else if (fullText.match(/\b(café|coffee|expreso|capuchino|té|tea|mate)\b/)) 
+          category = '☕ Café y Té';
+        else if (fullText.match(/\b(cerveza|beer|vino|wine|pisco|licor|alcohólica)\b/)) 
+          category = '🍺 Alcohólicas';
+        else if (fullText.match(/\b(energética|energy|gatorade|powerade|red bull|monster)\b/)) 
+          category = '⚡ Energéticas';
+        else if (fullText.match(/\b(bebida|refresco|beber|drink)\b/))
+          category = '🥤 Otras Bebidas';
+        else 
+          category = '🥤 Otras Bebidas';
+
       } else if (catalogKey === 'principal') {
-        // Catálogo GENERAL
-        if (fullText.match(/\b(coca|pepsi|sprite|fanta|gaseosa|refresco|agua|jugo|bebida|cerveza)\b/)) 
+        // Catálogo GENERAL - ORDEN IMPORTA
+        if (fullText.match(/\b(coca|pepsi|sprite|fanta|7up|soda|refresco|gaseosa)\b/)) 
           category = '🥤 Bebidas';
-        else if (fullText.match(/\b(pan|molde|hallulla|baguette|integral|blanco)\b/)) 
+        else if (fullText.match(/\b(pan|molde|hallulla|baguette|integral|blanco|pan)\b/)) 
           category = '🍞 Panadería';
-        else if (fullText.match(/\b(leche|yogurt|queso|mantequilla|crema|huevo)\b/)) 
+        else if (fullText.match(/\b(leche|yogurt|queso|mantequilla|crema|huevo|lácteo)\b/)) 
           category = '🥛 Lácteos y Huevos';
-        else if (fullText.match(/\b(arroz|fideos|pasta|aceite|azúcar|sal|harina)\b/)) 
+        else if (fullText.match(/\b(arroz|fideos|pasta|aceite|azúcar|sal|harina|abarrote)\b/)) 
           category = '🌾 Abarrotes';
-        else if (fullText.match(/\b(manzana|plátano|naranja|tomate|papa|zanahoria|lechuga|brócoli|frutas|verduras)\b/)) 
+        else if (fullText.match(/\b(manzana|plátano|naranja|tomate|papa|zanahoria|lechuga|brócoli|fruta|verdura|produce)\b/)) 
           category = '🍎 Frutas y Verduras';
-        else if (fullText.match(/\b(detergente|jabón|champú|papel|limpieza|desinfectante)\b/)) 
+        else if (fullText.match(/\b(detergente|jabón|champú|papel|limpieza|desinfectante|limpiador)\b/)) 
           category = '🧼 Limpieza';
-        else if (fullText.match(/\b(snack|chips|galletas|chocolate|dulces|caramelos)\b/)) 
+        else if (fullText.match(/\b(snack|chips|galleta|chocolate|dulce|caramelo|golosina)\b/)) 
           category = '🍿 Snacks';
-        else if (fullText.match(/\b(congelado|helado|pizza|papas fritas)\b/)) 
+        else if (fullText.match(/\b(congelado|helado|pizza|papas fritas|congelada)\b/)) 
           category = '❄️ Congelados';
-        else category = '📦 Otros';
+        else 
+          category = '📦 Otros';
       }
     }
 
@@ -925,7 +955,11 @@ function categorizeProductsCorrectly(products: any[], catalogKey: string) {
       return acc;
     }, {} as Record<string, any[]>);
 
-  console.log('✅ Productos categorizados correctamente');
+  console.log('\n✅ CATEGORIZACIÓN COMPLETADA:');
+  Object.entries(sorted).forEach(([category, products]) => {
+    console.log(`   ${category}: ${(products as any[]).length} productos`);
+  });
+
   return sorted;
 }
 
@@ -935,7 +969,7 @@ function categorizeProductsCorrectly(products: any[], catalogKey: string) {
  */
 function createCategorizedSections(categorizedProducts: Record<string, any[]>) {
   const sections = [];
-  const maxItemsPerSection = 10;
+  const maxItemsPerSection = 20;
   const maxSections = 3;
   let currentSectionItems = 0;
   let currentSection: any = null;
