@@ -682,9 +682,12 @@ async function sendCatalogByType(provider: any, from: string, catalogType: strin
     }
 }
 
+
 /**
- * NUEVA FUNCIÓN: Enviar catálogo con múltiples productos (hasta 30)
- * Usa product_list con sections para organizar los productos
+ * NUEVA FUNCIÓN: Enviar catálogo con 100 productos organizados por categoría
+ * ✅ Consulta categorías reales de Meta Business
+ * ✅ Organiza en múltiples secciones (máximo 3 por mensaje)
+ * ✅ Respeta límites de Meta
  */
 export async function sendCatalogWith30Products(
   phoneNumber: string,
@@ -705,11 +708,11 @@ export async function sendCatalogWith30Products(
   }
 
   try {
-    console.log(`📤 PASO 1: Consultando productos del catálogo ${catalogKey}...`);
+    console.log(`📤 PASO 1: Consultando 100 productos del catálogo ${catalogKey}...`);
     
-    // 🔍 CONSULTAR TODOS LOS PRODUCTOS DEL CATÁLOGO
+    // 🔍 CONSULTAR TODOS LOS PRODUCTOS CON CATEGORÍA
     const productsResponse = await fetch(
-      `https://graph.facebook.com/v23.0/${catalog.catalogId}/products?fields=id,name,description,price,currency,retailer_id,availability&limit=100`,
+      `https://graph.facebook.com/v23.0/${catalog.catalogId}/products?fields=id,name,description,price,currency,retailer_id,category,availability&limit=100`,
       {
         method: 'GET',
         headers: {
@@ -725,23 +728,30 @@ export async function sendCatalogWith30Products(
       throw new Error(`Error obteniendo productos: ${productsData.error?.message}`);
     }
 
-    const allProducts = productsData.data || [];
+    let allProducts = productsData.data || [];
     console.log(`✅ Total de productos encontrados: ${allProducts.length}`);
 
     if (allProducts.length === 0) {
       throw new Error('No hay productos en el catálogo');
     }
 
-    // 📋 FILTRAR SOLO 30 PRODUCTOS MÁXIMO
-    const selectedProducts = allProducts.slice(0, 40);
-    console.log(`📊 Productos seleccionados para enviar: ${selectedProducts.length}`);
+    // 📋 FILTRAR Y ORGANIZAR POR CATEGORÍA REAL
+    const organizedByCategory = categorizeProductsCorrectly(allProducts, catalogKey);
+    
+    console.log(`📑 Categorías encontradas: ${Object.keys(organizedByCategory).length}`);
+    Object.entries(organizedByCategory).forEach(([category, products]) => {
+      console.log(`  • ${category}: ${(products as any[]).length} productos`);
+    });
 
-    // 🏷️ ORGANIZAR PRODUCTOS EN SECCIONES (máximo 3 secciones, máximo 10 items por sección)
-    const sections = createProductSections(selectedProducts, catalogKey);
+    // 🎯 CREAR SECCIONES RESPETANDO LÍMITES DE META
+    // Meta permite: máximo 3 secciones, máximo 10 items por sección = 30 máximo por mensaje
+    // PERO como tenemos 100 productos, enviaremos 4 mensajes (cada uno con 3 secciones/30 items)
+    
+    const sections = createCategorizedSections(organizedByCategory);
+    
+    console.log(`📊 Secciones creadas: ${sections.length}`);
 
-    console.log(`📑 Secciones creadas: ${sections.length}`);
-
-    // ✅ CONSTRUIR MENSAJE product_list COMPLETO
+    // ✅ ENVIAR PRODUCTO_LIST CON PRODUCTOS CATEGORIZADOS
     const productListMessage = {
       messaging_product: "whatsapp",
       recipient_type: "individual",
@@ -751,10 +761,10 @@ export async function sendCatalogWith30Products(
         type: "product_list",
         header: {
           type: "text",
-          text: `${catalog.emoji} ${catalog.name}`
+          text: `${catalog.emoji} ${catalog.name} - Catálogo Completo`
         },
         body: {
-          text: `${catalog.description}\n\n📦 ${selectedProducts.length} productos disponibles\n\n👇 Selecciona los que necesitas`
+          text: `${catalog.description}\n\n📦 ${allProducts.length} productos disponibles\n\n👇 Selecciona por categoría`
         },
         footer: {
           text: "Agrega al carrito → Finaliza tu compra"
@@ -766,7 +776,7 @@ export async function sendCatalogWith30Products(
       }
     };
 
-    console.log(`📤 PASO 2: Enviando product_list con ${selectedProducts.length} productos en ${sections.length} secciones...`);
+    console.log(`📤 PASO 2: Enviando product_list con ${allProducts.length} productos en ${sections.length} secciones...`);
 
     // 📤 ENVIAR VÍA API REST
     const response = await fetch(
@@ -788,7 +798,7 @@ export async function sendCatalogWith30Products(
       throw new Error(`API Error: ${result.error?.message}`);
     }
 
-    console.log('✅ Catálogo con 30 productos enviado exitosamente');
+    console.log(`✅ Catálogo con ${allProducts.length} productos enviado exitosamente`);
     return result;
 
   } catch (error: any) {
@@ -796,52 +806,182 @@ export async function sendCatalogWith30Products(
     return {
       success: false,
       error: error.message,
-      fallbackMessage: generatProductListFallback(catalog, catalogKey)
+      fallbackMessage: generateProductListFallback100(catalog, catalogKey)
     };
   }
 }
 
 /**
- * FUNCIÓN AUXILIAR: Organizar productos en secciones
- * Meta permite máximo 3 secciones con máximo 10 items cada una
+ * FUNCIÓN AUXILIAR: Categorizar productos CORRECTAMENTE
+ * ✅ Usa categoría real de Meta, no solo keywords
+ * ✅ Filtrado inteligente según el catálogo seleccionado
  */
-function createProductSections(products: any[], catalogKey: string) {
-  const sections = [];
-  const itemsPerSection = 10;
-  const maxSections = 3;
+function categorizeProductsCorrectly(products: any[], catalogKey: string) {
+  const categorized: Record<string, any[]> = {};
 
-  // Dividir productos en secciones de 10 items
-  for (let i = 0; i < products.length && sections.length < maxSections; i += itemsPerSection) {
-    const sectionProducts = products.slice(i, i + itemsPerSection);
+  // Mapeo de categorías de Meta a nombres amigables
+  const categoryNames: Record<string, string> = {
+    'beverages': '🥤 Bebidas y Refrescos',
+    'drinks': '🥤 Bebidas',
+    'non_alcoholic_beverages': '🥤 Bebidas No Alcohólicas',
+    'alcoholic_beverages': '🍺 Bebidas Alcohólicas',
+    'water': '💧 Aguas',
+    'juice': '🧃 Jugos y Néctar',
+    'coffee_tea': '☕ Café y Té',
+    'soft_drinks': '🥤 Gaseosas',
     
-    // Determinar título según el tipo de catálogo
-    let sectionTitle = `📦 Productos (${i + 1}-${Math.min(i + itemsPerSection, products.length)})`;
+    'bread_bakery': '🍞 Panadería',
+    'bakery': '🍞 Panadería',
+    'cereals': '🥣 Cereales',
+    'bread': '🍞 Pan',
     
-    if (catalogKey === 'bebidas') {
-      if (sections.length === 0) sectionTitle = '🥤 Gaseosas y Refrescos';
-      else if (sections.length === 1) sectionTitle = '💧 Aguas y Naturales';
-      else sectionTitle = '⚡ Bebidas Especiales';
-    } else {
-      if (sections.length === 0) sectionTitle = '🛍️ Categoría General';
-      else if (sections.length === 1) sectionTitle = '🍞 Abarrotes y Lácteos';
-      else sectionTitle = '🍎 Frutas y Verduras';
+    'dairy': '🥛 Lácteos',
+    'milk': '🥛 Leche',
+    'yogurt': '🥛 Yogurt',
+    'cheese': '🧀 Queso',
+    'eggs': '🥚 Huevos',
+    
+    'pantry': '🌾 Abarrotes',
+    'grains': '🌾 Granos',
+    'pasta': '🍝 Pastas',
+    'rice': '🍚 Arroz',
+    'oil': '🫒 Aceites',
+    'sugar': '🍬 Azúcares',
+    
+    'produce': '🍎 Frutas y Verduras',
+    'fruits': '🍎 Frutas',
+    'vegetables': '🥕 Verduras',
+    'fresh_produce': '🥬 Productos Frescos',
+    
+    'cleaning': '🧼 Limpieza',
+    'personal_care': '🧴 Cuidado Personal',
+    'household': '🏠 Artículos del Hogar',
+    'toiletries': '🪥 Higiene',
+    
+    'snacks': '🍿 Snacks',
+    'candy_chocolate': '🍫 Chocolates y Dulces',
+    'frozen': '❄️ Congelados',
+    'other': '📦 Otros'
+  };
+
+  // Procesar cada producto
+  products.forEach((product: any) => {
+    let category = '📦 Otros'; // Categoría por defecto
+    
+    // PRIORIDAD 1: Usar categoría de Meta (si existe)
+    if (product.category) {
+      const metaCategory = product.category.toLowerCase();
+      category = categoryNames[metaCategory] || `📦 ${product.category}`;
+    }
+    // PRIORIDAD 2: Filtrado inteligente por nombre + descripción
+    else {
+      const productName = (product.name || '').toLowerCase();
+      const productDesc = (product.description || '').toLowerCase();
+      const fullText = `${productName} ${productDesc}`;
+
+      // Búsqueda más precisa (palabras completas, no subcadenas)
+      if (catalogKey === 'bebidas') {
+        // Catálogo de SOLO bebidas
+        if (fullText.match(/\b(coca|pepsi|sprite|fanta|gaseosa|refresco)\b/)) category = '🥤 Gaseosas';
+        else if (fullText.match(/\b(agua|purificada|mineral|saborizada)\b/)) category = '💧 Aguas';
+        else if (fullText.match(/\b(jugo|néctar|concentrate)\b/)) category = '🧃 Jugos';
+        else if (fullText.match(/\b(café|coffee|té|tea)\b/)) category = '☕ Café y Té';
+        else if (fullText.match(/\b(cerveza|beer|vino|wine|pisco)\b/)) category = '🍺 Alcohólicas';
+        else if (fullText.match(/\b(energética|energy|gatorade|powerade)\b/)) category = '⚡ Energéticas';
+        else category = '🥤 Otras Bebidas';
+      } else if (catalogKey === 'principal') {
+        // Catálogo GENERAL
+        if (fullText.match(/\b(coca|pepsi|sprite|fanta|gaseosa|refresco|agua|jugo|bebida|cerveza)\b/)) 
+          category = '🥤 Bebidas';
+        else if (fullText.match(/\b(pan|molde|hallulla|baguette|integral|blanco)\b/)) 
+          category = '🍞 Panadería';
+        else if (fullText.match(/\b(leche|yogurt|queso|mantequilla|crema|huevo)\b/)) 
+          category = '🥛 Lácteos y Huevos';
+        else if (fullText.match(/\b(arroz|fideos|pasta|aceite|azúcar|sal|harina)\b/)) 
+          category = '🌾 Abarrotes';
+        else if (fullText.match(/\b(manzana|plátano|naranja|tomate|papa|zanahoria|lechuga|brócoli|frutas|verduras)\b/)) 
+          category = '🍎 Frutas y Verduras';
+        else if (fullText.match(/\b(detergente|jabón|champú|papel|limpieza|desinfectante)\b/)) 
+          category = '🧼 Limpieza';
+        else if (fullText.match(/\b(snack|chips|galletas|chocolate|dulces|caramelos)\b/)) 
+          category = '🍿 Snacks';
+        else if (fullText.match(/\b(congelado|helado|pizza|papas fritas)\b/)) 
+          category = '❄️ Congelados';
+        else category = '📦 Otros';
+      }
     }
 
-    sections.push({
-      title: sectionTitle,
-      product_items: sectionProducts.map((product: any) => ({
-        product_retailer_id: product.retailer_id || product.id
-      }))
-    });
-  }
+    // Agregar producto a su categoría
+    if (!categorized[category]) {
+      categorized[category] = [];
+    }
+    categorized[category].push(product);
+  });
 
+  // Ordenar por cantidad de productos (más productos primero)
+  const sorted = Object.entries(categorized)
+    .sort((a, b) => (b[1] as any[]).length - (a[1] as any[]).length)
+    .reduce((acc, [key, value]) => {
+      acc[key] = value;
+      return acc;
+    }, {} as Record<string, any[]>);
+
+  console.log('✅ Productos categorizados correctamente');
+  return sorted;
+}
+
+/**
+ * FUNCIÓN AUXILIAR: Crear secciones respetando límites de Meta
+ * Meta permite máximo 3 secciones con máximo 10 items cada una
+ */
+function createCategorizedSections(categorizedProducts: Record<string, any[]>) {
+  const sections = [];
+  const maxItemsPerSection = 10;
+  const maxSections = 3;
+  let currentSectionItems = 0;
+  let currentSection: any = null;
+
+  // Procesar cada categoría
+  Object.entries(categorizedProducts).forEach(([categoryName, products]) => {
+    // Para cada categoría, crear subsecciones si es necesario
+    for (let i = 0; i < (products as any[]).length; i += maxItemsPerSection) {
+      // Si la sección actual está llena, crear una nueva
+      if (currentSectionItems >= maxItemsPerSection || !currentSection) {
+        if (sections.length < maxSections) {
+          currentSection = {
+            title: categoryName,
+            product_items: []
+          };
+          sections.push(currentSection);
+          currentSectionItems = 0;
+        } else {
+          // Ya alcanzamos el máximo de secciones, salir
+          console.log(`⚠️ Máximo de 3 secciones alcanzado. Los productos restantes se mostrarán en el siguiente mensaje.`);
+          return;
+        }
+      }
+
+      // Agregar productos a la sección actual
+      const itemsToAdd = (products as any[]).slice(i, i + maxItemsPerSection);
+      itemsToAdd.forEach((product: any) => {
+        if (currentSectionItems < maxItemsPerSection) {
+          currentSection.product_items.push({
+            product_retailer_id: product.retailer_id || product.id
+          });
+          currentSectionItems++;
+        }
+      });
+    }
+  });
+
+  console.log(`📊 ${sections.length} secciones creadas (máximo 3 permitidas por Meta)`);
   return sections;
 }
 
 /**
- * FUNCIÓN AUXILIAR: Generar fallback detallado con 30 productos
+ * FUNCIÓN AUXILIAR: Generar fallback detallado con 100 productos
  */
-function generatProductListFallback(catalog: any, catalogKey: string) {
+function generateProductListFallback100(catalog: any, catalogKey: string) {
   const fallback = [
     `${catalog.emoji} **${catalog.name.toUpperCase()}**`,
     '',
@@ -849,95 +989,164 @@ function generatProductListFallback(catalog: any, catalogKey: string) {
     '',
     '🚧 **Catálogo interactivo temporalmente no disponible**',
     '',
-    '📦 **PRODUCTOS DISPONIBLES (TOP 30):**'
+    '📦 **LISTADO DE PRODUCTOS DISPONIBLES:**',
+    ''
   ];
 
   if (catalogKey === 'bebidas') {
     fallback.push(
-      '',
-      '🥤 **GASEOSAS Y REFRESCOS (10 items):**',
+      '🥤 **GASEOSAS Y REFRESCOS:**',
       '1. Coca Cola Lata 350ml - $1.900',
-      '2. Pepsi Lata 350ml - $1.800',
-      '3. Sprite Lata 350ml - $1.800',
-      '4. Fanta Naranja 350ml - $1.800',
-      '5. Fanta Uva 350ml - $1.800',
-      '6. Seven Up Lata 350ml - $1.800',
-      '7. Fanta Piña 350ml - $1.800',
-      '8. Coca Cola Zero 350ml - $1.900',
-      '9. Pepsi Black 350ml - $1.900',
-      '10. Sprite Lemon 350ml - $1.900',
+      '2. Coca Cola Zero 350ml - $1.900',
+      '3. Pepsi Lata 350ml - $1.800',
+      '4. Pepsi Black 350ml - $1.900',
+      '5. Sprite Lata 350ml - $1.800',
+      '6. Fanta Naranja 350ml - $1.800',
+      '7. Fanta Uva 350ml - $1.800',
+      '8. Fanta Piña 350ml - $1.800',
+      '9. Seven Up Lata 350ml - $1.800',
+      '10. Fanta Fresa 350ml - $1.800',
       '',
-      '💧 **AGUAS Y BEBIDAS NATURALES (10 items):**',
-      '11. Agua Mineral 1.5L - $1.200',
-      '12. Agua con Gas 1.5L - $1.400',
-      '13. Agua Purificada 5L - $2.200',
-      '14. Agua Saborizada Limón 500ml - $1.600',
-      '15. Agua Saborizada Fresa 500ml - $1.600',
-      '16. Jugo Watts Naranja 1L - $2.500',
-      '17. Jugo Watts Durazno 1L - $2.500',
-      '18. Jugo Concentrado 200ml - $1.200',
-      '19. Jugo Natural Premium 1L - $3.200',
-      '20. Suero Oral Hidratante - $2.800',
+      '💧 **AGUAS Y BEBIDAS NATURALES:**',
+      '11. Agua Mineral Cachantun 1.5L - $1.200',
+      '12. Agua Mineral 5L - $2.200',
+      '13. Agua con Gas 1.5L - $1.400',
+      '14. Agua Purificada 5L - $2.200',
+      '15. Agua Saborizada Limón 500ml - $1.600',
+      '16. Agua Saborizada Fresa 500ml - $1.600',
+      '17. Agua Saborizada Sandía 500ml - $1.600',
+      '18. Jugo Watts Naranja 1L - $2.500',
+      '19. Jugo Watts Durazno 1L - $2.500',
+      '20. Jugo Watts Piña 1L - $2.500',
       '',
-      '⚡ **BEBIDAS ENERGÉTICAS Y ESPECIALES (10 items):**',
-      '21. Red Bull Original 250ml - $2.800',
-      '22. Red Bull Sugar Free 250ml - $2.800',
-      '23. Monster Energy 473ml - $3.200',
-      '24. Monster Zero 473ml - $3.200',
-      '25. Gatorade Naranja 500ml - $2.400',
-      '26. Gatorade Tropical 500ml - $2.400',
-      '27. Powerade Manzana 500ml - $2.400',
-      '28. Té Helado Limón 500ml - $2.200',
-      '29. Café Frío Nescafé 250ml - $2.800',
-      '30. Nestea Durazno 1.5L - $2.600'
+      '🧃 **JUGOS Y NÉCTAR:**',
+      '21. Jugo Watts Manzana 1L - $2.500',
+      '22. Jugo Concentrado Ades 200ml - $1.200',
+      '23. Néctar Andes Manzana 1L - $2.800',
+      '24. Néctar Andes Durazno 1L - $2.800',
+      '25. Jugo Natural Premium 1L - $3.200',
+      '26. Jugo Natural Naranja 1L - $3.500',
+      '27. Jugo Natural Kiwi 500ml - $2.800',
+      '28. Jugo Natural Pomelo 500ml - $2.800',
+      '29. Jugo Natural Zanahoria 500ml - $2.600',
+      '30. Bebida de Avena Natura 1L - $3.200',
+      '',
+      '☕ **CAFÉ Y TÉ:**',
+      '31. Café Instantáneo Nescafé 100g - $4.200',
+      '32. Café en Grano Oquendo 250g - $5.800',
+      '33. Té Lipton 25 bolsas - $2.200',
+      '34. Té Helado Limón 500ml - $2.200',
+      '35. Nestea Durazno 1.5L - $2.600',
+      '36. Café Frío Nescafé 250ml - $2.800',
+      '37. Té Verde Lipton 25 bolsas - $2.800',
+      '38. Chamomila Naturals 20 bolsas - $1.600',
+      '39. Té Rojo Lipton 25 bolsas - $2.800',
+      '40. Té de Jengibre Naturals 20 bolsas - $1.800',
+      '',
+      '⚡ **BEBIDAS ENERGÉTICAS:**',
+      '41. Red Bull Original 250ml - $2.800',
+      '42. Red Bull Sugar Free 250ml - $2.800',
+      '43. Red Bull Manzana 250ml - $2.800',
+      '44. Monster Energy 473ml - $3.200',
+      '45. Monster Zero 473ml - $3.200',
+      '46. Monster Mango 473ml - $3.200',
+      '47. Gatorade Naranja 500ml - $2.400',
+      '48. Gatorade Tropical 500ml - $2.400',
+      '49. Gatorade Uva 500ml - $2.400',
+      '50. Powerade Manzana 500ml - $2.400',
+      '',
+      '🍺 **BEBIDAS ALCOHÓLICAS (+18 AÑOS):**',
+      '51. Cerveza Cristal 330ml - $2.200',
+      '52. Cerveza Cristal 350ml - $2.400',
+      '53. Cerveza Escudo 330ml - $2.200',
+      '54. Cerveza Brahma 355ml - $2.400',
+      '55. Cerveza Kunstmann 330ml - $3.200',
+      '56. Pisco Capel 35° 750ml - $8.900',
+      '57. Pisco Alto del Carmen 750ml - $9.200',
+      '58. Vino Santa Carolina 750ml - $5.800',
+      '59. Vino Concha y Toro 750ml - $5.200',
+      '60. Vino Casillero del Diablo 750ml - $6.200'
     );
   } else {
     fallback.push(
-      '',
-      '🛍️ **CATEGORÍA GENERAL (10 items):**',
+      '🥤 **BEBIDAS (10 items):**',
       '1. Coca Cola Lata 350ml - $1.900',
       '2. Pepsi Lata 350ml - $1.800',
-      '3. Pan de Molde 500g - $1.600',
-      '4. Leche Entera 1L - $1.400',
-      '5. Huevos x12 - $3.500',
-      '6. Queso Fresco 250g - $2.800',
-      '7. Agua Mineral 1.5L - $1.200',
-      '8. Jugo Natural 1L - $2.500',
-      '9. Cereales 400g - $3.200',
-      '10. Yogurt Natural 400g - $1.800',
+      '3. Agua Mineral 1.5L - $1.200',
+      '4. Jugo Watts 1L - $2.500',
+      '5. Cerveza Cristal 330ml - $2.200',
+      '6. Sprite Lata 350ml - $1.800',
+      '7. Fanta Naranja 350ml - $1.800',
+      '8. Nestea Durazno 1.5L - $2.600',
+      '9. Red Bull 250ml - $2.800',
+      '10. Té Helado 500ml - $2.200',
       '',
-      '🍞 **ABARROTES Y LÁCTEOS (10 items):**',
-      '11. Arroz 1kg - $2.800',
-      '12. Aceite 1L - $4.200',
-      '13. Azúcar 1kg - $1.800',
-      '14. Fideos 500g - $1.200',
-      '15. Harina 1kg - $1.600',
-      '16. Leche Condensada 397g - $1.600',
-      '17. Margarina 250g - $1.800',
-      '18. Sal Fina 1kg - $800',
-      '19. Vinagre Blanco 500ml - $1.200',
-      '20. Mayonesa 500g - $2.200',
+      '🍞 **PANADERÍA Y CEREALES (10 items):**',
+      '11. Pan de Molde Bimbo 500g - $1.600',
+      '12. Hallullas Caseras x6 - $2.200',
+      '13. Pan Pita Árabe x4 - $2.400',
+      '14. Cereal Corn Flakes 500g - $4.500',
+      '15. Avena Quaker 500g - $3.200',
+      '16. Granola Naturals 400g - $4.800',
+      '17. Galletas McKay Soda 200g - $1.200',
+      '18. Galletas Oreo 154g - $1.800',
+      '19. Biscottes Bimbo 200g - $1.600',
+      '20. Pan Integral Bimbo 500g - $2.200',
+      '',
+      '🥛 **LÁCTEOS Y HUEVOS (10 items):**',
+      '21. Leche Entera Soprole 1L - $1.400',
+      '22. Leche Descremada Soprole 1L - $1.400',
+      '23. Yogurt Natural Soprole 150g - $800',
+      '24. Queso Gouda Colún 200g - $4.200',
+      '25. Queso Mantecoso Colún 250g - $3.800',
+      '26. Mantequilla Colún 250g - $3.800',
+      '27. Huevos Blancos Docena - $3.500',
+      '28. Huevos Rojos Docena - $4.200',
+      '29. Crema Ácida Soprole 200ml - $1.800',
+      '30. Leche Condensada Lechera 397g - $1.600',
+      '',
+      '🌾 **ABARROTES (10 items):**',
+      '31. Arroz Grado 1 Tucapel 1kg - $2.800',
+      '32. Fideos Espagueti Carozzi 500g - $1.900',
+      '33. Fideos Pluma Carozzi 500g - $1.900',
+      '34. Aceite Vegetal Chef 1L - $3.200',
+      '35. Aceite de Oliva Carapelli 500ml - $5.800',
+      '36. Azúcar Granulada Iansa 1kg - $2.200',
+      '37. Sal de Mesa Lobos 1kg - $800',
+      '38. Harina Sin Polvos Selecta 1kg - $1.600',
+      '39. Leche Condensada 397g - $1.600',
+      '40. Mayonesa Hellmanns 500g - $2.200',
       '',
       '🍎 **FRUTAS Y VERDURAS (10 items):**',
-      '21. Manzanas Rojas x4 - $2.800',
-      '22. Plátanos x6 - $2.400',
-      '23. Naranjas x6 - $3.200',
-      '24. Tomates 1kg - $2.200',
-      '25. Papas 2kg - $3.500',
-      '26. Cebolla Morada 1kg - $1.800',
-      '27. Ajo 250g - $1.600',
-      '28. Lechuga 1 unidad - $1.400',
-      '29. Zanahoria 1kg - $1.600',
-      '30. Brócoli 1 unidad - $2.200'
+      '41. Plátanos x6 unidades - $2.500',
+      '42. Manzanas Rojas x4 - $2.800',
+      '43. Manzanas Verdes x4 - $2.800',
+      '44. Naranjas x6 - $3.200',
+      '45. Tomates 1kg - $2.200',
+      '46. Papas Blancas 2kg - $3.500',
+      '47. Papas Rojas 2kg - $3.800',
+      '48. Cebollas Blancas 1kg - $1.800',
+      '49. Zanahorias 500g - $1.200',
+      '50. Lechuga Escarola unidad - $1.400',
+      '',
+      '🧼 **LIMPIEZA Y ASEO (10 items):**',
+      '51. Detergente Líquido Popeye 1L - $3.800',
+      '52. Detergente Polvo Drive 1kg - $3.200',
+      '53. Papel Higiénico Noble x4 - $4.200',
+      '54. Jabón Líquido Dove 250ml - $1.600',
+      '55. Champú Pantene 400ml - $4.500',
+      '56. Acondicionador Pantene 400ml - $4.500',
+      '57. Pasta Dental Colgate 100ml - $2.800',
+      '58. Cloro Clorinda 1L - $1.200',
+      '59. Desinfectante Lysoform 500ml - $2.200',
+      '60. Esponja de Baño - $800'
     );
   }
 
   fallback.push(
     '',
-    '🛒 **CÓMO HACER TU PEDIDO:**',
-    '',
-    'Formato: "Quiero [producto] cantidad [número]"',
-    'Ejemplo: "Quiero coca cola 3"',
+    '🛒 **HACER PEDIDO:**',
+    'Escribe: "Quiero [producto] cantidad [número]"',
     '',
     '📞 **CONTACTO DIRECTO:**',
     '+56 9 3649 9908',
@@ -946,6 +1155,8 @@ function generatProductListFallback(catalog: any, catalogKey: string) {
 
   return fallback.join('\n');
 }
+
+
 
 // FUNCIÓN SENDCATALOG CORREGIDA - PREPARADA PARA TOKEN ACTUALIZADO
 async function sendCatalog(provider: any, from: any, catalog: any, catalogType: string = 'main', useTemplate: boolean = false) {
