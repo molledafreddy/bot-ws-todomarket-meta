@@ -919,7 +919,7 @@ function categorizeProductsCorrectly(products: any[], catalogKey: string) {
   ];
 
   // ✅ PALABRAS CLAVE ESPECÍFICAS POR CATEGORÍA (mayor precisión)
-  const categoryPatterns: Record<string, CategoryPattern> = {
+  const categoryPatterns = {
     '🪥 Higiene': {
       patterns: [
         /\b(toallita|toalla|papel higiénico|pañal|servilleta)\b/i,
@@ -929,8 +929,8 @@ function categorizeProductsCorrectly(products: any[], catalogKey: string) {
         /\b(desinfectante|cloro|desinfectante|limpiador)\b/i,
         /\b(pañuelos|kleenex|servilleta)\b/i
       ],
-      weight: 1.0 // Prioridad máxima
-    },
+      weight: 1.0
+    } as CategoryPattern,
     '🧼 Limpieza': {
       patterns: [
         /\b(detergente|desinfectante|cloro|limpiador|escoba|recogedor)\b/i,
@@ -939,7 +939,7 @@ function categorizeProductsCorrectly(products: any[], catalogKey: string) {
         /\b(desengrasante|deshollinador)\b/i
       ],
       weight: 0.95
-    },
+    } as CategoryPattern,
     '🍿 Snacks': {
       patterns: [
         /\b(papas fritas|chips|snack|galletas|galleta|chocolate|dulces|caramelo|golosina|chicle)\b/i,
@@ -947,15 +947,15 @@ function categorizeProductsCorrectly(products: any[], catalogKey: string) {
         /\b(caramelos|gomitas|gominolas|chicles)\b/i
       ],
       weight: 0.9,
-      exclusions: snackExclusions // ✅ AHORA SÍ TIENE TIPO
-    },
+      exclusions: snackExclusions
+    } as CategoryPattern,
     '❄️ Congelados': {
       patterns: [
         /\b(congelad|helado|pizza|papas fritas congeladas|frozen)\b/i,
         /\b(comida congelada|alimentos congelados)\b/i
       ],
       weight: 0.85
-    },
+    } as CategoryPattern,
     '🥤 Bebidas': {
       patterns: [
         /\b(coca|pepsi|sprite|fanta|7up|soda|gaseosa|refresco)\b/i,
@@ -967,8 +967,8 @@ function categorizeProductsCorrectly(products: any[], catalogKey: string) {
         /\b(energética|energy drink|gatorade|powerade|red bull|monster)\b/i
       ],
       weight: 0.88,
-      exclusions: beverageExclusions // ✅ AHORA SÍ TIENE TIPO
-    },
+      exclusions: beverageExclusions
+    } as CategoryPattern,
     '🍞 Panadería': {
       patterns: [
         /\b(pan|molde|hallulla|baguette|integral|blanco|pan francés)\b/i,
@@ -977,7 +977,7 @@ function categorizeProductsCorrectly(products: any[], catalogKey: string) {
         /\b(pan de pasas|pan dulce|pan tostado|pan integral)\b/i
       ],
       weight: 0.87
-    },
+    } as CategoryPattern,
     '🥛 Lácteos y Huevos': {
       patterns: [
         /\b(leche|lácteo|lacteo|dairy)\b/i,
@@ -986,7 +986,7 @@ function categorizeProductsCorrectly(products: any[], catalogKey: string) {
         /\b(leche condensada|leche evaporada)\b/i
       ],
       weight: 0.89
-    },
+    } as CategoryPattern,
     '🌾 Abarrotes': {
       patterns: [
         /\b(arroz|fideos|pasta|aceite|azúcar|azucar|sal|harina|abarrote)\b/i,
@@ -995,7 +995,7 @@ function categorizeProductsCorrectly(products: any[], catalogKey: string) {
         /\b(atún|enlatados|conserva|vinagre|mayonesa)\b/i
       ],
       weight: 0.86
-    },
+    } as CategoryPattern,
     '🍎 Frutas y Verduras': {
       patterns: [
         /\b(manzana|plátano|banana|naranja|limón|limon|fresa|fruta)\b/i,
@@ -1004,8 +1004,8 @@ function categorizeProductsCorrectly(products: any[], catalogKey: string) {
         /\b(producto fresco|frutas y verduras|produce)\b/i
       ],
       weight: 0.88
-    }
-  };
+    } as CategoryPattern
+  } as Record<string, CategoryPattern>;
 
   // Procesar cada producto
   products.forEach((product: any) => {
