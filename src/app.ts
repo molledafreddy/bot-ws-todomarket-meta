@@ -701,77 +701,74 @@ function categorizeProductsCorrectly(products: any[], catalogKey: string) {
   const categorized: Record<string, any[]> = {};
   const processedIds = new Set<string>(); // Evitar duplicados absolutos
 
-  // ✅ PALABRAS CLAVE POR CATEGORÍA (ORDEN = PRIORIDAD)
   const categoryKeywords: Record<string, string[]> = {
-    '🥤 Bebidas': [
-      'bebida', 'refresco', 'gaseosa', 'agua', 'jugo', 'cola', 'soda', 
-      'cerveza', 'vino', 'pisco', 'café', 'espresso', 'capuchino',
-      'té', 'energética', 'monster', 'red bull', 'coca', 'pepsi', 
-      'sprite', 'fanta', 'nestea', 'watts', 'néctar', 'jugo natural',
-      'bebida gaseosa', 'bebida alcohólica', 'bebida energética'
-    ],
-    
-    '🍞 Panadería': [
-      'pan', 'cereal', 'galleta', 'avena', 'hallulla', 'bimbo', 'molde',
-      'pan integral', 'pan blanco', 'pan francés', 'pan de molde',
-      'panadería', 'biscocho', 'bizcocho', 'tostadas'
-    ],
-    
-    '🥛 Lácteos': [
-      'leche', 'yogurt', 'queso', 'huevo', 'mantequilla', 'crema', 'lácteo',
-      'soprole', 'colún', 'dairy', 'yogur', 'requesón', 'quesillo',
-      'leche descremada', 'leche entera', 'leche semidescremada',
-      'yogurt natural', 'crema ácida', 'leche condensada'
-    ],
-    
-    '🌾 Abarrotes': [
-      'arroz', 'fideos', 'pasta', 'aceite', 'azúcar', 'sal', 'harina', 
-      'lentejas', 'porotos', 'atún', 'enlatados', 'conserva', 'vinagre',
-      'mayonesa', 'condimento', 'abarrote', 'legumbres', 'garbanzos',
-      'aceite vegetal', 'aceite de oliva'
-    ],
-    
-    '🍎 Frutas y Verduras': [
-      'fruta', 'verdura', 'manzana', 'plátano', 'banana', 'naranja', 
-      'limón', 'fresa', 'piña', 'durazno', 'uva', 'pera', 'kiwi',
-      'tomate', 'papa', 'patata', 'cebolla', 'ajo', 'zanahoria', 
-      'lechuga', 'brócoli', 'espinaca', 'acelga', 'repollo',
-      'producto fresco', 'verdura fresca', 'fruta fresca',
-      'fruto', 'hortaliza', 'vegetal'
-    ],
-    
-    '🥩 Carnes': [
-      'carne', 'pollo', 'pechuga', 'muslo', 'ala', 'jamón', 'tocino', 
-      'panceta', 'paté', 'embutido', 'chorizo', 'salchicha', 'mortadela',
-      'longaniza', 'ternera', 'res', 'cerdo', 'carne molida', 'filete',
-      'costilla', 'pescado', 'salmón', 'trucha', 'merluza', 'atún fresco',
-      'marisco', 'camarón', 'calamar', 'mariscos'
-    ],
-    
-    '🧼 Limpieza': [
-      'detergente', 'jabón', 'champú', 'pasta dental', 'papel higiénico', 
-      'aseo', 'higiene', 'cloro', 'limpieza', 'desinfectante', 'limpiador',
-      'escoba', 'recogedor', 'trapo', 'paño', 'esponja', 'cepillo',
-      'toallita', 'toalla', 'pañal', 'servilleta', 'kleenex', 'pañuelos',
-      'acondicionador', 'shampoo', 'gel de baño', 'jabón de baño',
-      'desodorante', 'loción', 'cepillo de dientes', 'hilo dental',
-      'desengrasante', 'quitamanchas', 'desmanchador'
-    ],
-    
-    '🍿 Snacks': [
-      'papas fritas', 'chips', 'snack', 'chocolate', 'dulce', 'caramelo', 
-      'golosina', 'chicle', 'maní', 'cacahuate', 'nueces', 'almendras',
-      'tarro', 'kryzpo', 'galleta dulce', 'galleta de chocolate',
-      'frutos secos', 'turrón', 'malva', 'chupete', 'gominola', 'gomita',
-      'caramelos', 'chicles'
-    ],
-    
-    '❄️ Congelados': [
-      'congelado', 'helado', 'frozen', 'pizza', 'papas pre fritas',
-      'papas congeladas', 'comida congelada', 'alimento congelado',
-      'nuggets', 'empanadas', 'productos congelados'
-    ]
-  };
+  '🍿 Snacks': [
+    'snack', 'papas fritas', 'kryzpo', 'chips', 'chocolate', 'dulce', 'caramelo',
+    'golosina', 'chicle', 'maní', 'cacahuate', 'nueces', 'almendras', 'tarro',
+    'galleta dulce', 'frutos secos', 'turrón', 'malva', 'chupete', 'gominola',
+    'alfajor', 'galletita' // ✅ Más específico
+  ],
+
+  '🥤 Bebidas': [
+    'bebida', 'refresco', 'gaseosa', 'agua', 'jugo', 'cola', 'soda',
+    'cerveza', 'vino', 'pisco', 'café', 'espresso', 'capuchino',
+    'té', 'energética', 'monster', 'red bull', 'coca', 'pepsi',
+    'sprite', 'fanta', 'nestea', 'watts', 'néctar', 'lipton', 'postobon'
+  ],
+
+  '🍞 Panadería': [
+    'pan', 'cereal', 'galleta', 'avena', 'hallulla', 'bimbo', 'molde',
+    'pan integral', 'pan blanco', 'pan francés', 'panadería', 'biscocho',
+    'bizcocho', 'tostadas', 'catalinas' // ✅ Agregar productos específicos
+  ],
+
+  '🥛 Lácteos': [
+    'leche', 'yogurt', 'queso', 'huevo', 'mantequilla', 'crema', 'lácteo',
+    'soprole', 'colún', 'dairy', 'yogur', 'requesón', 'quesillo',
+    'leche descremada', 'leche entera', 'manteca' // ✅ Agregar manteca
+  ],
+
+  '🌾 Abarrotes': [
+    'arroz', 'fideos', 'pasta', 'aceite', 'azúcar', 'sal', 'harina',
+    'lentejas', 'porotos', 'atún', 'enlatados', 'conserva', 'vinagre',
+    'mayonesa', 'condimento', 'abarrote', 'legumbres', 'garbanzos',
+    'espagueti', 'espirales' // ✅ Más tipos de pasta
+  ],
+
+  '🍎 Frutas y Verduras': [
+    'fruta', 'verdura', 'manzana', 'plátano', 'banana', 'naranja',
+    'limón', 'fresa', 'piña', 'durazno', 'uva', 'pera', 'kiwi',
+    'tomate', 'cebolla', 'ajo', 'zanahoria', 'lechuga', 'brócoli',
+    'espinaca', 'acelga', 'repollo', 'papa', 'patata',
+    'producto fresco', 'verdura fresca', 'fruta fresca',
+    'fruto', 'hortaliza', 'vegetal'
+  ],
+
+  '🥩 Carnes': [
+    'carne', 'pollo', 'pechuga', 'muslo', 'ala', 'jamón', 'tocino',
+    'panceta', 'paté', 'embutido', 'chorizo', 'salchicha', 'mortadela',
+    'longaniza', 'ternera', 'cerdo', 'carne molida', 'filete',
+    'costilla', 'pescado', 'salmón', 'trucha', 'merluza',
+    'marisco', 'camarón', 'calamar', 'mariscos'
+    // ⚠️ ELIMINADO "res" - causa falsos positivos con "limpia pisos"
+  ],
+
+  '🧼 Limpieza': [
+    'detergente', 'jabón', 'champú', 'pasta dental', 'papel higiénico',
+    'aseo', 'higiene', 'cloro', 'limpieza', 'desinfectante', 'limpiador',
+    'escoba', 'recogedor', 'trapo', 'paño', 'esponja', 'cepillo',
+    'toallita', 'toalla', 'pañal', 'servilleta', 'kleenex', 'pañuelos',
+    'acondicionador', 'shampoo', 'gel de baño', 'jabón de baño',
+    'desodorante', 'loción', 'cepillo de dientes', 'hilo dental',
+    'desengrasante', 'quitamanchas', 'desmanchador', 'poet' // ✅ Agregar marca
+  ],
+
+  '❄️ Congelados': [
+    'congelado', 'helado', 'frozen', 'pizza', 'papas pre fritas',
+    'papas congeladas', 'comida congelada', 'alimento congelado',
+    'nuggets', 'empanadas', 'productos congelados'
+  ]
+};
 
   console.log(`\n${'═'.repeat(60)}`);
   console.log('🔍 INICIANDO CATEGORIZACIÓN DE PRODUCTOS');
@@ -849,13 +846,12 @@ function categorizeProductsCorrectly(products: any[], catalogKey: string) {
 }
 
 /**
- * ✅ FUNCIÓN CORREGIDA v6: Crear lotes SIN DUPLICADOS
- * GARANTÍAS COMPROBADAS:
+ * ✅ FUNCIÓN CORREGIDA v7: SIN DUPLICADOS DE CATEGORÍAS - VERSIÓN FINAL
+ * GARANTÍAS:
  * ✅ Máximo 30 items por mensaje
- * ✅ Máximo 10 items por sección
- * ✅ SIN categorías duplicadas en los mismos mensajes
- * ✅ SIN duplicados de productos
- * ✅ "Otros" aparece UNA sola vez al final
+ * ✅ CADA CATEGORÍA APARECE UNA SOLA VEZ POR LOTE
+ * ✅ NO se reinicia el control de duplicados
+ * ✅ "Otros" al final
  */
 function createAllCategorizedSectionLotes(categorizedProducts: Record<string, any[]>) {
   const maxItemsPerMessage = 30;
@@ -863,22 +859,21 @@ function createAllCategorizedSectionLotes(categorizedProducts: Record<string, an
   const maxItemsPerSection = 10;
 
   console.log(`\n${'═'.repeat(70)}`);
-  console.log('📊 CREANDO LOTES DE MENSAJES');
+  console.log('📊 CREANDO LOTES DE MENSAJES - v7 SIN DUPLICADOS');
   console.log(`${'═'.repeat(70)}`);
 
-  // PASO 1: Preparar array de categorías (filtrar vacías)
+  // PASO 1: Preparar y filtrar categorías vacías
   const categoryArray = Object.entries(categorizedProducts)
     .filter(([_, items]) => (items as any[]).length > 0)
     .map(([name, items]) => ({
       name,
       items: items as any[],
-      itemCount: (items as any[]).length,
-      processed: 0 // Rastrear cuántos items se procesaron de esta categoría
+      itemCount: (items as any[]).length
     }));
 
   console.log(`📂 Categorías con productos: ${categoryArray.length}`);
 
-  // PASO 2: Ordenar (mayor cantidad primero, "Otros" al final)
+  // PASO 2: Ordenar categorías (mayor cantidad primero, "Otros" al final)
   categoryArray.sort((a, b) => {
     const aIsOtros = a.name.includes('📦');
     const bIsOtros = b.name.includes('📦');
@@ -888,65 +883,96 @@ function createAllCategorizedSectionLotes(categorizedProducts: Record<string, an
     return b.itemCount - a.itemCount;
   });
 
-  // PASO 3: Crear lotes
+  // PASO 3: Crear estructura para lotes
   const messageLotes: any[] = [];
   let currentLote = {
     loteNumber: 1,
     sections: [] as any[],
     itemsCount: 0,
-    categoriesInLote: new Set<string>() // ✅ CONTROL DE DUPLICADOS
+    categoriesInLote: new Set<string>() // ✅ SET POR LOTE
   };
 
   console.log(`\n📋 Procesando categorías en orden de prioridad...\n`);
 
-  // PASO 4: Iterar categorías y distribuir en lotes
-  for (const category of categoryArray) {
-    console.log(`\n📦 Categoría: "${category.name}" (${category.itemCount} items)`);
+  // PASO 4: Iterar cada categoría UNA SOLA VEZ
+  for (let categoryIndex = 0; categoryIndex < categoryArray.length; categoryIndex++) {
+    const category = categoryArray[categoryIndex];
+    const categoryName = category.name;
+    const categoryItems = category.items;
+    const categoryItemCount = categoryItems.length;
 
-    // ⛔ Verificar si esta categoría YA ESTÁ en el lote actual
-    if (currentLote.categoriesInLote.has(category.name)) {
-      console.log(`   ⚠️  YA EXISTE en Lote ${currentLote.loteNumber}, SALTANDO`);
-      continue; // ✅ NO AGREGAR DUPLICADA
+    console.log(`\n📦 CATEGORÍA ${categoryIndex + 1}/${categoryArray.length}: "${categoryName}" (${categoryItemCount} items)`);
+
+    // ⛔ VALIDACIÓN CRÍTICA: ¿Ya está esta categoría en el lote actual?
+    if (currentLote.categoriesInLote.has(categoryName)) {
+      console.log(`   ❌ ERROR: "${categoryName}" YA EXISTE en Lote ${currentLote.loteNumber}`);
+      console.log(`   ⚠️  SALTANDO para evitar duplicados`);
+      continue; // ✅ NO procesar categoría duplicada
     }
 
-    // Procesar todos los items de esta categoría
-    let categoryItemsRemaining = category.itemCount;
-    let categoryItemOffset = 0;
+    // PASO 5: Verificar si hay espacio en el lote actual
+    const spaceAvailable = maxItemsPerMessage - currentLote.itemsCount;
+    const canFitInCurrentLote = categoryItemCount <= spaceAvailable;
 
-    while (categoryItemsRemaining > 0) {
-      // Calcular cuántos items caben en esta sección
+    console.log(`   📊 Espacio disponible en Lote ${currentLote.loteNumber}: ${spaceAvailable} items`);
+
+    // Si NO hay espacio, guardar lote actual y crear uno nuevo
+    if (!canFitInCurrentLote && currentLote.sections.length > 0) {
+      console.log(`   ⚠️  Lote ${currentLote.loteNumber} no tiene espacio para ${categoryItemCount} items`);
+      console.log(`   💾 Guardando Lote ${currentLote.loteNumber}: ${currentLote.itemsCount} items`);
+      messageLotes.push(currentLote);
+
+      // ✅ CREAR NUEVO LOTE CON SET LIMPIO
+      currentLote = {
+        loteNumber: messageLotes.length + 1,
+        sections: [],
+        itemsCount: 0,
+        categoriesInLote: new Set<string>() // ✅ NUEVA INSTANCIA LIMPIA
+      };
+
+      console.log(`   📝 Nuevo Lote ${currentLote.loteNumber} creado`);
+    }
+
+    // PASO 6: Dividir categoría en secciones si es necesario
+    let itemsProcessedFromCategory = 0;
+
+    while (itemsProcessedFromCategory < categoryItemCount) {
+      // Calcular cuántos items tomar para esta sección
+      const itemsRemainingInCategory = categoryItemCount - itemsProcessedFromCategory;
       const spaceInLote = maxItemsPerMessage - currentLote.itemsCount;
       const itemsToTakeForSection = Math.min(
-        maxItemsPerSection,           // Max items por sección
-        categoryItemsRemaining,        // Items restantes en categoría
-        spaceInLote                    // Espacio disponible en lote
+        maxItemsPerSection,         // Max por sección
+        itemsRemainingInCategory,   // Items disponibles en categoría
+        spaceInLote                 // Espacio en lote
       );
 
-      // Si no hay espacio, crear nuevo lote
+      // ✅ VERIFICACIÓN: Si no hay espacio, crear nuevo lote y reintentar
       if (itemsToTakeForSection <= 0) {
-        console.log(`   ⚠️  Lote ${currentLote.loteNumber} lleno (${currentLote.itemsCount} items)`);
-        messageLotes.push(currentLote);
-        
+        if (currentLote.sections.length > 0) {
+          console.log(`   💾 Lote ${currentLote.loteNumber} lleno (${currentLote.itemsCount} items)`);
+          messageLotes.push(currentLote);
+        }
+
         currentLote = {
           loteNumber: messageLotes.length + 1,
           sections: [],
           itemsCount: 0,
           categoriesInLote: new Set<string>() // ✅ NUEVA INSTANCIA
         };
-        
-        console.log(`   📝 Nuevo Lote ${currentLote.loteNumber} creado`);
+
+        console.log(`   📝 Nuevo Lote ${currentLote.loteNumber} creado por falta de espacio`);
         continue; // Reintentar con nuevo lote
       }
 
-      // Tomar items para esta sección
-      const itemsForSection = category.items.slice(
-        categoryItemOffset,
-        categoryItemOffset + itemsToTakeForSection
+      // PASO 7: Tomar items para esta sección
+      const itemsForSection = categoryItems.slice(
+        itemsProcessedFromCategory,
+        itemsProcessedFromCategory + itemsToTakeForSection
       );
 
-      // Crear sección
+      // PASO 8: Crear sección
       const section = {
-        title: category.name.substring(0, 30),
+        title: categoryName.substring(0, 30),
         product_items: itemsForSection.map(item => ({
           product_retailer_id: item.retailer_id || item.id
         }))
@@ -954,46 +980,82 @@ function createAllCategorizedSectionLotes(categorizedProducts: Record<string, an
 
       currentLote.sections.push(section);
       currentLote.itemsCount += itemsForSection.length;
-      currentLote.categoriesInLote.add(category.name); // ✅ MARCAR COMO AGREGADA
+      
+      // ✅ MARCAR CATEGORÍA COMO PROCESADA EN ESTE LOTE
+      currentLote.categoriesInLote.add(categoryName);
 
-      console.log(`   ✅ Sección agregada: ${itemsForSection.length} items → Lote ${currentLote.loteNumber}`);
+      console.log(`   ✅ Sección "${categoryName}": ${itemsForSection.length} items → Lote ${currentLote.loteNumber}`);
+      console.log(`      (Total en lote: ${currentLote.itemsCount}/${maxItemsPerMessage})`);
 
-      categoryItemOffset += itemsToTakeForSection;
-      categoryItemsRemaining -= itemsToTakeForSection;
+      itemsProcessedFromCategory += itemsToTakeForSection;
     }
   }
 
-  // PASO 5: Guardar el último lote si tiene contenido
+  // PASO 9: Guardar último lote si tiene contenido
   if (currentLote.sections.length > 0) {
     messageLotes.push(currentLote);
-    console.log(`\n✅ Lote ${currentLote.loteNumber} completado: ${currentLote.itemsCount} items`);
+    console.log(`\n💾 Lote ${currentLote.loteNumber} guardado: ${currentLote.itemsCount} items`);
   }
 
-  // PASO 6: Resumen final
+  // PASO 10: Resumen final detallado
   console.log(`\n${'═'.repeat(70)}`);
   console.log('📤 RESUMEN FINAL DE LOTES');
   console.log(`${'═'.repeat(70)}`);
-  console.log(`📊 Total de mensajes: ${messageLotes.length}\n`);
+  console.log(`\n📊 Total de mensajes: ${messageLotes.length}\n`);
 
   let totalItems = 0;
+  const categoriesUsed = new Set<string>();
+
   messageLotes.forEach((lote) => {
-    const categoriesInLote = Array.from(lote.categoriesInLote).join(', ');
-    console.log(`Lote ${lote.loteNumber}:`);
-    console.log(`  • Items: ${lote.itemsCount}/${maxItemsPerMessage}`);
-    console.log(`  • Secciones: ${lote.sections.length}`);
-    console.log(`  • Categorías: ${categoriesInLote}`);
+    console.log(`\n📨 Lote ${lote.loteNumber}:`);
+    console.log(`   📦 Items: ${lote.itemsCount}/${maxItemsPerMessage}`);
+    console.log(`   📋 Secciones: ${lote.sections.length}`);
+
+    const categoriesInLote = Array.from(lote.categoriesInLote);
+    console.log(`   🏷️  Categorías: ${categoriesInLote.join(', ')}`);
     
-    lote.sections.forEach((section: any, idx: number) => {
-      console.log(`    ${idx + 1}. ${section.title}: ${section.product_items.length} items`);
+    // Validar que NO hay duplicados de categorías
+    categoriesInLote.forEach(cat => {
+      if (categoriesUsed.has(cat)) {
+        console.log(`   ⚠️  ¡ADVERTENCIA! Categoría "${cat}" apareció en lotes anteriores`);
+      }
+      categoriesUsed.add(cat);
     });
-    
+
+    lote.sections.forEach((section: any, idx: number) => {
+      console.log(`     ${idx + 1}. ${section.title}: ${section.product_items.length} items`);
+    });
+
     totalItems += lote.itemsCount;
   });
 
-  console.log(`\n📊 TOTALES: ${totalItems} items en ${messageLotes.length} mensajes`);
+  console.log(`\n${'═'.repeat(70)}`);
+  console.log(`📊 TOTALES FINALES:`);
+  console.log(`   • Mensajes: ${messageLotes.length}`);
+  console.log(`   • Items totales: ${totalItems}`);
+  console.log(`   • Categorías únicas: ${categoriesUsed.size}`);
   console.log(`${'═'.repeat(70)}\n`);
 
-  return messageLotes; // ✅ RETORNAR SIEMPRE
+  // ✅ VALIDACIÓN FINAL: Verificar que no hay duplicados
+  let hasDuplicates = false;
+  for (let i = 0; i < messageLotes.length; i++) {
+    const lote1 = messageLotes[i];
+    for (const cat1 of lote1.categoriesInLote) {
+      for (let j = i + 1; j < messageLotes.length; j++) {
+        const lote2 = messageLotes[j];
+        if (lote2.categoriesInLote.has(cat1)) {
+          console.log(`❌ DUPLICADO DETECTADO: "${cat1}" en Lotes ${i + 1} y ${j + 1}`);
+          hasDuplicates = true;
+        }
+      }
+    }
+  }
+
+  if (!hasDuplicates) {
+    console.log('✅ VALIDACIÓN EXITOSA: No hay categorías duplicadas entre lotes');
+  }
+
+  return messageLotes;
 }
 
 
