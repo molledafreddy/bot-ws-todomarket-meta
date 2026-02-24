@@ -851,10 +851,10 @@ interface CategoryPattern {
 }
 
 /**
- * FUNCIÓN SIMPLIFICADA v5: Categorizar SOLO por DESCRIPTION
+ * FUNCIÓN SIMPLIFICADA v6: Categorizar SOLO por DESCRIPTION
  * ✅ Usa ÚNICAMENTE el campo description
  * ✅ Palabras clave exactas y simples
- * ✅ Sin regex complejas
+ * ✅ Categoría "Otros" para productos no clasificados
  */
 function categorizeProductsCorrectly(products: any[], catalogKey: string) {
   const categorized: Record<string, any[]> = {};
@@ -926,60 +926,96 @@ function categorizeProductsCorrectly(products: any[], catalogKey: string) {
 }
 
 /**
- * FUNCIÓN NUEVA: Crear lotes con 3 categorías por mensaje
- * ✅ Distribuye equilibradamente: 3 categorías por lote
- * ✅ Máximo 30 items por mensaje (respeta límite Meta)
- * ✅ Evita saturación de información
+ * FUNCIÓN MEJORADA v3: Crear lotes respetando LÍMITES REALES DE META
+ * ✅ Meta permite hasta 10 SECCIONES por mensaje
+ * ✅ Meta permite máximo 30 ITEMS por mensaje
+ * ✅ Meta permite máximo 10 ITEMS por SECCIÓN
+ * ✅ SIN DUPLICADOS DE CATEGORÍAS
+ * ✅ Maneja correctamente la categoría "Otros"
  */
 function createAllCategorizedSectionLotes(categorizedProducts: Record<string, any[]>) {
-  const maxItemsPerMessage = 30;
-  const categoriesPerLote = 3; // 🎯 3 CATEGORÍAS POR MENSAJE
-  const maxItemsPerSection = 10;
+  const maxItemsPerMessage = 30;      // Límite DURO de Meta
+  const maxSectionsPerMessage = 10;   // Límite REAL de Meta
+  const maxItemsPerSection = 10;      // Límite de items por sección
 
-  // Convertir a array y ordenar por cantidad de productos (mayor primero)
+  // Convertir a array, filtrar categorías vacías y ordenar
   const categoryArray = Object.entries(categorizedProducts)
-    .sort((a, b) => (b[1] as any[]).length - (a[1] as any[]).length);
+    .filter(([_, products]) => (products as any[]).length > 0) // Solo categorías con productos
+    .sort((a, b) => {
+      // Ordenar alfabéticamente, con "Otros" al final
+      const aIsOtros = a[0].includes('📦');
+      const bIsOtros = b[0].includes('📦');
+      
+      if (aIsOtros && !bIsOtros) return 1;      // "Otros" al final
+      if (!aIsOtros && bIsOtros) return -1;     // Otras categorías primero
+      
+      // Si ambas son "Otros" o ambas son normales, ordenar por cantidad (mayor primero)
+      return (b[1] as any[]).length - (a[1] as any[]).length;
+    });
 
-  console.log(`\n📊 DISTRIBUCIÓN POR LOTES:`);
+  console.log(`\n📊 DISTRIBUCIÓN POR LOTES (LÍMITES META REALES):`);
   console.log(`   • Total de categorías: ${categoryArray.length}`);
-  console.log(`   • Categorías por lote: ${categoriesPerLote}`);
-  console.log(`   • Lotes necesarios: ${Math.ceil(categoryArray.length / categoriesPerLote)}`);
+  console.log(`   • Items máximo por mensaje: ${maxItemsPerMessage}`);
+  console.log(`   • Secciones máximo por mensaje: ${maxSectionsPerMessage}`);
+  console.log(`   • Items máximo por sección: ${maxItemsPerSection}`);
 
-  const messageLotes = [];
+  const messageLotes: any[] = [];
   let currentLote: any = null;
   let currentLoteNumber = 1;
-  let totalItemsInLote = 0;
-  let categoriesInLote = 0;
 
   // 🔧 AGRUPAR CATEGORÍAS EN LOTES
   for (let i = 0; i < categoryArray.length; i++) {
     const [categoryName, products] = categoryArray[i];
     const categoryProducts = products as any[];
 
-    // Si el lote actual está lleno o no existe, crear uno nuevo
-    if (!currentLote || categoriesInLote >= categoriesPerLote) {
+    // ✅ VERIFICAR SI NECESITO UN NUEVO LOTE
+    const loteIsFull = currentLote && (
+      currentLote.itemsCount >= maxItemsPerMessage ||
+      currentLote.sections.length >= maxSectionsPerMessage
+    );
+
+    if (!currentLote || loteIsFull) {
       // Guardar lote anterior si existe
       if (currentLote && currentLote.sections.length > 0) {
         messageLotes.push(currentLote);
-        console.log(`   ✅ Lote ${currentLoteNumber} guardado: ${currentLote.sections.length} secciones, ${currentLote.itemsCount} items`);
-        currentLoteNumber++;
+        console.log(`   ✅ Lote ${currentLote.loteNumber} GUARDADO: ${currentLote.sections.length} secciones, ${currentLote.itemsCount} items`);
       }
 
       // Crear nuevo lote
       currentLote = {
-        loteNumber: currentLoteNumber,
+        loteNumber: messageLotes.length + 1,
         sections: [],
         itemsCount: 0
       };
-      categoriesInLote = 0;
-      totalItemsInLote = 0;
+      currentLoteNumber = currentLote.loteNumber;
     }
 
     // 🔄 DIVIDIR CATEGORÍA EN SECCIONES (máximo 10 items por sección)
     let itemsProcessed = 0;
+    
     while (itemsProcessed < categoryProducts.length) {
-      // Tomar máximo 10 items para esta sección
-      const itemsToTake = Math.min(10, categoryProducts.length - itemsProcessed);
+      // Calcular cuántos items tomar (respetando límites)
+      const itemsRemainingInCategory = categoryProducts.length - itemsProcessed;
+      const itemsRemainingInLote = maxItemsPerMessage - currentLote.itemsCount;
+      const itemsToTake = Math.min(
+        maxItemsPerSection,           // Máximo 10 por sección
+        itemsRemainingInCategory,     // No más que los disponibles en categoría
+        itemsRemainingInLote          // No más que el espacio disponible en lote
+      );
+
+      if (itemsToTake <= 0) {
+        // Lote lleno, pasar a siguiente
+        console.log(`   ⚠️ Lote ${currentLote.loteNumber} lleno (30 items), creando nuevo lote`);
+        messageLotes.push(currentLote);
+        currentLote = {
+          loteNumber: messageLotes.length + 1,
+          sections: [],
+          itemsCount: 0
+        };
+        currentLoteNumber = currentLote.loteNumber;
+        continue;
+      }
+
       const sectionProducts = categoryProducts.slice(itemsProcessed, itemsProcessed + itemsToTake);
 
       // Crear sección
@@ -992,43 +1028,29 @@ function createAllCategorizedSectionLotes(categorizedProducts: Record<string, an
 
       currentLote.sections.push(section);
       currentLote.itemsCount += sectionProducts.length;
-      totalItemsInLote += sectionProducts.length;
 
-      console.log(`   📦 Agregada sección: ${categoryName} (${sectionProducts.length} items)`);
+      console.log(`   📦 Sección agregada: "${categoryName}" (${sectionProducts.length} items) → Lote ${currentLote.loteNumber}`);
 
       itemsProcessed += itemsToTake;
-
-      // Si el lote alcanzó el límite de 30 items, terminar lote
-      if (currentLote.itemsCount >= maxItemsPerMessage) {
-        console.log(`   ⚠️ Lote ${currentLoteNumber} alcanzó límite de 30 items`);
-        messageLotes.push(currentLote);
-        currentLote = {
-          loteNumber: ++currentLoteNumber,
-          sections: [],
-          itemsCount: 0
-        };
-        categoriesInLote = 0;
-        totalItemsInLote = 0;
-      }
     }
-
-    categoriesInLote++;
   }
 
   // Guardar último lote si tiene contenido
   if (currentLote && currentLote.sections.length > 0) {
     messageLotes.push(currentLote);
-    console.log(`   ✅ Lote ${currentLote.loteNumber} guardado: ${currentLote.sections.length} secciones, ${currentLote.itemsCount} items`);
+    console.log(`   ✅ Lote ${currentLote.loteNumber} GUARDADO (FINAL): ${currentLote.sections.length} secciones, ${currentLote.itemsCount} items`);
   }
 
   // RESUMEN DE LOTES
-  console.log(`\n📤 RESUMEN DE LOTES PARA ENVIAR:`);
+  console.log(`\n📤 RESUMEN FINAL DE LOTES PARA ENVIAR:`);
+  console.log(`   Total de lotes: ${messageLotes.length}`);
   messageLotes.forEach((lote) => {
     console.log(`   • Lote ${lote.loteNumber}: ${lote.itemsCount} items en ${lote.sections.length} secciones`);
     lote.sections.forEach((section: any) => {
       console.log(`     └─ ${section.title}: ${section.product_items.length} items`);
     });
   });
+  console.log('═'.repeat(60) + '\n');
 
   return messageLotes;
 }
