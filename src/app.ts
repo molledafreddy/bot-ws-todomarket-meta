@@ -842,6 +842,15 @@ export async function sendCatalogWith30Products(
 }
 
 /**
+ * INTERFAZ DE TIPO: Define la estructura de categoryPatterns
+ */
+interface CategoryPattern {
+  patterns: RegExp[];
+  weight: number;
+  exclusions?: string[]; // ✅ OPCIONAL (solo algunas categorías la tienen)
+}
+
+/**
  * FUNCIÓN MEJORADA: Categorizar productos con EXCLUSIONES y VALIDACIÓN
  * ✅ Evita falsos positivos (toallitas en snacks)
  * ✅ Consulta categoría real de Meta primero
@@ -910,7 +919,7 @@ function categorizeProductsCorrectly(products: any[], catalogKey: string) {
   ];
 
   // ✅ PALABRAS CLAVE ESPECÍFICAS POR CATEGORÍA (mayor precisión)
-  const categoryPatterns = {
+  const categoryPatterns: Record<string, CategoryPattern> = {
     '🪥 Higiene': {
       patterns: [
         /\b(toallita|toalla|papel higiénico|pañal|servilleta)\b/i,
@@ -938,7 +947,7 @@ function categorizeProductsCorrectly(products: any[], catalogKey: string) {
         /\b(caramelos|gomitas|gominolas|chicles)\b/i
       ],
       weight: 0.9,
-      exclusions: snackExclusions // ⚠️ EXCLUIR ESTAS PALABRAS
+      exclusions: snackExclusions // ✅ AHORA SÍ TIENE TIPO
     },
     '❄️ Congelados': {
       patterns: [
@@ -958,7 +967,7 @@ function categorizeProductsCorrectly(products: any[], catalogKey: string) {
         /\b(energética|energy drink|gatorade|powerade|red bull|monster)\b/i
       ],
       weight: 0.88,
-      exclusions: beverageExclusions
+      exclusions: beverageExclusions // ✅ AHORA SÍ TIENE TIPO
     },
     '🍞 Panadería': {
       patterns: [
@@ -1001,7 +1010,6 @@ function categorizeProductsCorrectly(products: any[], catalogKey: string) {
   // Procesar cada producto
   products.forEach((product: any) => {
     let category = '📦 Otros'; // Categoría por defecto
-    let bestMatch = { category: '📦 Otros', weight: 0 };
 
     const productName = (product.name || '').toLowerCase();
     const productDesc = (product.description || '').toLowerCase();
@@ -1013,7 +1021,6 @@ function categorizeProductsCorrectly(products: any[], catalogKey: string) {
       
       if (categoryNames[metaCategory]) {
         category = categoryNames[metaCategory];
-        console.log(`✅ Categoría Meta encontrada: ${metaCategory} → ${category}`);
         
         // Agregar producto y retornar
         if (!categorized[category]) {
@@ -1024,18 +1031,17 @@ function categorizeProductsCorrectly(products: any[], catalogKey: string) {
       }
     }
 
-    // PRIORIDAD 2: Buscar en patrones específicos (solo si Meta no tiene categoría)
-    console.log(`🔍 Analizando producto: "${productName}"`);
+    // PRIORIDAD 2: Buscar en patrones específicos
+    let bestMatch = { category: '📦 Otros', weight: 0 };
 
     Object.entries(categoryPatterns).forEach(([catKey, catConfig]) => {
-      // Verificar exclusiones primero
-      if (catConfig.exclusions) {
+      // ✅ VALIDAR QUE exclusions EXISTA antes de usarla (ahora con tipo)
+      if (catConfig.exclusions && catConfig.exclusions.length > 0) {
         const hasExclusion = catConfig.exclusions.some(exclusion =>
           fullText.includes(exclusion)
         );
         
         if (hasExclusion) {
-          console.log(`  ⛔ Excluido de ${catKey} por palabra clave`);
           return; // Pasar a siguiente categoría
         }
       }
@@ -1047,8 +1053,6 @@ function categorizeProductsCorrectly(products: any[], catalogKey: string) {
 
       if (matchCount > 0) {
         const confidence = (matchCount / catConfig.patterns.length) * catConfig.weight;
-        
-        console.log(`  ✓ Coincide con ${catKey}: ${matchCount} patrones, confianza: ${(confidence * 100).toFixed(0)}%`);
 
         // Usar la categoría con mayor confianza
         if (confidence > bestMatch.weight) {
@@ -1060,9 +1064,6 @@ function categorizeProductsCorrectly(products: any[], catalogKey: string) {
     // Asignar mejor coincidencia encontrada
     if (bestMatch.weight > 0) {
       category = bestMatch.category;
-      console.log(`  ✅ Asignado a: ${category}`);
-    } else {
-      console.log(`  ⚠️ No coincide con patrones, asignado a: ${category}`);
     }
 
     // Agregar producto a su categoría
