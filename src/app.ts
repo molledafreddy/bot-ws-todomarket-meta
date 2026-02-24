@@ -854,7 +854,7 @@ interface CategoryPattern {
  * FUNCIÓN SIMPLIFICADA v6: Categorizar SOLO por DESCRIPTION
  * ✅ Usa ÚNICAMENTE el campo description
  * ✅ Palabras clave exactas y simples
- * ✅ Categoría "Otros" para productos no clasificados
+ * ✅ SIN DUPLICADOS
  */
 function categorizeProductsCorrectly(products: any[], catalogKey: string) {
   const categorized: Record<string, any[]> = {};
@@ -872,8 +872,19 @@ function categorizeProductsCorrectly(products: any[], catalogKey: string) {
     '🥩 Carnes': ['pollo', 'carne', 'pechuga', 'jamón', 'pescado', 'salmón', 'embutido', 'chorizo', 'paté']
   };
 
-  // 🔍 PROCESAR CADA PRODUCTO
+  // 🔍 PROCESAR CADA PRODUCTO UNA SOLA VEZ
+  const processedIds = new Set<string>(); // Evitar duplicados
+
   products.forEach((product: any) => {
+    const productId = product.id || product.retailer_id;
+    
+    // ⛔ SALTAR SI YA FUE PROCESADO
+    if (processedIds.has(productId)) {
+      console.log(`⚠️ DUPLICADO DETECTADO: ${productId} - IGNORADO`);
+      return;
+    }
+    processedIds.add(productId);
+
     const productName = (product.name || '').toLowerCase();
     const productDesc = (product.description || '').toLowerCase();
     
@@ -882,9 +893,9 @@ function categorizeProductsCorrectly(products: any[], catalogKey: string) {
     let found = false;
 
     console.log(`🔍 "${productName}"`);
-    console.log(`   📝 Descripción: "${productDesc}"`);
+    console.log(`   📝 Description: "${productDesc}"`);
 
-    // BUSCAR EN CADA CATEGORÍA
+    // BUSCAR EN CADA CATEGORÍA (ORDEN IMPORTA)
     Object.entries(categoryKeywords).forEach(([categoryName, keywords]) => {
       if (found) return; // Si ya encontró categoría, no buscar más
 
@@ -926,40 +937,30 @@ function categorizeProductsCorrectly(products: any[], catalogKey: string) {
 }
 
 /**
- * FUNCIÓN MEJORADA v3: Crear lotes respetando LÍMITES REALES DE META
+ * FUNCIÓN MEJORADA v2: Crear lotes respetando LÍMITES REALES DE META
  * ✅ Meta permite hasta 10 SECCIONES por mensaje
  * ✅ Meta permite máximo 30 ITEMS por mensaje
  * ✅ Meta permite máximo 10 ITEMS por SECCIÓN
  * ✅ SIN DUPLICADOS DE CATEGORÍAS
- * ✅ Maneja correctamente la categoría "Otros"
+ * ✅ Primer lote se envía correctamente
  */
 function createAllCategorizedSectionLotes(categorizedProducts: Record<string, any[]>) {
   const maxItemsPerMessage = 30;      // Límite DURO de Meta
-  const maxSectionsPerMessage = 10;   // Límite REAL de Meta
+  const maxSectionsPerMessage = 10;   // Límite REAL de Meta (NO 3)
   const maxItemsPerSection = 10;      // Límite de items por sección
 
-  // Convertir a array, filtrar categorías vacías y ordenar
+  // Convertir a array y ordenar por cantidad de productos (mayor primero)
   const categoryArray = Object.entries(categorizedProducts)
     .filter(([_, products]) => (products as any[]).length > 0) // Solo categorías con productos
-    .sort((a, b) => {
-      // Ordenar alfabéticamente, con "Otros" al final
-      const aIsOtros = a[0].includes('📦');
-      const bIsOtros = b[0].includes('📦');
-      
-      if (aIsOtros && !bIsOtros) return 1;      // "Otros" al final
-      if (!aIsOtros && bIsOtros) return -1;     // Otras categorías primero
-      
-      // Si ambas son "Otros" o ambas son normales, ordenar por cantidad (mayor primero)
-      return (b[1] as any[]).length - (a[1] as any[]).length;
-    });
+    .sort((a, b) => (b[1] as any[]).length - (a[1] as any[]).length);
 
-  console.log(`\n📊 DISTRIBUCIÓN POR LOTES (LÍMITES META REALES):`);
+  console.log(`\n📊 DISTRIBUCIÓN POR LOTES (LÍMITES REALES META):`);
   console.log(`   • Total de categorías: ${categoryArray.length}`);
   console.log(`   • Items máximo por mensaje: ${maxItemsPerMessage}`);
   console.log(`   • Secciones máximo por mensaje: ${maxSectionsPerMessage}`);
   console.log(`   • Items máximo por sección: ${maxItemsPerSection}`);
 
-  const messageLotes: any[] = [];
+  const messageLotes = [];
   let currentLote: any = null;
   let currentLoteNumber = 1;
 
@@ -969,6 +970,10 @@ function createAllCategorizedSectionLotes(categorizedProducts: Record<string, an
     const categoryProducts = products as any[];
 
     // ✅ VERIFICAR SI NECESITO UN NUEVO LOTE
+    // Criterios:
+    // 1. Lote no existe
+    // 2. Lote alcanzó 30 items
+    // 3. Lote alcanzó 10 secciones
     const loteIsFull = currentLote && (
       currentLote.itemsCount >= maxItemsPerMessage ||
       currentLote.sections.length >= maxSectionsPerMessage
