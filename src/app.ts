@@ -1006,22 +1006,27 @@ function createAllCategorizedSectionLotes(categorizedProducts: Record<string, an
   let totalItems = 0;
   const categoriesUsed = new Set<string>();
 
-  messageLotes.forEach((lote) => {
+  messageLotes.forEach((lote: any) => {
     console.log(`\n📨 Lote ${lote.loteNumber}:`);
     console.log(`   📦 Items: ${lote.itemsCount}/${maxItemsPerMessage}`);
     console.log(`   📋 Secciones: ${lote.sections.length}`);
 
-    // ✅ CORRECTO - Con tipos explícitos
-    const categoriesInLote = Array.from(lote.categoriesInLote) as string[];
-    console.log(`   🏷️  Categorías: ${categoriesInLote.join(', ')}`);
-
-    // Validar que NO hay duplicados de categorías
-    categoriesInLote.forEach((cat: string) => {
-    if (categoriesUsed.has(cat)) {
+    // Construir string de categorías directamente
+    let categoriesString = '';
+    let count = 0;
+    
+    for (const cat of lote.categoriesInLote) {
+      if (count > 0) categoriesString += ', ';
+      categoriesString += cat as string;
+      
+      if (categoriesUsed.has(cat as string)) {
         console.log(`   ⚠️  ¡ADVERTENCIA! Categoría "${cat}" apareció en lotes anteriores`);
+      }
+      categoriesUsed.add(cat as string);
+      count++;
     }
-    categoriesUsed.add(cat);
-    });
+
+    console.log(`   🏷️  Categorías: ${categoriesString}`);
 
     lote.sections.forEach((section: any, idx: number) => {
       console.log(`     ${idx + 1}. ${section.title}: ${section.product_items.length} items`);
