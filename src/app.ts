@@ -1012,15 +1012,16 @@ function createAllCategorizedSectionLotes(categorizedProducts: Record<string, an
     console.log(`   📦 Items: ${lote.itemsCount}/${maxItemsPerMessage}`);
     console.log(`   📋 Secciones: ${lote.sections.length}`);
 
-    const categoriesInLote = Array.from(lote.categoriesInLote);
+    // ✅ CORRECTO - Con tipos explícitos
+    const categoriesInLote = Array.from(lote.categoriesInLote) as string[];
     console.log(`   🏷️  Categorías: ${categoriesInLote.join(', ')}`);
-    
+
     // Validar que NO hay duplicados de categorías
-    categoriesInLote.forEach(cat => {
-      if (categoriesUsed.has(cat)) {
+    categoriesInLote.forEach((cat: string) => {
+    if (categoriesUsed.has(cat)) {
         console.log(`   ⚠️  ¡ADVERTENCIA! Categoría "${cat}" apareció en lotes anteriores`);
-      }
-      categoriesUsed.add(cat);
+    }
+    categoriesUsed.add(cat);
     });
 
     lote.sections.forEach((section: any, idx: number) => {
