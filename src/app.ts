@@ -851,60 +851,15 @@ interface CategoryPattern {
 }
 
 /**
- * FUNCIÓN MEJORADA: Categorizar productos con EXCLUSIONES y VALIDACIÓN
- * ✅ Evita falsos positivos (toallitas en snacks)
- * ✅ Consulta categoría real de Meta primero
- * ✅ Lógica de exclusión para productos específicos
+ * FUNCIÓN MEJORADA v3: Categorizar por NAME + DESCRIPTION
+ * ✅ Sin depender del campo "category" de Meta (que está vacío)
+ * ✅ Usa name + description para máxima precisión
+ * ✅ Mapeo automático a categorías
  */
 function categorizeProductsCorrectly(products: any[], catalogKey: string) {
   const categorized: Record<string, any[]> = {};
 
-  // Mapeo de categorías de Meta a nombres amigables
-  const categoryNames: Record<string, string> = {
-    'beverages': '🥤 Bebidas y Refrescos',
-    'drinks': '🥤 Bebidas',
-    'non_alcoholic_beverages': '🥤 Bebidas No Alcohólicas',
-    'alcoholic_beverages': '🍺 Bebidas Alcohólicas',
-    'water': '💧 Aguas',
-    'juice': '🧃 Jugos y Néctar',
-    'coffee_tea': '☕ Café y Té',
-    'soft_drinks': '🥤 Gaseosas',
-    
-    'bread_bakery': '🍞 Panadería',
-    'bakery': '🍞 Panadería',
-    'cereals': '🥣 Cereales',
-    'bread': '🍞 Pan',
-    
-    'dairy': '🥛 Lácteos',
-    'milk': '🥛 Leche',
-    'yogurt': '🥛 Yogurt',
-    'cheese': '🧀 Queso',
-    'eggs': '🥚 Huevos',
-    
-    'pantry': '🌾 Abarrotes',
-    'grains': '🌾 Granos',
-    'pasta': '🍝 Pastas',
-    'rice': '🍚 Arroz',
-    'oil': '🫒 Aceites',
-    'sugar': '🍬 Azúcares',
-    
-    'produce': '🍎 Frutas y Verduras',
-    'fruits': '🍎 Frutas',
-    'vegetables': '🥕 Verduras',
-    'fresh_produce': '🥬 Productos Frescos',
-    
-    'cleaning': '🧼 Limpieza',
-    'personal_care': '🧴 Cuidado Personal',
-    'household': '🏠 Artículos del Hogar',
-    'toiletries': '🪥 Higiene',
-    
-    'snacks': '🍿 Snacks',
-    'candy_chocolate': '🍫 Chocolates y Dulces',
-    'frozen': '❄️ Congelados',
-    'other': '📦 Otros'
-  };
-
-  // 🛑 PALABRAS CLAVE QUE EXCLUYEN DE SNACKS
+  // 🛑 PALABRAS CLAVE QUE EXCLUYEN
   const snackExclusions = [
     'toallita', 'toalla', 'papel', 'higiénico', 'higienico',
     'pañal', 'panial', 'servilleta', 'detergente', 'jabón', 'jabon',
@@ -913,180 +868,186 @@ function categorizeProductsCorrectly(products: any[], catalogKey: string) {
     'toallón', 'paño', 'esponja', 'trapo'
   ];
 
-  // 🛑 PALABRAS CLAVE QUE EXCLUYEN DE BEBIDAS
   const beverageExclusions = [
-    'agua oxigenada', 'oxigenada', 'medicamento', 'suero', 'rehidratante'
+    'agua oxigenada', 'oxigenada', 'medicamento', 'suero'
   ];
 
-  // ✅ PALABRAS CLAVE ESPECÍFICAS POR CATEGORÍA (mayor precisión)
+  // ✅ PATRONES DE CATEGORÍAS (basados en name + description)
   const categoryPatterns = {
-    '🪥 Higiene': {
+    '🪥 Higiene y Aseo': {
       patterns: [
-        /\b(toallita|toalla|papel higiénico|pañal|servilleta)\b/i,
+        /\b(toallita|toalla|papel higiénico|pañal|servilleta|kleenex|pañuelos)\b/i,
         /\b(higiene|aseo|personal care|cuidado personal)\b/i,
-        /\b(pasta dental|cepillo de dientes|hilo dental)\b/i,
-        /\b(detergente|jabón|champú|acondicionador|shampoo)\b/i,
-        /\b(desinfectante|cloro|desinfectante|limpiador)\b/i,
-        /\b(pañuelos|kleenex|servilleta)\b/i
+        /\b(pasta dental|cepillo de dientes|hilo dental|cepillo dental)\b/i,
+        /\b(jabón|jabon|champú|champu|acondicionador|shampoo|detergente del cabello)\b/i,
+        /\b(desodorante|crema|loción|gel de baño|jabón de baño)\b/i
       ],
       weight: 1.0
     } as CategoryPattern,
-    '🧼 Limpieza': {
+    
+    '🧼 Limpieza del Hogar': {
       patterns: [
-        /\b(detergente|desinfectante|cloro|limpiador|escoba|recogedor)\b/i,
-        /\b(limpiar|limpieza|cleaning)\b/i,
-        /\b(trapo|paño|esponja|cepillo de limpieza)\b/i,
-        /\b(desengrasante|deshollinador)\b/i
+        /\b(detergente|desinfectante|cloro|limpiador|escoba|recogedor|fregador)\b/i,
+        /\b(limpiar|limpieza|cleaning|desmanchador|quitamanchas)\b/i,
+        /\b(trapo|paño|esponja|cepillo de limpieza|bayeta)\b/i,
+        /\b(desengrasante|deshollinador|limpiador multiusos|lavandina)\b/i
       ],
       weight: 0.95
     } as CategoryPattern,
-    '🍿 Snacks': {
+    
+    '🍿 Snacks y Golosinas': {
       patterns: [
-        /\b(papas fritas|chips|snack|galletas|galleta|chocolate|dulces|caramelo|golosina|chicle)\b/i,
-        /\b(maní|cacahuate|almendras|nueces|frutos secos)\b/i,
-        /\b(caramelos|gomitas|gominolas|chicles)\b/i
+        /\b(papas fritas|chips|snack|galletas|galleta|chocolate|dulces|caramelo|golosina|chicle|mani|cacahuate|tarro)\b/i,
+        /\b(nueces|frutos secos|almendras|maiz tostado|semillas)\b/i,
+        /\b(caramelos|gomitas|gominolas|chicles|turrón|malva|chupete|dulce)\b/i,
+        /\b(kryzpo|margarita|oreo|doritos|frito lay)\b/i
       ],
       weight: 0.9,
       exclusions: snackExclusions
     } as CategoryPattern,
+    
     '❄️ Congelados': {
       patterns: [
-        /\b(congelad|helado|pizza|papas fritas congeladas|frozen)\b/i,
-        /\b(comida congelada|alimentos congelados)\b/i
+        /\b(congelad|helado|pizza|papas fritas congeladas|frozen|papas pre fritas|nuggets|empanadas)\b/i,
+        /\b(comida congelada|alimentos congelados|producto congelado)\b/i
       ],
       weight: 0.85
     } as CategoryPattern,
-    '🥤 Bebidas': {
+    
+    '🥤 Bebidas y Refrescos': {
       patterns: [
-        /\b(coca|pepsi|sprite|fanta|7up|soda|gaseosa|refresco)\b/i,
-        /\b(agua|agua mineral|agua purificada|agua saborizada)\b/i,
-        /\b(jugo|néctar|concentrate|watts|ades|nectar)\b/i,
-        /\b(café|coffee|café instantáneo|café molido|expreso|capuchino)\b/i,
-        /\b(té|tea|matcha|té verde|té rojo|chamomila)\b/i,
-        /\b(cerveza|beer|vino|wine|pisco|licor|whisky|ron|vodka)\b/i,
-        /\b(energética|energy drink|gatorade|powerade|red bull|monster)\b/i
+        /\b(coca|pepsi|sprite|fanta|7up|soda|gaseosa|refresco|cola|bebida gaseosa)\b/i,
+        /\b(agua mineral|agua purificada|agua saborizada|agua con gas|agua embotellada)\b/i,
+        /\b(jugo|néctar|concentrado|watts|ades|nectar|zumo|jugo natural)\b/i,
+        /\b(café|coffee|café instantáneo|expreso|capuchino|café molido|nescafé|café soluble)\b/i,
+        /\b(cerveza|beer|vino|wine|pisco|licor|whisky|ron|vodka|tequila|champagne|sidra)\b/i,
+        /\b(energética|energy drink|gatorade|powerade|red bull|monster|bebida energética)\b/i,
+        /\b(té|tea|matcha|té verde|té rojo|chamomila|infusión|té negro)\b/i
       ],
       weight: 0.88,
       exclusions: beverageExclusions
     } as CategoryPattern,
-    '🍞 Panadería': {
+    
+    '🍞 Panadería y Cereales': {
       patterns: [
-        /\b(pan|molde|hallulla|baguette|integral|blanco|pan francés)\b/i,
-        /\b(cereales|cereal|corn flakes|avena|granola)\b/i,
-        /\b(galletas|galleta|cookies|biscocho|bizcocho)\b/i,
-        /\b(pan de pasas|pan dulce|pan tostado|pan integral)\b/i
+        /\b(pan|molde|hallulla|baguette|integral|blanco|pan francés|centeno|pan de molde)\b/i,
+        /\b(cereales|cereal|corn flakes|avena|granola|muesli|cereal de desayuno)\b/i,
+        /\b(galletas|galleta|cookies|biscocho|bizcocho|galleta de agua|galleta dulce)\b/i,
+        /\b(pan de pasas|pan dulce|pan tostado|pan integral|pan blanco|pan casero)\b/i
       ],
       weight: 0.87
     } as CategoryPattern,
-    '🥛 Lácteos y Huevos': {
+    
+    '🥛 Lácteos y Derivados': {
       patterns: [
-        /\b(leche|lácteo|lacteo|dairy)\b/i,
-        /\b(yogurt|yogur|yogurth|queso|mantequilla|crema|nata)\b/i,
-        /\b(huevo|huevos|egg|eggs)\b/i,
-        /\b(leche condensada|leche evaporada)\b/i
+        /\b(leche|lácteo|lacteo|dairy|leche descremada|leche completa|leche semidescremada)\b/i,
+        /\b(yogurt|yogur|yogurth|queso|mantequilla|crema|nata|quesillo|requesón)\b/i,
+        /\b(huevo|huevos|egg|eggs|clara|yema|huevo de gallina)\b/i,
+        /\b(leche condensada|leche evaporada|dulce de leche|leche de soja|leche de almendra)\b/i
       ],
       weight: 0.89
     } as CategoryPattern,
-    '🌾 Abarrotes': {
+    
+    '🌾 Abarrotes y Despensa': {
       patterns: [
-        /\b(arroz|fideos|pasta|aceite|azúcar|azucar|sal|harina|abarrote)\b/i,
-        /\b(aceite vegetal|aceite de oliva|aceite de girasol)\b/i,
-        /\b(lentejas|porotos|frijoles|legumbres)\b/i,
-        /\b(atún|enlatados|conserva|vinagre|mayonesa)\b/i
+        /\b(arroz|fideos|pasta|aceite|azúcar|azucar|sal|harina|abarrote|alimento)\b/i,
+        /\b(aceite vegetal|aceite de oliva|aceite de girasol|aceite de soja)\b/i,
+        /\b(lentejas|porotos|frijoles|legumbres|garbanzos|arvejas|habas)\b/i,
+        /\b(atún|enlatados|conserva|vinagre|mayonesa|salsas|condimento)\b/i
       ],
       weight: 0.86
     } as CategoryPattern,
+    
     '🍎 Frutas y Verduras': {
       patterns: [
-        /\b(manzana|plátano|banana|naranja|limón|limon|fresa|fruta)\b/i,
-        /\b(tomate|papa|patata|cebolla|ajo|zanahoria|lechuga|brócoli|brocoli|verdura)\b/i,
-        /\b(palta|aguacate|piña|durazno|melocotón|sandía|melón|uva|kiwi)\b/i,
-        /\b(producto fresco|frutas y verduras|produce)\b/i
+        /\b(manzana|plátano|banana|naranja|limón|limon|fresa|fruta|piña|durazno|uva|pera|kiwi|melón|sandía|cereza)\b/i,
+        /\b(tomate|papa|patata|cebolla|ajo|zanahoria|lechuga|brócoli|brocoli|verdura|repollo|espinaca|acelga)\b/i,
+        /\b(palta|aguacate|producto fresco|frutas y verduras|produce|hortalizas|vegetal)\b/i
       ],
       weight: 0.88
+    } as CategoryPattern,
+    
+    '🥩 Carnes y Proteínas': {
+      patterns: [
+        /\b(carne|carnes|pollo|pechuga|muslo|ala|jamón|tocino|panceta)\b/i,
+        /\b(pate|paté|embutido|chorizo|salchicha|mortadela|longaniza)\b/i,
+        /\b(atún|pescado|salmón|trucha|mariscos|camarón|calamar)\b/i,
+        /\b(ternera|res|cerdo|carne molida|filete|costilla)\b/i
+      ],
+      weight: 0.87
     } as CategoryPattern
   } as Record<string, CategoryPattern>;
 
-  // Procesar cada producto
+  // 🔍 PROCESAR CADA PRODUCTO
   products.forEach((product: any) => {
-    let category = '📦 Otros'; // Categoría por defecto
-
     const productName = (product.name || '').toLowerCase();
     const productDesc = (product.description || '').toLowerCase();
-    const fullText = `${productName} ${productDesc}`;
+    const fullText = `${productName} | ${productDesc}`;
+    
+    let category = '📦 Otros'; // Fallback por defecto
+    let bestMatch = { category: '📦 Otros', confidence: 0 };
 
-    // PRIORIDAD 1: Categoría de Meta (si existe)
-    if (product.category) {
-      const metaCategory = product.category.toLowerCase().trim();
-      
-      if (categoryNames[metaCategory]) {
-        category = categoryNames[metaCategory];
-        
-        // Agregar producto y retornar
-        if (!categorized[category]) {
-          categorized[category] = [];
-        }
-        categorized[category].push(product);
-        return; // ✅ Salir aquí si Meta tiene categoría
-      }
-    }
+    console.log(`\n🔍 "${productName}"`);
+    console.log(`   Descripción: "${productDesc}"`);
 
-    // PRIORIDAD 2: Buscar en patrones específicos
-    let bestMatch = { category: '📦 Otros', weight: 0 };
-
+    // ANALIZAR CADA CATEGORÍA
     Object.entries(categoryPatterns).forEach(([catKey, catConfig]) => {
-      // ✅ VALIDAR QUE exclusions EXISTA antes de usarla (ahora con tipo)
+      // PASO 1: Verificar EXCLUSIONES
       if (catConfig.exclusions && catConfig.exclusions.length > 0) {
         const hasExclusion = catConfig.exclusions.some(exclusion =>
-          fullText.includes(exclusion)
+          fullText.includes(exclusion.toLowerCase())
         );
         
         if (hasExclusion) {
-          return; // Pasar a siguiente categoría
+          console.log(`   ⛔ Excluido de ${catKey}`);
+          return; // Pasar a siguiente
         }
       }
 
-      // Verificar patrones
-      const matchCount = catConfig.patterns.filter(pattern =>
-        pattern.test(fullText)
-      ).length;
+      // PASO 2: Contar coincidencias
+      let matchCount = 0;
+      catConfig.patterns.forEach(pattern => {
+        if (pattern.test(fullText)) {
+          matchCount++;
+        }
+      });
 
+      // PASO 3: Calcular confianza
       if (matchCount > 0) {
         const confidence = (matchCount / catConfig.patterns.length) * catConfig.weight;
+        console.log(`   ✓ ${catKey}: ${(confidence * 100).toFixed(0)}%`);
 
-        // Usar la categoría con mayor confianza
-        if (confidence > bestMatch.weight) {
-          bestMatch = { category: catKey, weight: confidence };
+        if (confidence > bestMatch.confidence) {
+          bestMatch = { category: catKey, confidence };
         }
       }
     });
 
-    // Asignar mejor coincidencia encontrada
-    if (bestMatch.weight > 0) {
+    // ASIGNAR CATEGORÍA FINAL
+    if (bestMatch.confidence > 0) {
       category = bestMatch.category;
+      console.log(`   ✅ ASIGNADO A: ${category} (${(bestMatch.confidence * 100).toFixed(0)}%)`);
+    } else {
+      console.log(`   ⚠️ ASIGNADO A: ${category} (sin coincidencias)`);
     }
 
-    // Agregar producto a su categoría
+    // Agregar a categoría
     if (!categorized[category]) {
       categorized[category] = [];
     }
     categorized[category].push(product);
   });
 
-  // Ordenar por cantidad de productos (más productos primero)
-  const sorted = Object.entries(categorized)
-    .sort((a, b) => (b[1] as any[]).length - (a[1] as any[]).length)
-    .reduce((acc, [key, value]) => {
-      acc[key] = value;
-      return acc;
-    }, {} as Record<string, any[]>);
-
-  console.log('\n✅ CATEGORIZACIÓN COMPLETADA:');
-  Object.entries(sorted).forEach(([category, products]) => {
+  // RESUMEN
+  console.log('\n' + '═'.repeat(60));
+  console.log('✅ CATEGORIZACIÓN COMPLETADA:');
+  console.log('═'.repeat(60));
+  
+  Object.entries(categorized).forEach(([category, products]) => {
     console.log(`   ${category}: ${(products as any[]).length} productos`);
   });
 
-  return sorted;
+  return categorized;
 }
 
 /**
