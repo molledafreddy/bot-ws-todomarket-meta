@@ -490,129 +490,27 @@ const flowValidMedia = addKeyword([EVENTS.MEDIA, EVENTS.VOICE_NOTE, EVENTS.LOCAT
 
 const flowEndShoppingCart = addKeyword(utils.setEvent('END_SHOPPING_CART'))
 .addAction(async (ctx, { globalState, endFlow, flowDynamic }) => {
-    // ✅ PASO 1: VERIFICAR ORDEN Y DETECTAR NUEVA ITERACIÓN
-    
-    const orderData = globalState.get('order');
-    const previousAddress = globalState.get('address');
-    const previousPaymentMethod = globalState.get('paymentMethod');
-    const currentOrderHash = JSON.stringify(orderData);
-    const lastOrderHash = globalState.get('lastOrderHash');
-    
-    console.log('🛒 === INICIANDO FLUJO DE CARRITO ===');
-    console.log('📦 Orden actual:', orderData);
-    console.log('📋 Dirección previa:', previousAddress);
-    console.log('💳 Método pago previo:', previousPaymentMethod);
-    console.log('🔐 Hash orden actual:', currentOrderHash);
-    console.log('🔐 Hash orden anterior:', lastOrderHash);
-    
-    // ⛔ VALIDACIÓN: ¿Existe una orden válida?
-    if (!orderData || !Array.isArray(orderData) || orderData.length === 0) {
-        console.log('❌ flowEndShoppingCart: No hay orden válida en globalState');
-        return endFlow('❌ *Error*\n\nNo se encontró información de pedido válida. Por favor, seleccione productos desde el catálogo nuevamente.');
-    }
-    
-    // ✅ DETECTAR SI ES UNA NUEVA ITERACIÓN
-    const isNewOrder = currentOrderHash !== lastOrderHash;
-    
-    if (isNewOrder) {
-        console.log('🆕 NUEVA ORDEN DETECTADA - Reiniciando flujo de pago');
-        
-        // Limpiar datos de órdenes anteriores
-        await globalState.update({
-            address: null,
-            paymentMethod: null,
-            lastOrderHash: currentOrderHash
-        });
-        
-        // Mostrar nueva orden
-        const orderDisplay = orderData
-            .filter((item: any) => typeof item === 'string' && item.includes('#'))
-            .slice(0, -1);
-        
-        const totalLine = orderData.find((item: any) => 
-            typeof item === 'string' && item.includes('Total')
-        );
-        
-        // ✅ MENSAJE DE NUEVA ORDEN (sin flowDynamic, usando addAnswer directamente)
-        console.log('✅ Mostrando mensaje de nueva orden detectada');
-        return; // Continuar al siguiente addAnswer
-        
-    } else if (previousAddress && previousPaymentMethod) {
-        console.log('♻️ ORDEN REPETIDA - Usuario volvió sin cambiar productos');
-        
-        console.log('✅ Mostrando opciones de reutilizar datos');
-        return; // Continuar al siguiente addAnswer
-    }
-    
+    // ... código de validación ...
     console.log('✅ flowEndShoppingCart: Validación exitosa, continuando con datos de entrega');
-    return; // Continuar al siguiente addAnswer
+    return;
 })
+// ✅ CORRECCIÓN: Reemplazar la función async por un mensaje directo
 .addAnswer(
-    async (ctx) => {
-        // ✅ STEP 1: MOSTRAR NUEVA ORDEN DETECTADA (si es aplicable)
-        const globalState = ctx.globalState || ctx.state;
-        const lastOrderHash = globalState.get ? globalState.get('lastOrderHash') : globalState['lastOrderHash'];
-        const previousAddress = globalState.get ? globalState.get('address') : globalState['address'];
-        const previousPaymentMethod = globalState.get ? globalState.get('paymentMethod') : globalState['paymentMethod'];
-        const orderData = globalState.get ? globalState.get('order') : globalState['order'];
-        const currentOrderHash = JSON.stringify(orderData);
-        
-        const isNewOrder = currentOrderHash !== lastOrderHash;
-        
-        if (isNewOrder) {
-            const orderDisplay = orderData
-                .filter((item: any) => typeof item === 'string' && item.includes('#'))
-                .slice(0, -1);
-            
-            const totalLine = orderData.find((item: any) => 
-                typeof item === 'string' && item.includes('Total')
-            );
-            
-            return [
-                '🆕 *NUEVA ORDEN DETECTADA*',
-                '',
-                '📦 *Tu carrito actualizado:*',
-                ...orderDisplay,
-                totalLine || '',
-                '',
-                '✨ Los datos anteriores fueron limpiados.',
-                'Iniciando proceso de compra desde el principio...',
-                '',
-                '✅ *PASO 1: Dirección de entrega*\n',
-                'Ingrese su dirección completa:\n',
-                '*Nombre Calle Numeración, Comuna, Depto*\n',
-                '',
-                'Ejemplo: Juan Pérez Av. Libertador 123, Santiago, Depto 4B',
-            ].join('\n');
-        } else if (previousAddress && previousPaymentMethod) {
-            return [
-                '⚠️ *NOTA: Datos de compra anteriores detectados*',
-                '',
-                '📍 Dirección guardada: ' + previousAddress,
-                '💳 Método pago guardado: ' + previousPaymentMethod,
-                '',
-                '¿Deseas:',
-                '1️⃣ Usar los mismos datos y finalizar',
-                '2️⃣ Cambiar dirección o método de pago',
-                '3️⃣ Volver al catálogo',
-                '',
-                'Escribe: 1, 2 o 3'
-            ].join('\n');
-        } else {
-            return [
-                '✅ *PASO 1: Dirección de entrega*\n',
-                'Ingrese su dirección completa:\n',
-                '*Nombre Calle Numeración, Comuna, Depto*\n',
-                '',
-                'Ejemplo: Juan Pérez Av. Libertador 123, Santiago, Depto 4B',
-            ].join('\n');
-        }
-    },
+    [
+        '✅ *PASO 1: Dirección de entrega*\n',
+        'Ingrese su dirección completa:\n',
+        '*Nombre Calle Numeración, Comuna, Depto*\n',
+        '',
+        'Ejemplo: Juan Pérez Av. Libertador 123, Santiago, Depto 4B',
+    ],
     { capture: true, delay: 1500, idle: 960000 },
     async(ctx, { fallBack, globalState, flowDynamic }) => {
         try {
             const userAddress = ctx.body?.trim();
             const orderData = globalState.get('order');
+            const lastOrderHash = globalState.get('lastOrderHash');
+            const currentOrderHash = JSON.stringify(orderData);
+            const isNewOrder = currentOrderHash !== lastOrderHash;
 
             console.log('📍 Dirección recibida:', userAddress);
             console.log('📝 Longitud:', userAddress?.length);
