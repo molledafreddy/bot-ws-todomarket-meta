@@ -518,6 +518,58 @@ const flowEndShoppingCart = addKeyword(utils.setEvent('END_SHOPPING_CART'))
 // }
 
  // const flowPrincipal = addKeyword("welcome")
+// const flowPrincipal = addKeyword<Provider, Database>(utils.setEvent('welcome'))
+//  .addAction(async (ctx, { gotoFlow }) => start(ctx, gotoFlow, IDLETIME))
+//  .addAnswer([
+//     '🚚 Hola, Bienvenido a *Minimarket TodoMarket* 🛵', 
+//     '⌛ Horario disponible desde las 2:00 PM hasta las 10:00 PM. ⌛',
+//     '📝 a través de este canal te ofrecemos los siguientes servicios de compra:'
+// ], { delay: 1000 })
+//  .addAnswer(
+//      [
+//         '*Indica el Número de la opción que desees:*', 
+//         '👉 #1 Carrito de compra whatsApp', 
+//         '👉 #2 Conversar con un Agente', 
+//     ].join('\n'),
+//     { capture: true, delay: 1000, idle: 900000 },
+//     async (ctx,{ provider, fallBack, gotoFlow, state, endFlow}) => {
+//         console.log('ctx.body flowPrincipal', ctx.body)
+//         const userInput = ctx.body.toLowerCase().trim();
+        
+//         // Opción 1: Catálogo oficial de Meta (ENVÍO DIRECTO)
+//         if (userInput === '1') {
+//             stop(ctx)
+//             console.log('🛒 Usuario seleccionó opción 1 - Catálogo oficial');
+//             console.log('📋 Enviando catálogo oficial de Meta...');
+            
+//             try {
+//                 // Enviar catálogo oficial directamente
+//                 // await sendCatalog(provider, ctx.from, null, 'main', false);
+//                 const result = await sendCatalogWith30Products(ctx.from, 'principal', provider);
+//                 console.log('✅ Catálogo oficial enviado exitosamente');
+//             } catch (error) {
+//                 console.error('❌ Error enviando catálogo:', error);
+//                 await provider.sendText(ctx.from,
+//                     '❌ *Error temporal con el catálogo*\n\nContacta al +56 9 7964 3935'
+//                 );
+//             }
+//             return;
+//         }
+   
+//         // Opción 2: Agente
+//         if (userInput === '2' || userInput.includes('agente')) {
+//             stop(ctx)
+//             console.log('👥 Usuario seleccionó opción 2 - Agente');
+//             return gotoFlow(FlowAgente2);
+//         }
+        
+//         // Opción inválida
+//         console.log('❌ Opción inválida recibida:', ctx.body);
+//         reset(ctx, gotoFlow, IDLETIME)
+//         return fallBack("*Opcion no valida*, \nPor favor seleccione una opcion valida:\n👉 #1 Carrito de compra\n👉 #2 Conversar con un Agente");
+//      }
+//  );
+
 const flowPrincipal = addKeyword<Provider, Database>(utils.setEvent('welcome'))
  .addAction(async (ctx, { gotoFlow }) => start(ctx, gotoFlow, IDLETIME))
  .addAnswer([
@@ -543,8 +595,26 @@ const flowPrincipal = addKeyword<Provider, Database>(utils.setEvent('welcome'))
             console.log('📋 Enviando catálogo oficial de Meta...');
             
             try {
+                // ✅ MOSTRAR MENSAJE INFORMATIVO ANTES DE ENVIAR EL CATÁLOGO
+                await provider.sendText(ctx.from, [
+                    '📦 *CÓMO USAR NUESTROS CATÁLOGOS:*\n',
+                    '🔹 Recibirás varios mensajes con catálogos\n',
+                    '🔹 Cada catálogo contiene DIFERENTES CATEGORÍAS\n',
+                    '🔹 Puedes mezclar productos de todos los catálogos\n',
+                    '🔹 En el ÚLTIMO catálogo encontrarás el botón para enviar tu pedido\n\n',
+                    '📋 *PASOS:*\n',
+                    '1️⃣ Abre cada catálogo\n',
+                    '2️⃣ Selecciona productos de diferentes categorías\n',
+                    '3️⃣ Agrega al carrito desde cualquier catálogo\n',
+                    '4️⃣ En el último catálogo, presiona "Generar Pedido"\n\n',
+                    '💡 *TIP:* Puedes seguir agregando productos de catálogos anteriores\n\n',
+                    '👇 Abriendo catálogos... espera un momento'
+                ].join(''));
+                
+                // Pequeña pausa para que lea el mensaje
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
                 // Enviar catálogo oficial directamente
-                // await sendCatalog(provider, ctx.from, null, 'main', false);
                 const result = await sendCatalogWith30Products(ctx.from, 'principal', provider);
                 console.log('✅ Catálogo oficial enviado exitosamente');
             } catch (error) {
@@ -569,40 +639,6 @@ const flowPrincipal = addKeyword<Provider, Database>(utils.setEvent('welcome'))
         return fallBack("*Opcion no valida*, \nPor favor seleccione una opcion valida:\n👉 #1 Carrito de compra\n👉 #2 Conversar con un Agente");
      }
  );
-
-// const flowPrincipal = addKeyword("welcome")
-//     .addAnswer([
-//         '🙌 ¡Hola! Bienvenido a TodoMarket',
-//         '',
-//         'Elige una opción:',
-//         '',
-//         '1️⃣ 🛍️ Explorar Catálogos',
-//         '2️⃣ 🛒 Ver mi carrito', 
-//         '3️⃣ 📞 Contactar soporte',
-//         '4️⃣ ❓ Ayuda',
-//         '',
-//         '💡 Escribe el número de tu opción'
-//     ])
-//     .addAction(async (ctx, { flowDynamic, gotoFlow }) => {
-//         const userInput = ctx.body?.trim();
-        
-//         switch (userInput) {
-//             case '1':
-//                 return gotoFlow(flowCatalogSelection);
-//             case '2':
-//                 return gotoFlow(flowViewCart);
-//             case '3':
-//                 return gotoFlow(flowContactSupport);
-//             case '4':
-//                 return gotoFlow(flowHelp);
-//             default:
-//                 await flowDynamic([
-//                     '🤔 No entendí tu opción.',
-//                     '👆 Por favor selecciona un número del 1 al 4'
-//                 ]);
-//                 return;
-//         }
-//     });
 
 
 /**
@@ -1142,23 +1178,19 @@ export async function sendCatalogWith30Products(
 
       console.log(`🏷️  Categorías únicas en Lote ${lote.loteNumber}: ${categoriesDescription}`);
 
-      // ✅ NUEVO: VALIDAR Y LIMITAR LONGITUD DEL HEADER (MAX 60 CARACTERES)
-      // Header format: "emoji nombre parte X/Y"
+      // ✅ VALIDAR Y LIMITAR LONGITUD DEL HEADER (MAX 60 CARACTERES)
       const headerTemplate = `${catalog.emoji} ${catalog.name} (${lote.loteNumber}/${messageLotes.length})`;
       let headerText = headerTemplate;
 
       console.log(`📏 Longitud header: ${headerText.length} caracteres (Límite: 60)`);
 
-      // Si el header excede 60 caracteres, truncar
       if (headerText.length > 60) {
         console.log(`⚠️  Header demasiado largo (${headerText.length}), truncando...`);
         
-        // Estrategia: Mantener emoji + nombre corto + parte
-        const maxCatalogNameLength = 35; // Espacio para emoji y parte
+        const maxCatalogNameLength = 35;
         const truncatedName = catalog.name.substring(0, maxCatalogNameLength);
         headerText = `${catalog.emoji} ${truncatedName} (${lote.loteNumber}/${messageLotes.length})`;
         
-        // Si aún sigue largo, acortar más
         if (headerText.length > 60) {
           headerText = `${catalog.emoji} Catálogo (${lote.loteNumber}/${messageLotes.length})`;
         }
@@ -1166,7 +1198,41 @@ export async function sendCatalogWith30Products(
         console.log(`✅ Header ajustado: "${headerText}" (${headerText.length} caracteres)`);
       }
 
-      // ✅ CONSTRUCCIÓN DEL MENSAJE CON CATEGORÍAS
+      // ✅ NUEVO BODY MEJORADO - Describe el sistema de catálogos distribuidos
+      let bodyText = '';
+      
+      if (lote.loteNumber === 1 && messageLotes.length > 1) {
+        // PRIMER CATÁLOGO - Incluir instrucciones
+        bodyText = `${catalog.description}\n\n` +
+                   `📦 Catálogo Parte ${lote.loteNumber} de ${messageLotes.length}\n` +
+                   `${lote.itemsCount} productos disponibles\n\n` +
+                   `📂 Categorías aquí:\n${categoriesDescription}\n\n` +
+                   `📌 *CÓMO USAR:*\n` +
+                   `1️⃣ Explora este catálogo\n` +
+                   `2️⃣ Abre los siguientes (${messageLotes.length - 1} más)\n` +
+                   `3️⃣ Selecciona productos\n` +
+                   `4️⃣ En el último catálogo, envía el pedido\n\n` +
+                   `👇 Selecciona por categoría`;
+      } else if (lote.loteNumber === messageLotes.length) {
+        // ÚLTIMO CATÁLOGO - Incluir instrucción de envío de pedido
+        bodyText = `${catalog.description}\n\n` +
+                   `📦 Catálogo Parte ${lote.loteNumber} de ${messageLotes.length} (FINAL)\n` +
+                   `${lote.itemsCount} productos disponibles\n\n` +
+                   `📂 Categorías aquí:\n${categoriesDescription}\n\n` +
+                   `✅ *FINALIZAR COMPRA:*\n` +
+                   `Una vez hayas seleccionado todos los productos de los ${messageLotes.length} catálogos, presiona "Generar pedido" aquí.\n\n` +
+                   `👇 Selecciona por categoría`;
+      } else {
+        // CATÁLOGOS INTERMEDIOS
+        bodyText = `${catalog.description}\n\n` +
+                   `📦 Catálogo Parte ${lote.loteNumber} de ${messageLotes.length}\n` +
+                   `${lote.itemsCount} productos disponibles\n\n` +
+                   `📂 Categorías aquí:\n${categoriesDescription}\n\n` +
+                   `⬇️ Continúa viendo los siguientes catálogos ⬇️\n\n` +
+                   `👇 Selecciona por categoría`;
+      }
+
+      // ✅ CONSTRUCCIÓN DEL MENSAJE CON CATEGORÍAS MEJORADO
       const productListMessage = {
         messaging_product: "whatsapp",
         recipient_type: "individual",
@@ -1176,11 +1242,10 @@ export async function sendCatalogWith30Products(
           type: "product_list",
           header: {
             type: "text",
-            // ✅ USAR HEADER VALIDADO (máximo 60 caracteres)
             text: headerText
           },
           body: {
-            text: `${catalog.description}\n\n📦 Parte ${lote.loteNumber} de ${messageLotes.length}\n${lote.itemsCount} productos\n\n📂 Categorías: ${categoriesDescription}\n\n👇 Selecciona por categoría`
+            text: bodyText
           },
           footer: {
             text: "Agrega al carrito → Finaliza tu compra"
@@ -1194,7 +1259,7 @@ export async function sendCatalogWith30Products(
 
       console.log(`📋 Payload preparado:`);
       console.log(`   Header: "${productListMessage.interactive.header.text}"`);
-      console.log(`   Body Preview: "${productListMessage.interactive.body.text.substring(0, 50)}..."`);
+      console.log(`   Body Preview: "${bodyText.substring(0, 80)}..."`);
 
       try {
         const response = await fetch(
@@ -1215,7 +1280,6 @@ export async function sendCatalogWith30Products(
           console.error(`❌ Error en Lote ${lote.loteNumber}:`, result);
           failureCount++;
           
-          // Validar específicamente error de header length
           if (result.error?.error_data?.details && result.error.error_data.details.includes('Header text length')) {
             console.error(`   🚨 ERROR DE HEADER: ${result.error.error_data.details}`);
             console.error(`   📏 Header actual: "${productListMessage.interactive.header.text}"`);
