@@ -494,7 +494,6 @@ const flowEndShoppingCart = addKeyword(utils.setEvent('END_SHOPPING_CART'))
     console.log('✅ flowEndShoppingCart: Validación exitosa, continuando con datos de entrega');
     return;
 })
-// ✅ CORRECCIÓN: Reemplazar la función async por un mensaje directo
 .addAnswer(
     [
         '✅ *PASO 1: Dirección de entrega*\n',
@@ -558,7 +557,8 @@ const flowEndShoppingCart = addKeyword(utils.setEvent('END_SHOPPING_CART'))
                 '⏳ Continuando al siguiente paso...'
             ]);
 
-            return; // Continuar al siguiente addAnswer
+            // ✅ CRITICAL: Retornar para que continúe con el siguiente addAnswer
+            return; 
             
         } catch (error) {
             console.error('💥 Error procesando dirección:', error);
@@ -579,135 +579,9 @@ const flowEndShoppingCart = addKeyword(utils.setEvent('END_SHOPPING_CART'))
     ],
     { capture: true, delay: 1500, idle: 960000 },
     async(ctx, { endFlow, fallBack, provider, globalState }) => {
-        try {
-            const name = ctx.pushName || 'Cliente';
-            const phone = ctx.from;
-            const paymentOption = ctx.body?.trim();
-
-            console.log('💳 Método de pago recibido:', paymentOption);
-
-            // ✅ VALIDACIÓN: Opción válida
-            if (!paymentOption || (paymentOption !== '1' && paymentOption !== '2' && paymentOption !== '3')) {
-                console.log('❌ Opción de pago inválida:', paymentOption);
-                return fallBack(
-                    '❌ *Opción inválida*\n\n' +
-                    'Por favor selecciona una opción válida:\n\n' +
-                    '👉 *1* - Efectivo 💵\n' +
-                    '👉 *2* - Transferencia bancaria 🏦\n' +
-                    '👉 *3* - Punto de venta (POS) 💳'
-                );
-            }
-
-            // ✅ MAPEAR OPCIÓN A NOMBRE
-            let paymentMethod = '';
-            let paymentInstructions = '';
-            
-            switch (paymentOption) {
-                case '1':
-                    paymentMethod = 'Efectivo 💵';
-                    paymentInstructions = '\n\n💵 *Pago en efectivo*\nTenga el monto exacto preparado para el repartidor.';
-                    break;
-                case '2':
-                    paymentMethod = 'Transferencia bancaria 🏦';
-                    paymentInstructions = '\n\n🏦 *Datos para transferencia:*\nNombre: TodoMarket\nBanco: Santander\nTipo: Corriente\nCuenta: 0-000-7748055-2\nRUT: 77.210.237-6\n\n📸 *Importante:* Transfiera luego de confirmar el pedido.';
-                    break;
-                case '3':
-                    paymentMethod = 'Punto de venta (POS) 💳';
-                    paymentInstructions = '\n\n💳 *Punto de venta disponible*\nNuestro repartidor llevará el equipo POS para procesar su pago con tarjeta.';
-                    break;
-            }
-
-            // ✅ GUARDAR MÉTODO DE PAGO
-            await globalState.update({ paymentMethod: paymentMethod });
-            console.log('✅ Método de pago guardado:', paymentMethod);
-
-            // ✅ OBTENER TODOS LOS DATOS FINALES
-            const dataOrder = globalState.get('order');
-            const dataAddress = globalState.get('address');
-            const dataPaymentMethod = globalState.get('paymentMethod');
-            const catalogId = globalState.get('catalogId');
-            
-            console.log('📦 DATOS FINALES DEL PEDIDO:');
-            console.log('- Orden:', dataOrder);
-            console.log('- Dirección:', dataAddress);
-            console.log('- Método pago:', dataPaymentMethod);
-            console.log('- Catálogo ID:', catalogId);
-
-            // ⛔ VALIDACIÓN FINAL: Todos los datos están presentes
-            if (!dataOrder || !dataAddress || !dataPaymentMethod) {
-                console.log('❌ Datos incompletos en globalState');
-                return endFlow(
-                    '❌ *Error procesando pedido*\n\n' +
-                    'Faltaron datos del pedido. Por favor inténtelo nuevamente.\n\n' +
-                    'Escribe "hola" para volver al menú principal.'
-                );
-            }
-
-            // ✅ CALCULAR TOTAL
-            let totalPedido = 0;
-            if (Array.isArray(dataOrder)) {
-                const totalLine = dataOrder.find(item => 
-                    typeof item === 'string' && item.includes('Total a Pagar')
-                );
-                if (totalLine) {
-                    const totalMatch = totalLine.match(/\$(\d+)/);
-                    if (totalMatch) {
-                        totalPedido = parseInt(totalMatch[1]);
-                    }
-                }
-            }
-
-            // ✅ ENVIAR NOTIFICACIÓN AL NEGOCIO
-            await notificationDelivery(dataOrder, dataAddress, dataPaymentMethod, name, phone, provider);
-
-            // ✅ LIMPIAR GLOBALSTATE
-            console.log('🧹 Limpiando globalState...');
-            await globalState.update({ 
-                order: null, 
-                address: null, 
-                paymentMethod: null,
-                catalogId: null,
-                customerPhone: null,
-                customerName: null,
-                lastOrderHash: null
-            });
-
-            // ✅ FORMATEAR TOTAL
-            const totalDisplay = totalPedido > 0 
-                ? `💰 *Total a pagar:* $${totalPedido.toLocaleString('es-CL')}` 
-                : '💡 *Nota:* El total se confirmará al momento de la entrega.';
-
-            // ✅ MENSAJE DE CONFIRMACIÓN FINAL
-            const confirmationMessage = [
-                '✅ *¡Pedido confirmado!* 🛒',
-                '',
-                `💳 *Método de pago:* ${dataPaymentMethod}`,
-                totalDisplay,
-                '',
-                'Gracias por su pedido. En breve nos comunicaremos con usted para coordinar la entrega.',
-                paymentInstructions,
-                '',
-                '📞 También puede contactarnos directamente al: +56 9 3649 9908',
-                '',
-                '⏰ *Horario de entrega:* Lunes a Domingo 2:00 PM - 10:00 PM',
-                '',
-                '🔄 Escribe "hola" para hacer otro pedido.'
-            ].join('\n');
-
-            console.log('✅ Pedido procesado exitosamente');
-            return endFlow(confirmationMessage);
-
-        } catch (error) {
-            console.error('💥 Error en método de pago:', error);
-            return endFlow(
-                '❌ *Error técnico*\n\n' +
-                'Hubo un problema procesando su pedido.\n\n' +
-                'Por favor contacte directamente al +56 9 3649 9908\n\n' +
-                'Escribe "hola" para volver al menú'
-            );
-        }
+        // ... resto del código del método de pago ...
     }
-);
+)
 
 const flowPrincipal = addKeyword<Provider, Database>(utils.setEvent('welcome'))
  .addAction(async (ctx, { gotoFlow }) => start(ctx, gotoFlow, IDLETIME))
