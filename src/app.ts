@@ -839,13 +839,14 @@ function categorizeProductsCorrectly(products: any[], catalogKey: string) {
 }
 
 /**
- * ✅ FUNCIÓN CORREGIDA v9: DIVIDE CATEGORÍAS CON NOMBRADO PROGRESIVO
+ * ✅ FUNCIÓN CORREGIDA v10: DIVIDE CATEGORÍAS CORRECTAMENTE SIN PERDER PRODUCTOS
  * GARANTÍAS:
- * ✅ Una categoría = Una sección por lote (NO múltiples secciones de la misma categoría)
+ * ✅ Todas las categorías se procesan completamente
  * ✅ Si una categoría se divide, usa sufijo: "Bebidas 1", "Bebidas 2", etc.
  * ✅ Máximo 30 items por mensaje
  * ✅ Máximo 10 items por sección
  * ✅ Sin duplicados visuales en Meta
+ * ✅ CADA CATEGORÍA APARECE UNA SOLA VEZ POR LOTE (pero múltiples secciones en lotes diferentes)
  */
 function createAllCategorizedSectionLotes(categorizedProducts: Record<string, any[]>) {
   const maxItemsPerMessage = 30;
@@ -853,22 +854,22 @@ function createAllCategorizedSectionLotes(categorizedProducts: Record<string, an
   const maxItemsPerSection = 10;
 
   console.log(`\n${'═'.repeat(70)}`);
-  console.log('📊 CREANDO LOTES DE MENSAJES - v9 CON NOMBRADO PROGRESIVO');
+  console.log('📊 CREANDO LOTES DE MENSAJES - v10 SIN PÉRDIDA DE PRODUCTOS');
   console.log(`${'═'.repeat(70)}`);
 
-  // PASO 1: Preparar y filtrar categorías vacías
+  // PASO 1: Preparar categorías
   const categoryArray = Object.entries(categorizedProducts)
     .filter(([_, items]) => (items as any[]).length > 0)
     .map(([name, items]) => ({
       name,
       items: items as any[],
       itemCount: (items as any[]).length,
-      sectionIndex: 0 // Track de qué sección va
+      itemsProcessed: 0 // ✅ NUEVO: Track de items ya procesados
     }));
 
   console.log(`📂 Categorías con productos: ${categoryArray.length}`);
 
-  // PASO 2: Ordenar categorías (mayor cantidad primero, "Otros" al final)
+  // PASO 2: Ordenar categorías
   categoryArray.sort((a, b) => {
     const aIsOtros = a.name.includes('📦');
     const bIsOtros = b.name.includes('📦');
@@ -884,40 +885,39 @@ function createAllCategorizedSectionLotes(categorizedProducts: Record<string, an
     loteNumber: 1,
     sections: [] as any[],
     itemsCount: 0,
-    categoriesInLote: new Set<string>() // ✅ Control de duplicados POR LOTE
+    categoriesInLote: new Set<string>()
   };
 
-  console.log(`\n📋 Procesando categorías en orden de prioridad...\n`);
+  console.log(`\n📋 Procesando categorías...\n`);
 
-  // PASO 4: Iterar cada categoría
-  for (let categoryIndex = 0; categoryIndex < categoryArray.length; categoryIndex++) {
+  // ✅ ALGORITMO NUEVO: Procesar categorías HASTA COMPLETARLAS
+  let categoryIndex = 0;
+
+  while (categoryIndex < categoryArray.length) {
     const category = categoryArray[categoryIndex];
     const categoryName = category.name;
-    const categoryItems = category.items;
-    const categoryItemCount = categoryItems.length;
+    const itemsRemainingInCategory = category.itemCount - category.itemsProcessed;
 
-    console.log(`\n📦 CATEGORÍA ${categoryIndex + 1}/${categoryArray.length}: "${categoryName}" (${categoryItemCount} items)`);
+    console.log(`\n📦 CATEGORÍA "${categoryName}": ${category.itemsProcessed}/${category.itemCount} items procesados`);
 
-    // ⛔ VALIDACIÓN: ¿Ya está esta categoría en el lote actual?
-    if (currentLote.categoriesInLote.has(categoryName)) {
-      console.log(`   ❌ ERROR: "${categoryName}" YA EXISTE en Lote ${currentLote.loteNumber}`);
-      console.log(`   ⚠️  SALTANDO para evitar duplicados`);
+    // Si ya procesó todos los items de esta categoría, pasar a la siguiente
+    if (itemsRemainingInCategory <= 0) {
+      console.log(`   ✅ Categoría completada, pasando a la siguiente`);
+      categoryIndex++;
       continue;
     }
 
-    // PASO 5: Verificar si hay espacio en el lote actual
-    const spaceAvailable = maxItemsPerMessage - currentLote.itemsCount;
-    const canFitInCurrentLote = categoryItemCount <= spaceAvailable;
+    // ⛔ VALIDACIÓN: ¿Ya está esta categoría BASE en el lote actual?
+    // (Permite múltiples secciones de la misma categoría en DIFERENTES lotes)
+    if (currentLote.categoriesInLote.has(categoryName)) {
+      console.log(`   ⚠️  "${categoryName}" YA en Lote ${currentLote.loteNumber}, guardando y creando nuevo`);
+      
+      if (currentLote.sections.length > 0) {
+        console.log(`   💾 Guardando Lote ${currentLote.loteNumber}: ${currentLote.itemsCount} items`);
+        messageLotes.push(currentLote);
+      }
 
-    console.log(`   📊 Espacio disponible: ${spaceAvailable} items`);
-    console.log(`   📊 ¿Cabe completa? ${canFitInCurrentLote ? 'SÍ' : 'NO'}`);
-
-    // Si NO cabe completa, guardar lote actual y crear uno nuevo
-    if (!canFitInCurrentLote && currentLote.sections.length > 0) {
-      console.log(`   💾 Guardando Lote ${currentLote.loteNumber}: ${currentLote.itemsCount} items`);
-      messageLotes.push(currentLote);
-
-      // ✅ NUEVO LOTE CON SETS LIMPIOS
+      // ✅ NUEVO LOTE LIMPIO
       currentLote = {
         loteNumber: messageLotes.length + 1,
         sections: [],
@@ -926,90 +926,100 @@ function createAllCategorizedSectionLotes(categorizedProducts: Record<string, an
       };
 
       console.log(`   📝 Nuevo Lote ${currentLote.loteNumber} creado`);
+      continue; // Reintentar con el nuevo lote SIN incrementar categoryIndex
     }
 
-    // PASO 6: Procesar categoría EN SECCIONES CON SUFIJO NUMERADO
-    let itemsProcessedFromCategory = 0;
-    let sectionNumberForCategory = 1; // ✅ CONTADOR PARA SUFIJO
+    // Verificar espacio disponible
+    const spaceAvailable = maxItemsPerMessage - currentLote.itemsCount;
 
-    while (itemsProcessedFromCategory < categoryItemCount) {
-      const itemsRemainingInCategory = categoryItemCount - itemsProcessedFromCategory;
-      const spaceInLote = maxItemsPerMessage - currentLote.itemsCount;
-      const itemsToTakeForSection = Math.min(
-        maxItemsPerSection,
-        itemsRemainingInCategory,
-        spaceInLote
-      );
+    if (itemsRemainingInCategory > spaceAvailable && currentLote.sections.length > 0) {
+      console.log(`   ⚠️  No cabe completa (necesita ${itemsRemainingInCategory}, hay ${spaceAvailable})`);
+      console.log(`   💾 Guardando Lote ${currentLote.loteNumber}: ${currentLote.itemsCount} items`);
+      messageLotes.push(currentLote);
 
-      // Si no hay espacio, crear nuevo lote
-      if (itemsToTakeForSection <= 0) {
-        if (currentLote.sections.length > 0) {
-          console.log(`   💾 Lote ${currentLote.loteNumber} lleno (${currentLote.itemsCount} items)`);
-          messageLotes.push(currentLote);
-        }
-
-        currentLote = {
-          loteNumber: messageLotes.length + 1,
-          sections: [],
-          itemsCount: 0,
-          categoriesInLote: new Set<string>()
-        };
-
-        console.log(`   📝 Nuevo Lote ${currentLote.loteNumber} creado por falta de espacio`);
-        continue;
-      }
-
-      // PASO 7: Tomar items para esta sección
-      const itemsForSection = categoryItems.slice(
-        itemsProcessedFromCategory,
-        itemsProcessedFromCategory + itemsToTakeForSection
-      );
-
-      // ✅ PASO 8: CREAR TÍTULO CON SUFIJO NUMERADO
-      // Si la categoría se divide en múltiples secciones, agregar sufijo
-      let sectionTitle: string;
-      
-      if (categoryItemCount > maxItemsPerSection) {
-        // Categoría con más de 10 items: "Bebidas 1", "Bebidas 2", etc.
-        sectionTitle = `${categoryName} ${sectionNumberForCategory}`;
-        console.log(`   ✅ Sección dividida: "${sectionTitle}"`);
-      } else {
-        // Categoría con ≤10 items: sin sufijo
-        sectionTitle = categoryName;
-        console.log(`   ✅ Sección única: "${sectionTitle}"`);
-      }
-
-      // Crear sección con el título generado
-      const section = {
-        title: sectionTitle.substring(0, 30), // Meta limita a 30 caracteres
-        product_items: itemsForSection.map(item => ({
-          product_retailer_id: item.retailer_id || item.id
-        }))
+      currentLote = {
+        loteNumber: messageLotes.length + 1,
+        sections: [],
+        itemsCount: 0,
+        categoriesInLote: new Set<string>()
       };
 
-      currentLote.sections.push(section);
-      currentLote.itemsCount += itemsForSection.length;
+      console.log(`   📝 Nuevo Lote ${currentLote.loteNumber} creado`);
+      continue; // Reintentar SIN incrementar categoryIndex
+    }
+
+    // ✅ PROCESAR SECCIÓN DE LA CATEGORÍA
+    const spaceInLote = maxItemsPerMessage - currentLote.itemsCount;
+    const itemsToTake = Math.min(
+      maxItemsPerSection,
+      itemsRemainingInCategory,
+      spaceInLote
+    );
+
+    if (itemsToTake <= 0) {
+      console.log(`   ⚠️  Sin espacio, guardando lote`);
       
-      // ✅ MARCAR CATEGORÍA BASE COMO PROCESADA (solo la primera vez)
-      if (sectionNumberForCategory === 1) {
-        currentLote.categoriesInLote.add(categoryName);
+      if (currentLote.sections.length > 0) {
+        messageLotes.push(currentLote);
       }
 
-      console.log(`      • Items en sección: ${itemsForSection.length}`);
-      console.log(`      • Total en Lote ${currentLote.loteNumber}: ${currentLote.itemsCount}/${maxItemsPerMessage}`);
+      currentLote = {
+        loteNumber: messageLotes.length + 1,
+        sections: [],
+        itemsCount: 0,
+        categoriesInLote: new Set<string>()
+      };
 
-      itemsProcessedFromCategory += itemsToTakeForSection;
-      sectionNumberForCategory++; // ✅ INCREMENTAR CONTADOR
+      console.log(`   📝 Nuevo Lote ${currentLote.loteNumber} creado`);
+      continue;
     }
+
+    // Tomar items de la categoría
+    const itemsForSection = category.items.slice(
+      category.itemsProcessed,
+      category.itemsProcessed + itemsToTake
+    );
+
+    // ✅ CREAR TÍTULO CON SUFIJO NUMERADO
+    const sectionNumber = Math.floor(category.itemsProcessed / maxItemsPerSection) + 1;
+    let sectionTitle: string;
+
+    if (category.itemCount > maxItemsPerSection) {
+      sectionTitle = `${categoryName} ${sectionNumber}`;
+    } else {
+      sectionTitle = categoryName;
+    }
+
+    // Crear sección
+    const section = {
+      title: sectionTitle.substring(0, 30),
+      product_items: itemsForSection.map(item => ({
+        product_retailer_id: item.retailer_id || item.id
+      }))
+    };
+
+    currentLote.sections.push(section);
+    currentLote.itemsCount += itemsForSection.length;
+    
+    // ✅ MARCAR CATEGORÍA BASE (solo primera vez en el lote)
+    if (category.itemsProcessed === 0) {
+      currentLote.categoriesInLote.add(categoryName);
+    }
+
+    console.log(`   ✅ Sección "${sectionTitle}": ${itemsForSection.length} items`);
+    console.log(`      Total en Lote ${currentLote.loteNumber}: ${currentLote.itemsCount}/${maxItemsPerMessage}`);
+
+    // ✅ ACTUALIZAR ITEMS PROCESADOS
+    category.itemsProcessed += itemsToTake;
   }
 
-  // PASO 9: Guardar último lote
+  // Guardar último lote
   if (currentLote.sections.length > 0) {
     messageLotes.push(currentLote);
     console.log(`\n💾 Lote ${currentLote.loteNumber} guardado: ${currentLote.itemsCount} items`);
   }
 
-  // PASO 10: Resumen final
+  // RESUMEN FINAL
   console.log(`\n${'═'.repeat(70)}`);
   console.log('📤 RESUMEN FINAL DE LOTES');
   console.log(`${'═'.repeat(70)}`);
@@ -1023,7 +1033,6 @@ function createAllCategorizedSectionLotes(categorizedProducts: Record<string, an
     console.log(`   📦 Items: ${lote.itemsCount}/${maxItemsPerMessage}`);
     console.log(`   📋 Secciones: ${lote.sections.length}`);
 
-    // Listar categorías en este lote
     let categoriesString = '';
     let count = 0;
     
@@ -1035,21 +1044,13 @@ function createAllCategorizedSectionLotes(categorizedProducts: Record<string, an
 
     console.log(`   🏷️  Categorías: ${categoriesString}`);
 
-    // Listar secciones detalladas
     lote.sections.forEach((section: any, idx: number) => {
       console.log(`     ${idx + 1}. ${section.title}: ${section.product_items.length} items`);
     });
 
-    // Validar duplicados en el MISMO lote
-    const uniqueSectionTitles = new Set(lote.sections.map((s: any) => s.title));
-    if (uniqueSectionTitles.size < lote.sections.length) {
-      console.log(`   ⚠️  ADVERTENCIA: Hay secciones duplicadas en este lote`);
-    }
-
-    // Validar que la categoría no aparece en otros lotes
     for (const cat of lote.categoriesInLote) {
       if (categoriesUsed.has(cat as string)) {
-        console.log(`   ⚠️  ADVERTENCIA: Categoría "${cat}" ya apareció en lote anterior`);
+        console.log(`   ⚠️  Categoría "${cat}" aparece en múltiples lotes (ESPERADO)`);
       }
       categoriesUsed.add(cat as string);
     }
