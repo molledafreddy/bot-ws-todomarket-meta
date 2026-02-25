@@ -310,73 +310,352 @@ const flowValidMedia = addKeyword([EVENTS.MEDIA, EVENTS.VOICE_NOTE, EVENTS.LOCAT
     }
 });
 
-const flowEndShoppingCart = addKeyword(utils.setEvent('END_SHOPPING_CART'))
-.addAction(async (ctx, { globalState, endFlow, fallBack }) => {
-    // Verificar que existe una orden procesada
-    const orderData = globalState.get('order');
-    const catalogId = globalState.get('catalogId');
+// const flowEndShoppingCart = addKeyword(utils.setEvent('END_SHOPPING_CART'))
+// .addAction(async (ctx, { globalState, endFlow, fallBack }) => {
+//     // Verificar que existe una orden procesada
+//     const orderData = globalState.get('order');
+//     const catalogId = globalState.get('catalogId');
     
-    if (!orderData || !catalogId) {
+//     if (!orderData || !catalogId) {
+//         console.log('❌ flowEndShoppingCart: No hay orden válida en globalState');
+//         return endFlow('❌ *Error*\n\nNo se encontró información de pedido válida. Por favor, seleccione productos desde el catálogo nuevamente.');
+//     }
+    
+//     console.log('✅ flowEndShoppingCart: Orden válida encontrada, solicitando dirección');
+//     return; // Continuar al siguiente paso
+// })
+// .addAnswer([
+//     'Su Pedido está siendo procesado 🛒', 
+//     'Para completar su pedido necesitamos los siguientes datos:',
+    
+// ])
+// .addAnswer(
+//     [
+//         '📍 *PASO 1: Dirección de entrega*\n',
+//         'Ingrese su dirección con la siguiente estructura:\n',
+//         '*Nombre Calle Numeración, Comuna, Dto/Bloque/Lote Referencia*\n',
+//         '',
+//         'Ejemplo: Juan Pérez Av. Libertador 123, Santiago, Depto 4B Torre Norte'
+//     ],
+//     { capture: true, delay: 3000, idle: 960000 },
+//     async(ctx, {fallBack, globalState}) => {
+//         try {
+//             const userAddress = ctx.body?.trim();
+
+//             console.log('📍 Dirección recibida:', userAddress);
+
+//             // Validar que se ingresó una dirección válida
+//             if (!userAddress || userAddress.length < 10) {
+//                 console.log('❌ Dirección inválida recibida');
+//                 return fallBack('❌ *Dirección inválida*\n\nPor favor ingrese una dirección completa con la estructura indicada:\n*Nombre Calle Numeración, Comuna, Depto/Bloque/Lote Referencia*');
+//             }
+
+//             // Guardar dirección en globalState
+//             await globalState.update({address: userAddress});
+//             console.log('✅ Dirección guardada correctamente');
+            
+//             // Continuar al siguiente paso automáticamente
+//             return; // Permitir que el flujo continúe
+
+//         } catch (error) {
+//             console.error('💥 Error procesando dirección:', error);
+//             return fallBack('❌ *Error técnico*\n\nHubo un problema procesando su dirección. Por favor inténtelo nuevamente.');
+//         }
+//     }
+// )
+// .addAnswer('✅ *Dirección registrada correctamente*')
+// .addAnswer(
+//     [
+//         '💳 *PASO 2: Método de pago*\n',
+//         'Seleccione su método de pago preferido:\n',
+//         '',
+//         '👉 *1* - Efectivo 💵',
+//         '👉 *2* - Transferencia bancaria 🏦', 
+//         '👉 *3* - Punto de venta (POS) 💳',
+//         '',
+//         'Escriba solo el *número* de su opción (1, 2 o 3):'
+//     ],
+//     { capture: true, delay: 3000, idle: 960000 },
+//     async(ctx, {endFlow, fallBack, provider, globalState}) => {
+//         try {
+//             const name = ctx.pushName || 'Cliente';
+//             const phone = ctx.from;
+//             const paymentOption = ctx.body?.trim();
+
+//             console.log('💳 Método de pago recibido:', paymentOption);
+
+//             // Validar que se ingresó una opción válida (1, 2 o 3)
+//             if (paymentOption !== '1' && paymentOption !== '2' && paymentOption !== '3') {
+//                 console.log('❌ Método de pago inválido recibido:', paymentOption);
+//                 return fallBack('❌ *Opción inválida*\n\nPor favor ingrese un número válido:\n\n👉 *1* - Efectivo 💵\n👉 *2* - Transferencia bancaria 🏦\n👉 *3* - Punto de venta (POS) 💳');
+//             }
+
+//             // Mapear número a método de pago
+//             let paymentMethod = '';
+//             switch (paymentOption) {
+//                 case '1':
+//                     paymentMethod = 'Efectivo 💵';
+//                     break;
+//                 case '2':
+//                     paymentMethod = 'Transferencia bancaria 🏦';
+//                     break;
+//                 case '3':
+//                     paymentMethod = 'Punto de venta (POS) 💳';
+//                     break;
+//             }
+
+//             // Guardar método de pago en globalState
+//             await globalState.update({paymentMethod: paymentMethod});
+            
+//             // Obtener todos los datos del pedido
+//             const dataOrder = globalState.get('order');
+//             const dataAddress = globalState.get('address');
+//             const dataPaymentMethod = globalState.get('paymentMethod');
+//             const catalogId = globalState.get('catalogId');
+            
+//             console.log('📦 Datos finales del pedido:');
+//             console.log('- Orden:', dataOrder);
+//             console.log('- Dirección:', dataAddress);
+//             console.log('- Método de pago:', dataPaymentMethod);
+//             console.log('- Catálogo ID:', catalogId);
+
+//             // Verificar que tenemos todos los datos necesarios
+//             if (!dataOrder || !dataAddress || !dataPaymentMethod) {
+//                 console.log('❌ Datos incompletos en globalState');
+//                 return endFlow('❌ *Error procesando pedido*\n\nFaltan datos del pedido. Por favor inténtelo nuevamente.');
+//             }
+
+//             // Calcular el total del pedido desde dataOrder
+//             let totalPedido = 0;
+//             if (Array.isArray(dataOrder)) {
+//                 // Buscar el total en el último elemento del array (si existe)
+//                 const totalLine = dataOrder.find(item => typeof item === 'string' && item.includes('Total a Pagar'));
+//                 if (totalLine) {
+//                     // Extraer el monto del string "Total a Pagar: $XXX"
+//                     const totalMatch = totalLine.match(/\$(\d+)/);
+//                     if (totalMatch) {
+//                         totalPedido = parseInt(totalMatch[1]);
+//                     }
+//                 }
+//             }
+
+//             // Enviar notificación al negocio
+//             await notificationDelivery(dataOrder, dataAddress, dataPaymentMethod, name, phone, provider);
+            
+//             // Limpiar globalState después de procesar
+//             await globalState.update({ 
+//                 order: null, 
+//                 address: null, 
+//                 paymentMethod: null,
+//                 catalogId: null,
+//                 customerPhone: null,
+//                 customerName: null 
+//             });
+
+//             console.log('✅ Pedido procesado exitosamente y globalState limpiado');
+            
+//             // Mensaje de confirmación personalizado según método de pago
+//             let paymentInstructions = '';
+//             if (paymentOption === '2') { // Transferencia
+//                 paymentInstructions = '\n\n💳 *Datos para transferencia:*\nNombre: [TodoMarket]\nBanco: [Santander]\nTipo: [Corriente]\nCuenta: [0-000-7748055-2]\nRUT: [77.210.237-6]\n\n📸 *Importante:* Transfiera luego de confirmar el pedido.';
+//             } else if (paymentOption === '3') { // POS
+//                 paymentInstructions = '\n\n💳 *Punto de venta disponible*\nNuestro repartidor llevará el equipo POS para procesar su pago con tarjeta.';
+//             } else { // Efectivo
+//                 paymentInstructions = '\n\n💵 *Pago en efectivo*\nTenga el monto exacto preparado para el repartidor.';
+//             }
+            
+//             // Formatear el total para mostrar
+//             const totalDisplay = totalPedido > 0 ? `💰 *Total a pagar:* $${totalPedido.toLocaleString('es-CL')}` : '💡 *Nota:* El total se confirmará al momento de la entrega.';
+            
+//             return endFlow([
+//                 '✅ *¡Pedido confirmado!* 🛒',
+//                 '',
+//                 `💳 *Método de pago:* ${dataPaymentMethod}`,
+//                 totalDisplay,
+//                 '',
+//                 'Gracias por su pedido. En breve nos comunicaremos con usted para coordinar la entrega.',
+//                 paymentInstructions,
+//                 '',
+//                 '📞 También puede contactarnos directamente al: +56 9 3649 9908',
+//                 '',
+//                 '⏰ *Horario de entrega:* Lunes a Domingo 2:00 PM - 10:00 PM'
+//             ].join('\n'));
+
+//         } catch (error) {
+//             console.error('💥 Error en flowEndShoppingCart:', error);
+//             return endFlow('❌ *Error técnico*\n\nHubo un problema procesando su pedido. Por favor contacte directamente al +56 9 3649 9908');
+//         }
+//     }
+// );
+
+const flowEndShoppingCart = addKeyword(utils.setEvent('END_SHOPPING_CART'))
+.addAction(async (ctx, { globalState, endFlow, flowDynamic }) => {
+    // ✅ PASO 1: VERIFICAR ORDEN Y DETECTAR NUEVA ITERACIÓN
+    
+    const orderData = globalState.get('order');
+    const previousAddress = globalState.get('address');
+    const previousPaymentMethod = globalState.get('paymentMethod');
+    const currentOrderHash = JSON.stringify(orderData); // ✅ NUEVO: Hash de orden actual
+    const lastOrderHash = globalState.get('lastOrderHash'); // ✅ NUEVO: Hash de orden anterior
+    
+    console.log('🛒 === INICIANDO FLUJO DE CARRITO ===');
+    console.log('📦 Orden actual:', orderData);
+    console.log('📋 Dirección previa:', previousAddress);
+    console.log('💳 Método pago previo:', previousPaymentMethod);
+    console.log('🔐 Hash orden actual:', currentOrderHash);
+    console.log('🔐 Hash orden anterior:', lastOrderHash);
+    
+    // ⛔ VALIDACIÓN: ¿Existe una orden válida?
+    if (!orderData || !Array.isArray(orderData) || orderData.length === 0) {
         console.log('❌ flowEndShoppingCart: No hay orden válida en globalState');
         return endFlow('❌ *Error*\n\nNo se encontró información de pedido válida. Por favor, seleccione productos desde el catálogo nuevamente.');
     }
     
-    console.log('✅ flowEndShoppingCart: Orden válida encontrada, solicitando dirección');
-    return; // Continuar al siguiente paso
-})
-.addAnswer([
-    'Su Pedido está siendo procesado 🛒', 
-    'Para completar su pedido necesitamos los siguientes datos:',
+    // ✅ DETECTAR SI ES UNA NUEVA ITERACIÓN
+    const isNewOrder = currentOrderHash !== lastOrderHash;
     
-])
+    if (isNewOrder) {
+        console.log('🆕 NUEVA ORDEN DETECTADA - Reiniciando flujo de pago');
+        
+        // Limpiar datos de órdenes anteriores
+        await globalState.update({
+            address: null,
+            paymentMethod: null,
+            lastOrderHash: currentOrderHash // ✅ Guardar hash de nueva orden
+        });
+        
+        // Mostrar nueva orden
+        const orderDisplay = orderData
+            .filter((item: any) => typeof item === 'string' && item.includes('#'))
+            .slice(0, -1);
+        
+        const totalLine = orderData.find((item: any) => 
+            typeof item === 'string' && item.includes('Total')
+        );
+        
+        await flowDynamic([
+            '🆕 *NUEVA ORDEN DETECTADA*',
+            '',
+            '📦 *Tu carrito actualizado:*',
+            ...orderDisplay,
+            totalLine || '',
+            '',
+            '✨ Los datos anteriores fueron limpiados.',
+            'Iniciando proceso de compra desde el principio...',
+            '',
+            '⏳ Espera un momento...'
+        ]);
+        
+        // Pausa antes de continuar
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+    } else if (previousAddress && previousPaymentMethod) {
+        console.log('♻️ ORDEN REPETIDA - Usuario volvió sin cambiar productos');
+        
+        await flowDynamic([
+            '⚠️ *NOTA: Datos de compra anteriores detectados*',
+            '',
+            '📍 Dirección guardada: ' + previousAddress,
+            '💳 Método pago guardado: ' + previousPaymentMethod,
+            '',
+            '¿Deseas:',
+            '1️⃣ Usar los mismos datos y finalizar',
+            '2️⃣ Cambiar dirección o método de pago',
+            '3️⃣ Volver al catálogo',
+            '',
+            'Escribe: 1, 2 o 3'
+        ]);
+        
+        // Capturar opción del usuario
+        return; // Continuar con siguiente addAnswer
+    }
+    
+    console.log('✅ flowEndShoppingCart: Validación exitosa, continuando con datos de entrega');
+    return;
+})
 .addAnswer(
     [
-        '📍 *PASO 1: Dirección de entrega*\n',
-        'Ingrese su dirección con la siguiente estructura:\n',
-        '*Nombre Calle Numeración, Comuna, Dto/Bloque/Lote Referencia*\n',
+        '✅ *PASO 1: Dirección de entrega*\n',
+        'Ingrese su dirección completa con la siguiente estructura:\n',
+        '*Nombre Calle Numeración, Comuna, Depto/Bloque/Lote Referencia*\n',
         '',
-        'Ejemplo: Juan Pérez Av. Libertador 123, Santiago, Depto 4B Torre Norte'
+        'Ejemplo: Juan Pérez Av. Libertador 123, Santiago, Depto 4B Torre Norte',
+        '',
+        '⏳ Esperando tu dirección...'
     ],
-    { capture: true, delay: 3000, idle: 960000 },
-    async(ctx, {fallBack, globalState}) => {
+    { capture: true, delay: 1500, idle: 960000 },
+    async(ctx, { fallBack, globalState, flowDynamic }) => {
         try {
             const userAddress = ctx.body?.trim();
+            const orderData = globalState.get('order');
 
             console.log('📍 Dirección recibida:', userAddress);
+            console.log('📝 Longitud:', userAddress?.length);
 
-            // Validar que se ingresó una dirección válida
-            if (!userAddress || userAddress.length < 10) {
-                console.log('❌ Dirección inválida recibida');
-                return fallBack('❌ *Dirección inválida*\n\nPor favor ingrese una dirección completa con la estructura indicada:\n*Nombre Calle Numeración, Comuna, Depto/Bloque/Lote Referencia*');
+            // ✅ VALIDACIÓN 1: ¿Está vacío?
+            if (!userAddress) {
+                console.log('❌ Dirección vacía');
+                return fallBack('❌ *Campo requerido*\n\nPor favor ingrese una dirección válida.');
             }
 
-            // Guardar dirección en globalState
-            await globalState.update({address: userAddress});
-            console.log('✅ Dirección guardada correctamente');
-            
-            // Continuar al siguiente paso automáticamente
-            return; // Permitir que el flujo continúe
+            // ✅ VALIDACIÓN 2: ¿Es demasiado corta?
+            if (userAddress.length < 10) {
+                console.log('❌ Dirección demasiado corta:', userAddress.length);
+                return fallBack(
+                    '❌ *Dirección incompleta*\n\n' +
+                    'Por favor ingrese una dirección completa con:\n' +
+                    '• Calle y número\n' +
+                    '• Comuna\n' +
+                    '• Depto/Bloque (si aplica)\n\n' +
+                    'Ejemplo: Av. Libertador 123, Santiago, Depto 4B'
+                );
+            }
 
+            // ✅ VALIDACIÓN 3: ¿Contiene información mínima?
+            const hasComma = userAddress.includes(',');
+            if (!hasComma) {
+                console.log('❌ Dirección sin separadores');
+                return fallBack(
+                    '❌ *Formato incorrecto*\n\n' +
+                    'La dirección debe incluir comas para separar:\n' +
+                    '*Calle, Comuna, Depto*\n\n' +
+                    'Ejemplo: Av. Libertador 123, Santiago, Depto 4B'
+                );
+            }
+
+            // ✅ GUARDADO DE DIRECCIÓN
+            await globalState.update({ address: userAddress });
+            console.log('✅ Dirección guardada exitosamente');
+
+            // ✅ CONFIRMACIÓN VISUAL
+            await flowDynamic([
+                '✅ *Dirección registrada*',
+                `📍 ${userAddress}`,
+                '',
+                '⏳ Continuando al siguiente paso...'
+            ]);
+
+            return; // Continuar al siguiente addAnswer
+            
         } catch (error) {
             console.error('💥 Error procesando dirección:', error);
-            return fallBack('❌ *Error técnico*\n\nHubo un problema procesando su dirección. Por favor inténtelo nuevamente.');
+            return fallBack('❌ *Error técnico*\n\nHubo un problema procesando tu dirección. Por favor inténtelo nuevamente.');
         }
     }
 )
-.addAnswer('✅ *Dirección registrada correctamente*')
 .addAnswer(
     [
         '💳 *PASO 2: Método de pago*\n',
-        'Seleccione su método de pago preferido:\n',
+        'Selecciona tu método de pago preferido:\n',
         '',
         '👉 *1* - Efectivo 💵',
         '👉 *2* - Transferencia bancaria 🏦', 
         '👉 *3* - Punto de venta (POS) 💳',
         '',
-        'Escriba solo el *número* de su opción (1, 2 o 3):'
+        'Escribe solo el *número* de tu opción (1, 2 o 3):'
     ],
-    { capture: true, delay: 3000, idle: 960000 },
-    async(ctx, {endFlow, fallBack, provider, globalState}) => {
+    { capture: true, delay: 1500, idle: 960000 },
+    async(ctx, { endFlow, fallBack, provider, globalState }) => {
         try {
             const name = ctx.pushName || 'Cliente';
             const phone = ctx.from;
@@ -384,54 +663,70 @@ const flowEndShoppingCart = addKeyword(utils.setEvent('END_SHOPPING_CART'))
 
             console.log('💳 Método de pago recibido:', paymentOption);
 
-            // Validar que se ingresó una opción válida (1, 2 o 3)
-            if (paymentOption !== '1' && paymentOption !== '2' && paymentOption !== '3') {
-                console.log('❌ Método de pago inválido recibido:', paymentOption);
-                return fallBack('❌ *Opción inválida*\n\nPor favor ingrese un número válido:\n\n👉 *1* - Efectivo 💵\n👉 *2* - Transferencia bancaria 🏦\n👉 *3* - Punto de venta (POS) 💳');
+            // ✅ VALIDACIÓN: Opción válida
+            if (!paymentOption || (paymentOption !== '1' && paymentOption !== '2' && paymentOption !== '3')) {
+                console.log('❌ Opción de pago inválida:', paymentOption);
+                return fallBack(
+                    '❌ *Opción inválida*\n\n' +
+                    'Por favor selecciona una opción válida:\n\n' +
+                    '👉 *1* - Efectivo 💵\n' +
+                    '👉 *2* - Transferencia bancaria 🏦\n' +
+                    '👉 *3* - Punto de venta (POS) 💳'
+                );
             }
 
-            // Mapear número a método de pago
+            // ✅ MAPEAR OPCIÓN A NOMBRE
             let paymentMethod = '';
+            let paymentInstructions = '';
+            
             switch (paymentOption) {
                 case '1':
                     paymentMethod = 'Efectivo 💵';
+                    paymentInstructions = '\n\n💵 *Pago en efectivo*\nTenga el monto exacto preparado para el repartidor.';
                     break;
                 case '2':
                     paymentMethod = 'Transferencia bancaria 🏦';
+                    paymentInstructions = '\n\n🏦 *Datos para transferencia:*\nNombre: TodoMarket\nBanco: Santander\nTipo: Corriente\nCuenta: 0-000-7748055-2\nRUT: 77.210.237-6\n\n📸 *Importante:* Transfiera luego de confirmar el pedido.';
                     break;
                 case '3':
                     paymentMethod = 'Punto de venta (POS) 💳';
+                    paymentInstructions = '\n\n💳 *Punto de venta disponible*\nNuestro repartidor llevará el equipo POS para procesar su pago con tarjeta.';
                     break;
             }
 
-            // Guardar método de pago en globalState
-            await globalState.update({paymentMethod: paymentMethod});
-            
-            // Obtener todos los datos del pedido
+            // ✅ GUARDAR MÉTODO DE PAGO
+            await globalState.update({ paymentMethod: paymentMethod });
+            console.log('✅ Método de pago guardado:', paymentMethod);
+
+            // ✅ OBTENER TODOS LOS DATOS FINALES
             const dataOrder = globalState.get('order');
             const dataAddress = globalState.get('address');
             const dataPaymentMethod = globalState.get('paymentMethod');
             const catalogId = globalState.get('catalogId');
             
-            console.log('📦 Datos finales del pedido:');
+            console.log('📦 DATOS FINALES DEL PEDIDO:');
             console.log('- Orden:', dataOrder);
             console.log('- Dirección:', dataAddress);
-            console.log('- Método de pago:', dataPaymentMethod);
+            console.log('- Método pago:', dataPaymentMethod);
             console.log('- Catálogo ID:', catalogId);
 
-            // Verificar que tenemos todos los datos necesarios
+            // ⛔ VALIDACIÓN FINAL: Todos los datos están presentes
             if (!dataOrder || !dataAddress || !dataPaymentMethod) {
                 console.log('❌ Datos incompletos en globalState');
-                return endFlow('❌ *Error procesando pedido*\n\nFaltan datos del pedido. Por favor inténtelo nuevamente.');
+                return endFlow(
+                    '❌ *Error procesando pedido*\n\n' +
+                    'Faltaron datos del pedido. Por favor inténtelo nuevamente.\n\n' +
+                    'Escribe "hola" para volver al menú principal.'
+                );
             }
 
-            // Calcular el total del pedido desde dataOrder
+            // ✅ CALCULAR TOTAL
             let totalPedido = 0;
             if (Array.isArray(dataOrder)) {
-                // Buscar el total en el último elemento del array (si existe)
-                const totalLine = dataOrder.find(item => typeof item === 'string' && item.includes('Total a Pagar'));
+                const totalLine = dataOrder.find(item => 
+                    typeof item === 'string' && item.includes('Total a Pagar')
+                );
                 if (totalLine) {
-                    // Extraer el monto del string "Total a Pagar: $XXX"
                     const totalMatch = totalLine.match(/\$(\d+)/);
                     if (totalMatch) {
                         totalPedido = parseInt(totalMatch[1]);
@@ -439,35 +734,29 @@ const flowEndShoppingCart = addKeyword(utils.setEvent('END_SHOPPING_CART'))
                 }
             }
 
-            // Enviar notificación al negocio
+            // ✅ ENVIAR NOTIFICACIÓN AL NEGOCIO
+            console.log('📧 Enviando notificación al negocio...');
             await notificationDelivery(dataOrder, dataAddress, dataPaymentMethod, name, phone, provider);
-            
-            // Limpiar globalState después de procesar
+
+            // ✅ LIMPIAR GLOBALSTATE
+            console.log('🧹 Limpiando globalState...');
             await globalState.update({ 
                 order: null, 
                 address: null, 
                 paymentMethod: null,
                 catalogId: null,
                 customerPhone: null,
-                customerName: null 
+                customerName: null,
+                lastOrderHash: null // ✅ NUEVO: Limpiar hash para próxima orden
             });
 
-            console.log('✅ Pedido procesado exitosamente y globalState limpiado');
-            
-            // Mensaje de confirmación personalizado según método de pago
-            let paymentInstructions = '';
-            if (paymentOption === '2') { // Transferencia
-                paymentInstructions = '\n\n💳 *Datos para transferencia:*\nNombre: [TodoMarket]\nBanco: [Santander]\nTipo: [Corriente]\nCuenta: [0-000-7748055-2]\nRUT: [77.210.237-6]\n\n📸 *Importante:* Transfiera luego de confirmar el pedido.';
-            } else if (paymentOption === '3') { // POS
-                paymentInstructions = '\n\n💳 *Punto de venta disponible*\nNuestro repartidor llevará el equipo POS para procesar su pago con tarjeta.';
-            } else { // Efectivo
-                paymentInstructions = '\n\n💵 *Pago en efectivo*\nTenga el monto exacto preparado para el repartidor.';
-            }
-            
-            // Formatear el total para mostrar
-            const totalDisplay = totalPedido > 0 ? `💰 *Total a pagar:* $${totalPedido.toLocaleString('es-CL')}` : '💡 *Nota:* El total se confirmará al momento de la entrega.';
-            
-            return endFlow([
+            // ✅ FORMATEAR TOTAL
+            const totalDisplay = totalPedido > 0 
+                ? `💰 *Total a pagar:* $${totalPedido.toLocaleString('es-CL')}` 
+                : '💡 *Nota:* El total se confirmará al momento de la entrega.';
+
+            // ✅ MENSAJE DE CONFIRMACIÓN FINAL
+            const confirmationMessage = [
                 '✅ *¡Pedido confirmado!* 🛒',
                 '',
                 `💳 *Método de pago:* ${dataPaymentMethod}`,
@@ -478,12 +767,22 @@ const flowEndShoppingCart = addKeyword(utils.setEvent('END_SHOPPING_CART'))
                 '',
                 '📞 También puede contactarnos directamente al: +56 9 3649 9908',
                 '',
-                '⏰ *Horario de entrega:* Lunes a Domingo 2:00 PM - 10:00 PM'
-            ].join('\n'));
+                '⏰ *Horario de entrega:* Lunes a Domingo 2:00 PM - 10:00 PM',
+                '',
+                '🔄 Escribe "hola" para hacer otro pedido.'
+            ].join('\n');
+
+            console.log('✅ Pedido procesado exitosamente');
+            return endFlow(confirmationMessage);
 
         } catch (error) {
-            console.error('💥 Error en flowEndShoppingCart:', error);
-            return endFlow('❌ *Error técnico*\n\nHubo un problema procesando su pedido. Por favor contacte directamente al +56 9 3649 9908');
+            console.error('💥 Error en método de pago:', error);
+            return endFlow(
+                '❌ *Error técnico*\n\n' +
+                'Hubo un problema procesando su pedido.\n\n' +
+                'Por favor contacte directamente al +56 9 3649 9908\n\n' +
+                'Escribe "hola" para volver al menú'
+            );
         }
     }
 );
