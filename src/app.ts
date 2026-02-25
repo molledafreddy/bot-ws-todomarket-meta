@@ -549,17 +549,7 @@ const flowEndShoppingCart = addKeyword(utils.setEvent('END_SHOPPING_CART'))
             await globalState.update({ address: userAddress });
             console.log('✅ Dirección guardada exitosamente');
 
-            // ✅ CONFIRMACIÓN VISUAL
-            await flowDynamic([
-                '✅ *Dirección registrada*',
-                `📍 ${userAddress}`,
-                '',
-                '⏳ Continuando al siguiente paso...'
-            ]);
-
-            // ✅ CRITICAL: Retornar para que continúe con el siguiente addAnswer
-            return; 
-            
+            return;            
         } catch (error) {
             console.error('💥 Error procesando dirección:', error);
             return fallBack('❌ *Error técnico*\n\nHubo un problema procesando tu dirección. Por favor inténtelo nuevamente.');
