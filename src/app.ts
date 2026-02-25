@@ -1067,12 +1067,6 @@ function createAllCategorizedSectionLotes(categorizedProducts: Record<string, an
 }
 
 
-/**
- * NUEVA FUNCIÓN: Enviar catálogo con 100 productos en MÚLTIPLES MENSAJES
- * ✅ Respeta límite de Meta (30 items por mensaje)
- * ✅ Envía automáticamente múltiples mensajes
- * ✅ Sin duplicados
- */
 export async function sendCatalogWith30Products(
   phoneNumber: string,
   catalogKey: string,
@@ -1140,6 +1134,25 @@ export async function sendCatalogWith30Products(
       console.log(`   • Items: ${lote.itemsCount}`);
       console.log(`   • Secciones: ${lote.sections.length}`);
 
+      // ✅ NUEVO: EXTRAER CATEGORÍAS ÚNICAS Y CREAR DESCRIPCIÓN
+      const categoriesInLote = Array.from(lote.categoriesInLote) as string[];
+      
+      // Crear string de categorías sin números (eliminar " 1", " 2", " 3", etc.)
+      const uniqueCategories = new Set<string>();
+      
+      categoriesInLote.forEach((cat: string) => {
+        // Remover sufijo numérico si existe
+        const baseCategoryName = cat.replace(/\s+\d+$/, ''); // Elimina " 1", " 2", " 3", etc.
+        uniqueCategories.add(baseCategoryName);
+      });
+
+      // Convertir Set a array y ordenar
+      const uniqueCategoriesArray = Array.from(uniqueCategories).sort();
+      const categoriesDescription = uniqueCategoriesArray.join(', ');
+
+      console.log(`🏷️  Categorías únicas en Lote ${lote.loteNumber}: ${categoriesDescription}`);
+
+      // ✅ CONSTRUCCIÓN DEL MENSAJE CON CATEGORÍAS
       const productListMessage = {
         messaging_product: "whatsapp",
         recipient_type: "individual",
@@ -1149,10 +1162,11 @@ export async function sendCatalogWith30Products(
           type: "product_list",
           header: {
             type: "text",
-            text: `${catalog.emoji} ${catalog.name} (${lote.loteNumber}/${messageLotes.length})`
+            // ✅ AHORA MUESTRA LAS CATEGORÍAS ÚNICAS
+            text: `${catalog.emoji} ${catalog.name}\n${categoriesDescription} (${lote.loteNumber}/${messageLotes.length})`
           },
           body: {
-            text: `${catalog.description}\n\n📦 Parte ${lote.loteNumber} de ${messageLotes.length}\n${lote.itemsCount} productos en esta sección\n\n👇 Selecciona por categoría`
+            text: `${catalog.description}\n\n📦 Parte ${lote.loteNumber} de ${messageLotes.length}\n${lote.itemsCount} productos\n\n📂 Categorías: ${categoriesDescription}\n\n👇 Selecciona por categoría`
           },
           footer: {
             text: "Agrega al carrito → Finaliza tu compra"
@@ -1189,6 +1203,7 @@ export async function sendCatalogWith30Products(
           }
         } else {
           console.log(`✅ Lote ${lote.loteNumber} enviado exitosamente`);
+          console.log(`   📂 Contiene: ${categoriesDescription}`);
           successCount++;
           
           // Esperar 500ms entre mensajes para no saturar Meta
