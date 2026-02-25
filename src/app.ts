@@ -574,13 +574,13 @@ const flowPrincipal = addKeyword<Provider, Database>(utils.setEvent('welcome'))
  .addAction(async (ctx, { gotoFlow }) => start(ctx, gotoFlow, IDLETIME))
  .addAnswer([
     '🚚 Hola, Bienvenido a *Minimarket TodoMarket* 🛵', 
-    '⌛ Horario disponible desde las 2:00 PM hasta las 10:00 PM. ⌛',
+    '⌛ Horario disponible desde las 1:00 PM hasta las 10:00 PM. ⌛',
     '📝 a través de este canal te ofrecemos los siguientes servicios de compra:'
 ], { delay: 1000 })
  .addAnswer(
      [
         '*Indica el Número de la opción que desees:*', 
-        '👉 #1 Carrito de compra whatsApp', 
+        '👉 #1 Catalogos de compra whatsApp', 
         '👉 #2 Conversar con un Agente', 
     ].join('\n'),
     { capture: true, delay: 1000, idle: 900000 },
@@ -601,12 +601,12 @@ const flowPrincipal = addKeyword<Provider, Database>(utils.setEvent('welcome'))
                     '🔹 Recibirás varios mensajes con catálogos\n',
                     '🔹 Cada catálogo contiene DIFERENTES CATEGORÍAS\n',
                     '🔹 Puedes mezclar productos de todos los catálogos\n',
-                    '🔹 En el ÚLTIMO catálogo encontrarás el botón para enviar tu pedido\n\n',
+                    '🔹 En cada catalogo te muestra la opcion de enviar el pedido, lo cual culminara con la seleccion de productos\n\n',
                     '📋 *PASOS:*\n',
                     '1️⃣ Abre cada catálogo\n',
                     '2️⃣ Selecciona productos de diferentes categorías\n',
                     '3️⃣ Agrega al carrito desde cualquier catálogo\n',
-                    '4️⃣ En el último catálogo, presiona "Generar Pedido"\n\n',
+                    '4️⃣ Culmina el pedido desde cualquiera de los catálogos\n\n',
                     '💡 *TIP:* Puedes seguir agregando productos de catálogos anteriores\n\n',
                     '👇 Abriendo catálogos... espera un momento'
                 ].join(''));
@@ -1203,16 +1203,13 @@ export async function sendCatalogWith30Products(
       
       if (lote.loteNumber === 1 && messageLotes.length > 1) {
         // PRIMER CATÁLOGO - Incluir instrucciones
-        bodyText = `${catalog.description}\n\n` +
-                   `📦 Catálogo Parte ${lote.loteNumber} de ${messageLotes.length}\n` +
-                   `${lote.itemsCount} productos disponibles\n\n` +
+        bodyText = `${lote.itemsCount} productos disponibles\n\n` +
                    `📂 Categorías aquí:\n${categoriesDescription}\n\n` +
                    `📌 *CÓMO USAR:*\n` +
                    `1️⃣ Explora este catálogo\n` +
                    `2️⃣ Abre los siguientes (${messageLotes.length - 1} más)\n` +
                    `3️⃣ Selecciona productos\n` +
-                   `4️⃣ En el último catálogo, envía el pedido\n\n` +
-                   `👇 Selecciona por categoría`;
+                   `4️⃣ Puedes enviar el pedido desde cualquiera de los catálogos\n\n`;
       } else if (lote.loteNumber === messageLotes.length) {
         // ÚLTIMO CATÁLOGO - Incluir instrucción de envío de pedido
         bodyText = `${catalog.description}\n\n` +
