@@ -1124,7 +1124,7 @@ export async function sendCatalogWith30Products(
       console.log(`   • Items: ${lote.itemsCount}`);
       console.log(`   • Secciones: ${lote.sections.length}`);
 
-      // ✅ NUEVO: EXTRAER CATEGORÍAS ÚNICAS Y CREAR DESCRIPCIÓN
+      // ✅ EXTRAER CATEGORÍAS ÚNICAS Y CREAR DESCRIPCIÓN
       const categoriesInLote = Array.from(lote.categoriesInLote) as string[];
       
       // Crear string de categorías sin números (eliminar " 1", " 2", " 3", etc.)
@@ -1138,9 +1138,33 @@ export async function sendCatalogWith30Products(
 
       // Convertir Set a array y ordenar
       const uniqueCategoriesArray = Array.from(uniqueCategories).sort();
-      const categoriesDescription = uniqueCategoriesArray.join(', ');
+      let categoriesDescription = uniqueCategoriesArray.join(', ');
 
       console.log(`🏷️  Categorías únicas en Lote ${lote.loteNumber}: ${categoriesDescription}`);
+
+      // ✅ NUEVO: VALIDAR Y LIMITAR LONGITUD DEL HEADER (MAX 60 CARACTERES)
+      // Header format: "emoji nombre parte X/Y"
+      const headerTemplate = `${catalog.emoji} ${catalog.name} (${lote.loteNumber}/${messageLotes.length})`;
+      let headerText = headerTemplate;
+
+      console.log(`📏 Longitud header: ${headerText.length} caracteres (Límite: 60)`);
+
+      // Si el header excede 60 caracteres, truncar
+      if (headerText.length > 60) {
+        console.log(`⚠️  Header demasiado largo (${headerText.length}), truncando...`);
+        
+        // Estrategia: Mantener emoji + nombre corto + parte
+        const maxCatalogNameLength = 35; // Espacio para emoji y parte
+        const truncatedName = catalog.name.substring(0, maxCatalogNameLength);
+        headerText = `${catalog.emoji} ${truncatedName} (${lote.loteNumber}/${messageLotes.length})`;
+        
+        // Si aún sigue largo, acortar más
+        if (headerText.length > 60) {
+          headerText = `${catalog.emoji} Catálogo (${lote.loteNumber}/${messageLotes.length})`;
+        }
+        
+        console.log(`✅ Header ajustado: "${headerText}" (${headerText.length} caracteres)`);
+      }
 
       // ✅ CONSTRUCCIÓN DEL MENSAJE CON CATEGORÍAS
       const productListMessage = {
@@ -1152,8 +1176,8 @@ export async function sendCatalogWith30Products(
           type: "product_list",
           header: {
             type: "text",
-            // ✅ AHORA MUESTRA LAS CATEGORÍAS ÚNICAS
-            text: `${catalog.emoji} ${catalog.name}\n${categoriesDescription} (${lote.loteNumber}/${messageLotes.length})`
+            // ✅ USAR HEADER VALIDADO (máximo 60 caracteres)
+            text: headerText
           },
           body: {
             text: `${catalog.description}\n\n📦 Parte ${lote.loteNumber} de ${messageLotes.length}\n${lote.itemsCount} productos\n\n📂 Categorías: ${categoriesDescription}\n\n👇 Selecciona por categoría`
@@ -1167,6 +1191,10 @@ export async function sendCatalogWith30Products(
           }
         }
       };
+
+      console.log(`📋 Payload preparado:`);
+      console.log(`   Header: "${productListMessage.interactive.header.text}"`);
+      console.log(`   Body Preview: "${productListMessage.interactive.body.text.substring(0, 50)}..."`);
 
       try {
         const response = await fetch(
@@ -1187,13 +1215,18 @@ export async function sendCatalogWith30Products(
           console.error(`❌ Error en Lote ${lote.loteNumber}:`, result);
           failureCount++;
           
-          // Intentar enviar igualmente para no detener los siguientes
-          if (result.error?.error_data?.details) {
+          // Validar específicamente error de header length
+          if (result.error?.error_data?.details && result.error.error_data.details.includes('Header text length')) {
+            console.error(`   🚨 ERROR DE HEADER: ${result.error.error_data.details}`);
+            console.error(`   📏 Header actual: "${productListMessage.interactive.header.text}"`);
+            console.error(`   📐 Longitud: ${productListMessage.interactive.header.text.length} caracteres (Máximo: 60)`);
+          } else if (result.error?.error_data?.details) {
             console.error('   Detalle:', result.error.error_data.details);
           }
         } else {
           console.log(`✅ Lote ${lote.loteNumber} enviado exitosamente`);
           console.log(`   📂 Contiene: ${categoriesDescription}`);
+          console.log(`   📏 Header: "${headerText}" (${headerText.length}/60 caracteres)`);
           successCount++;
           
           // Esperar 500ms entre mensajes para no saturar Meta
