@@ -703,73 +703,65 @@ function categorizeProductsCorrectly(products: any[], catalogKey: string) {
   const processedIds = new Set<string>(); // Evitar duplicados absolutos
 
   const categoryKeywords: Record<string, string[]> = {
-  '🍿 Snacks': [
-    'snack', 'papas fritas', 'kryzpo', 'chips', 'chocolate', 'dulce', 'caramelo',
-    'golosina', 'chicle', 'maní', 'cacahuate', 'nueces', 'almendras', 'tarro',
-    'galleta dulce', 'frutos secos', 'turrón', 'malva', 'chupete', 'gominola',
-    'alfajor', 'galletita' // ✅ Más específico
-  ],
+    '🥤 Bebidas': [
+      'bebida', 'refresco', 'gaseosa', 'agua', 'jugo', 'soda',
+      'cerveza', 'vino', 'pisco', 'café', 'espresso', 'capuchino',
+      'té', 'energética', 'monster', 'red bull', 'coca', 'pepsi',
+      'sprite', 'fanta', 'nestea', 'watts', 'néctar', 'lipton', 'postobon'
+    ],
+    '🍿 Snacks': [
+      'snack', 'papas fritas', 'chocolate', 'galleta', 'takis', 'kryzpo', 'chips', 'chocolate', 'dulce', 'caramelo',
+      'golosina', 'chicle', 'maní', 'cacahuate', 'nueces', 'almendras',
+      'galleta dulce', 'frutos secos', 'turrón', 'malva', 'alfajor', 'galletita'
+    ],
+    
+    '🍞 Panadería': [
+      'pan', 'cereal', 'avena', 'hallulla', 'bimbo', 'molde',
+      'pan integral', 'pan blanco', 'pan francés', 'panadería', 'biscocho',
+      'bizcocho', 'tostadas', 'catalinas'
+    ],
 
-  '🥤 Bebidas': [
-    'bebida', 'refresco', 'gaseosa', 'agua', 'jugo', 'cola', 'soda',
-    'cerveza', 'vino', 'pisco', 'café', 'espresso', 'capuchino',
-    'té', 'energética', 'monster', 'red bull', 'coca', 'pepsi',
-    'sprite', 'fanta', 'nestea', 'watts', 'néctar', 'lipton', 'postobon'
-  ],
+    '🥛 Lácteos': [
+      'leche', 'yogurt', 'queso', 'huevo', 'mantequilla', 'crema', 'lácteo',
+      'soprole', 'colún', 'dairy', 'yogur', 'requesón', 'quesillo',
+      'leche descremada', 'leche entera', 'manteca'
+    ],
 
-  '🍞 Panadería': [
-    'pan', 'cereal', 'galleta', 'avena', 'hallulla', 'bimbo', 'molde',
-    'pan integral', 'pan blanco', 'pan francés', 'panadería', 'biscocho',
-    'bizcocho', 'tostadas', 'catalinas' // ✅ Agregar productos específicos
-  ],
+    '🌾 Abarrotes': [
+      'arroz', 'fideos', 'pasta', 'zucaritas', 'aceite', 'azúcar', 'sal', 'harina',
+      'lentejas', 'porotos', 'atún', 'enlatados', 'conserva', 'vinagre',
+      'mayonesa', 'condimento', 'abarrote', 'legumbres', 'garbanzos',
+      'espagueti', 'espirales', 'azucar'
+    ],
 
-  '🥛 Lácteos': [
-    'leche', 'yogurt', 'queso', 'huevo', 'mantequilla', 'crema', 'lácteo',
-    'soprole', 'colún', 'dairy', 'yogur', 'requesón', 'quesillo',
-    'leche descremada', 'leche entera', 'manteca' // ✅ Agregar manteca
-  ],
+    '🍎 Frutas y Verduras': [
+      'fruta', 'verdura', 'manzana', 'plátano', 'banana', 'naranja',
+      'limón', 'fresa', 'piña', 'durazno', 'uva', 'pera', 'kiwi',
+      'tomate', 'cebolla', 'ajo', 'zanahoria', 'lechuga', 'brócoli',
+      'espinaca', 'acelga', 'repollo', 'papa a granel', 'patata'
+    ],
 
-  '🌾 Abarrotes': [
-    'arroz', 'fideos', 'pasta', 'aceite', 'azúcar', 'sal', 'harina',
-    'lentejas', 'porotos', 'atún', 'enlatados', 'conserva', 'vinagre',
-    'mayonesa', 'condimento', 'abarrote', 'legumbres', 'garbanzos',
-    'espagueti', 'espirales' // ✅ Más tipos de pasta
-  ],
+    '🥩 Carnes y Cecinas': [
+      'carne', 'pollo', 'pechuga', 'acaramelado', 'vianesa', 'muslo', 'ala', 'jamón', 'tocino',
+      'panceta', 'paté', 'embutido', 'chorizo', 'salchicha', 'mortadela',
+      'longaniza', 'ternera', 'cerdo', 'carne molida', 'filete',
+      'costilla', 'pescado', 'salmón', 'trucha', 'merluza'
+    ],
 
-  '🍎 Frutas y Verduras': [
-    'fruta', 'verdura', 'manzana', 'plátano', 'banana', 'naranja',
-    'limón', 'fresa', 'piña', 'durazno', 'uva', 'pera', 'kiwi',
-    'tomate', 'cebolla', 'ajo', 'zanahoria', 'lechuga', 'brócoli',
-    'espinaca', 'acelga', 'repollo', 'papa', 'patata',
-    'producto fresco', 'verdura fresca', 'fruta fresca',
-    'fruto', 'hortaliza', 'vegetal'
-  ],
+    '🧼 Limpieza': [
+      'detergente', 'jabón', 'nova', 'champú', 'pasta dental', 'papel higiénico',
+      'aseo', 'higiene', 'cloro', 'limpieza', 'desinfectante', 'limpiador',
+      'escoba', 'recogedor', 'trapo', 'paño', 'esponja', 'cepillo',
+      'toallita', 'toalla', 'pañal', 'servilleta', 'kleenex', 'pañuelos',
+      'poet'
+    ],
 
-  '🥩 Carnes': [
-    'carne', 'pollo', 'pechuga', 'muslo', 'ala', 'jamón', 'tocino',
-    'panceta', 'paté', 'embutido', 'chorizo', 'salchicha', 'mortadela',
-    'longaniza', 'ternera', 'cerdo', 'carne molida', 'filete',
-    'costilla', 'pescado', 'salmón', 'trucha', 'merluza',
-    'marisco', 'camarón', 'calamar', 'mariscos'
-    // ⚠️ ELIMINADO "res" - causa falsos positivos con "limpia pisos"
-  ],
-
-  '🧼 Limpieza': [
-    'detergente', 'jabón', 'champú', 'pasta dental', 'papel higiénico',
-    'aseo', 'higiene', 'cloro', 'limpieza', 'desinfectante', 'limpiador',
-    'escoba', 'recogedor', 'trapo', 'paño', 'esponja', 'cepillo',
-    'toallita', 'toalla', 'pañal', 'servilleta', 'kleenex', 'pañuelos',
-    'acondicionador', 'shampoo', 'gel de baño', 'jabón de baño',
-    'desodorante', 'loción', 'cepillo de dientes', 'hilo dental',
-    'desengrasante', 'quitamanchas', 'desmanchador', 'poet' // ✅ Agregar marca
-  ],
-
-  '❄️ Congelados': [
-    'congelado', 'helado', 'frozen', 'pizza', 'papas pre fritas',
-    'papas congeladas', 'comida congelada', 'alimento congelado',
-    'nuggets', 'empanadas', 'productos congelados'
-  ]
-};
+    '❄️ Congelados': [
+      'congelado', 'helado', 'frozen', 'pizza', 'papas pre fritas',
+      'papas congeladas', 'comida congelada', 'alimento congelado',
+      'nuggets', 'empanadas'
+    ]
+  };
 
   console.log(`\n${'═'.repeat(60)}`);
   console.log('🔍 INICIANDO CATEGORIZACIÓN DE PRODUCTOS');
