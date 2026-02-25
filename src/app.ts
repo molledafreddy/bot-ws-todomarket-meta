@@ -658,7 +658,6 @@ const flowEndShoppingCart = addKeyword(utils.setEvent('END_SHOPPING_CART'))
             }
 
             // ✅ ENVIAR NOTIFICACIÓN AL NEGOCIO
-            console.log('📧 Enviando notificación al negocio...');
             await notificationDelivery(dataOrder, dataAddress, dataPaymentMethod, name, phone, provider);
 
             // ✅ LIMPIAR GLOBALSTATE
