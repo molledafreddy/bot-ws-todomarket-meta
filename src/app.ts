@@ -1102,24 +1102,22 @@ function categorizeProductsCorrectly(products: any[], catalogKey: string) {
 // }
 
 /**
- * VERSIÓN OPTIMIZADA v13: Máximo 120 items por mensaje
- * ✅ Agrupa múltiples categorías en 1 mensaje
- * ✅ Respeta límite de 30 items por sección
- * ✅ Divide categorías grandes automáticamente
- * ✅ Resultado: 7 → 2 mensajes (reducción 71.4%)
+ * VERSIÓN CORREGIDA v14: Máximo 30 items TOTALES por mensaje
+ * ✅ Meta restricción real: 30 items máximo por mensaje (NO 120)
+ * ✅ 1 sección por mensaje para categorías grandes
+ * ✅ Múltiples secciones PEQUEÑAS (≤30 items) en mismo mensaje
+ * ✅ Resultado: 195 → ~7 mensajes
  */
 function createAllCategorizedSectionLotes(categorizedProducts: Record<string, any[]>) {
-  const maxItemsPerMessage = 120;      // ✅ NUEVO: 120 items máximo por mensaje
-  const maxItemsPerSection = 30;       // Meta: 30 items máximo por sección
-  const maxSectionsPerMessage = 10;    // Meta: 10 secciones máximo por mensaje
+  const maxItemsPerMessage = 30;      // ✅ RESTRICCIÓN REAL DE META
+  const maxItemsPerSection = 30;      // Meta: 30 items máximo por sección
 
   console.log(`\n${'═'.repeat(70)}`);
-  console.log('📊 CREANDO LOTES - v13 OPTIMIZADO (120 items/mensaje)');
+  console.log('📊 CREANDO LOTES - v14 CORREGIDO (30 items máximo/mensaje)');
   console.log(`${'═'.repeat(70)}`);
-  console.log(`🎯 Estrategia: Agrupar múltiples categorías en 1 mensaje`);
+  console.log(`🎯 RESTRICCIÓN META DESCUBIERTA: Máximo 30 items TOTALES por mensaje`);
   console.log(`📦 Máximo ${maxItemsPerSection} items por sección`);
-  console.log(`💬 Máximo ${maxItemsPerMessage} items por mensaje`);
-  console.log(`📋 Máximo ${maxSectionsPerMessage} secciones por mensaje\n`);
+  console.log(`💬 Máximo ${maxItemsPerMessage} items por mensaje (RESTRICCIÓN REAL)\n`);
 
   // ════════════════════════════════════════════════════════════════
   // PASO 1: PREPARAR CATEGORÍAS Y DIVIDIRLAS EN SECCIONES
@@ -1137,7 +1135,6 @@ function createAllCategorizedSectionLotes(categorizedProducts: Record<string, an
   const categoryArray = Object.entries(categorizedProducts)
     .filter(([_, items]) => (items as any[]).length > 0)
     .sort((a, b) => {
-      // Ordenar: mayor cantidad primero, "Otros" al final
       const aIsOtros = a[0].includes('📦');
       const bIsOtros = b[0].includes('📦');
       if (aIsOtros && !bIsOtros) return 1;
@@ -1165,14 +1162,11 @@ function createAllCategorizedSectionLotes(categorizedProducts: Record<string, an
       // Crear título de sección
       let sectionTitle: string;
       if (sectionsNeeded > 1) {
-        // Si hay múltiples secciones, agregar número
         sectionTitle = `${categoryName.replace(/[^\w\s]/g, '').trim()} ${s + 1}`;
       } else {
-        // Si hay una sola sección, sin número
         sectionTitle = categoryName.replace(/[^\w\s]/g, '').trim();
       }
 
-      // Validar longitud (máximo 30 caracteres)
       sectionTitle = sectionTitle.substring(0, 30).trim();
 
       allSections.push({
@@ -1188,11 +1182,11 @@ function createAllCategorizedSectionLotes(categorizedProducts: Record<string, an
   });
 
   // ════════════════════════════════════════════════════════════════
-  // PASO 2: AGRUPAR SECCIONES EN MENSAJES (máx 120 items)
+  // PASO 2: AGRUPAR SECCIONES EN MENSAJES (máx 30 items TOTALES)
   // ════════════════════════════════════════════════════════════════
 
   console.log(`${'═'.repeat(70)}`);
-  console.log('🔄 AGRUPANDO SECCIONES EN MENSAJES');
+  console.log('🔄 AGRUPANDO SECCIONES EN MENSAJES (30 items máximo)');
   console.log(`${'═'.repeat(70)}\n`);
 
   const messageLotes: any[] = [];
@@ -1201,7 +1195,6 @@ function createAllCategorizedSectionLotes(categorizedProducts: Record<string, an
     sections: [] as CategorySection[],
     itemsCount: 0,
     categoriesInLote: new Set<string>(),
-    categoriesCountInLote: 0
   };
 
   let sectionIndex = 0;
@@ -1211,13 +1204,12 @@ function createAllCategorizedSectionLotes(categorizedProducts: Record<string, an
 
     console.log(`\n📍 Procesando sección: "${section.sectionTitle}" (${section.itemCount} items)`);
 
-    // ✅ Calcular espacio disponible en el mensaje actual
+    // ✅ Calcular espacio disponible
     const spaceInCurrentLote = maxItemsPerMessage - currentLote.itemsCount;
-    const spaceSectionsInCurrentLote = maxSectionsPerMessage - currentLote.sections.length;
 
-    // ✅ Si no hay espacio (items O secciones), guardar y crear nuevo
-    if ((spaceInCurrentLote <= 0 || spaceSectionsInCurrentLote <= 0) && currentLote.sections.length > 0) {
-      console.log(`💾 Lote ${currentLote.loteNumber} lleno (${currentLote.itemsCount} items, ${currentLote.sections.length} secciones)`);
+    // ✅ Si agregar esta sección excede el límite Y hay contenido, guardar y crear nuevo
+    if ((currentLote.itemsCount + section.itemCount > maxItemsPerMessage) && currentLote.sections.length > 0) {
+      console.log(`💾 Lote ${currentLote.loteNumber} lleno (${currentLote.itemsCount} items)`);
       messageLotes.push(currentLote);
 
       currentLote = {
@@ -1225,11 +1217,35 @@ function createAllCategorizedSectionLotes(categorizedProducts: Record<string, an
         sections: [],
         itemsCount: 0,
         categoriesInLote: new Set<string>(),
-        categoriesCountInLote: 0
       };
 
       console.log(`📝 Nuevo Lote ${currentLote.loteNumber} creado`);
-      continue; // Reintentar sin avanzar
+      continue; // Reintentar sin avanzar sectionIndex
+    }
+
+    // ✅ Si la sección sola no cabe (>30), guardar el lote actual primero
+    if (section.itemCount > maxItemsPerMessage) {
+      if (currentLote.sections.length > 0) {
+        console.log(`💾 Guardando lote actual para hacer espacio a sección grande`);
+        messageLotes.push(currentLote);
+
+        currentLote = {
+          loteNumber: messageLotes.length + 1,
+          sections: [],
+          itemsCount: 0,
+          categoriesInLote: new Set<string>(),
+        };
+      }
+
+      // ⚠️ PROBLEMA: Sección excede el límite de 30
+      console.error(`❌ SECCIÓN MÁS GRANDE QUE 30: "${section.sectionTitle}" (${section.itemCount} items)`);
+      console.error(`   ⚠️ Meta no permite secciones > 30 items`);
+      console.error(`   💡 La categoría original tiene ${section.itemCount} items pero Meta limita a 30`);
+      console.error(`   🔧 Solución: Dividir la categoría en más secciones`);
+      
+      // Saltar esta sección (no se puede procesar)
+      sectionIndex++;
+      continue;
     }
 
     // ✅ Agregar sección al lote actual
@@ -1237,31 +1253,24 @@ function createAllCategorizedSectionLotes(categorizedProducts: Record<string, an
     currentLote.itemsCount += section.itemCount;
     currentLote.categoriesInLote.add(section.categoryName);
 
-    // Actualizar contador de categorías únicas
-    const uniqueCategories = new Set<string>();
-    currentLote.categoriesInLote.forEach(cat => {
-      const baseCategory = (cat as string).replace(/\s+\d+$/, '').replace(/[^\w\s]/g, '');
-      uniqueCategories.add(baseCategory);
-    });
-    currentLote.categoriesCountInLote = uniqueCategories.size;
-
     console.log(`✅ Agregada sección "${section.sectionTitle}"`);
-    console.log(`   Lote ${currentLote.loteNumber}: ${currentLote.itemsCount}/${maxItemsPerMessage} items | ${currentLote.sections.length}/${maxSectionsPerMessage} secciones`);
+    console.log(`   Lote ${currentLote.loteNumber}: ${currentLote.itemsCount}/${maxItemsPerMessage} items | ${currentLote.sections.length} secciones`);
 
-    // ✅ Verificar si el lote está lleno
-    if (currentLote.itemsCount >= maxItemsPerMessage || currentLote.sections.length >= maxSectionsPerMessage) {
-      console.log(`💾 Lote ${currentLote.loteNumber} completo, guardando`);
-      messageLotes.push(currentLote);
+    // ✅ Si el lote está lleno o casi lleno, guardarlo
+    if (currentLote.itemsCount >= maxItemsPerMessage || 
+        (sectionIndex === allSections.length - 1)) {
+      
+      if (currentLote.sections.length > 0) {
+        console.log(`💾 Lote ${currentLote.loteNumber} completo/final (${currentLote.itemsCount} items)`);
+        messageLotes.push(currentLote);
 
-      currentLote = {
-        loteNumber: messageLotes.length + 1,
-        sections: [],
-        itemsCount: 0,
-        categoriesInLote: new Set<string>(),
-        categoriesCountInLote: 0
-      };
-
-      console.log(`📝 Nuevo Lote ${currentLote.loteNumber} creado`);
+        currentLote = {
+          loteNumber: messageLotes.length + 1,
+          sections: [],
+          itemsCount: 0,
+          categoriesInLote: new Set<string>(),
+        };
+      }
     }
 
     // Avanzar a siguiente sección
@@ -1271,7 +1280,7 @@ function createAllCategorizedSectionLotes(categorizedProducts: Record<string, an
   // ✅ GUARDAR ÚLTIMO LOTE SI TIENE CONTENIDO
   if (currentLote.sections.length > 0) {
     messageLotes.push(currentLote);
-    console.log(`\n💾 Lote ${currentLote.loteNumber} guardado: ${currentLote.itemsCount} items (${currentLote.sections.length} secciones)`);
+    console.log(`\n💾 Lote ${currentLote.loteNumber} guardado: ${currentLote.itemsCount} items`);
   }
 
   // ════════════════════════════════════════════════════════════════
@@ -1279,7 +1288,7 @@ function createAllCategorizedSectionLotes(categorizedProducts: Record<string, an
   // ════════════════════════════════════════════════════════════════
 
   console.log(`\n${'═'.repeat(70)}`);
-  console.log('✅ AGRUPACIÓN COMPLETADA');
+  console.log('✅ AGRUPACIÓN COMPLETADA (RESPETANDO LÍMITE META)');
   console.log(`${'═'.repeat(70)}\n`);
 
   let totalItems = 0;
@@ -1288,7 +1297,7 @@ function createAllCategorizedSectionLotes(categorizedProducts: Record<string, an
   messageLotes.forEach((lote: any, idx: number) => {
     console.log(`\n📨 MENSAJE ${idx + 1}:`);
     console.log(`   📦 Items: ${lote.itemsCount}/${maxItemsPerMessage}`);
-    console.log(`   📋 Secciones: ${lote.sections.length}/${maxSectionsPerMessage}`);
+    console.log(`   📋 Secciones: ${lote.sections.length}`);
 
     // Extraer categorías únicas
     const uniqueCategoriesInLote = new Set<string>();
@@ -1312,12 +1321,14 @@ function createAllCategorizedSectionLotes(categorizedProducts: Record<string, an
 
   console.log(`\n${'═'.repeat(70)}`);
   console.log(`📊 ESTADÍSTICAS FINALES:`);
-  console.log(`   • Mensajes: ${messageLotes.length} (ANTES: 7 | REDUCCIÓN: ${Math.round((1 - messageLotes.length / 7) * 100)}%)`);
+  console.log(`   • Mensajes necesarios: ${messageLotes.length}`);
   console.log(`   • Secciones totales: ${allSections.length}`);
   console.log(`   • Items totales: ${totalItems}`);
   console.log(`   • Categorías únicas: ${allCategoriesUsed.size}`);
-  console.log(`   • Promedio items/mensaje: ${(totalItems / messageLotes.length).toFixed(0)}`);
+  console.log(`   • Promedio items/mensaje: ${(totalItems / messageLotes.length).toFixed(1)}`);
   console.log(`   • Promedio secciones/mensaje: ${(allSections.length / messageLotes.length).toFixed(1)}`);
+  console.log(`\n   🎯 RESTRICCIÓN META: Máximo 30 items por mensaje`);
+  console.log(`   ✅ Todos los mensajes respetan límite de 30 items`);
   console.log(`${'═'.repeat(70)}\n`);
 
   return messageLotes;
