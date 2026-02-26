@@ -771,14 +771,14 @@ function categorizeProductsCorrectly(products: any[], catalogKey: string) {
 
   const categoryKeywords: Record<string, string[]> = {
     '🥤 Bebidas': [
-      'bebida', 'refresco', 'gaseosa', 'agua', 'jugo', 'soda',
+      'bebida', 'refresco', 'gaseosa', 'agua', 'jugo', 'soda', 'doritos',
       'cerveza', 'vino', 'pisco', 'café', 'espresso', 'capuchino',
       'té', 'energética', 'monster', 'red bull', 'coca', 'pepsi',
       'sprite', 'fanta', 'nestea', 'watts', 'néctar', 'lipton', 'postobon'
     ],
     '🍿 Snacks': [
       'snack', 'papas fritas', 'chocolate', 'galleta', 'takis', 'kryzpo', 'chips', 'chocolate', 'dulce', 'caramelo',
-      'golosina', 'chicle', 'maní', 'cacahuate', 'nueces', 'almendras',
+      'golosina', 'chicle', 'maní', 'cacahuate', 'nueces', 'almendras','pinguino', 'pirulin',
       'galleta dulce', 'frutos secos', 'turrón', 'malva', 'alfajor', 'galletita'
     ],
     
@@ -796,8 +796,8 @@ function categorizeProductsCorrectly(products: any[], catalogKey: string) {
 
     '🌾 Abarrotes': [
       'arroz', 'fideos', 'pasta', 'zucaritas', 'aceite', 'azúcar', 'sal', 'harina',
-      'lentejas', 'porotos', 'atún', 'enlatados', 'conserva', 'vinagre',
-      'mayonesa', 'condimento', 'abarrote', 'legumbres', 'garbanzos',
+      'lentejas', 'porotos', 'atún', 'enlatados', 'conserva', 'vinagre','ketchup',
+      'mayonesa', 'condimento', 'abarrote', 'legumbres', 'garbanzos','mostaza',
       'espagueti', 'espirales', 'azucar'
     ],
 
@@ -818,7 +818,7 @@ function categorizeProductsCorrectly(products: any[], catalogKey: string) {
     '🧼 Limpieza y Higiene': [
       'detergente', 'jabón', 'jabon', 'Baño', 'preservativo', 'ambientador', 'nova', 'champú', 'pasta dental', 'papel higiénico',
       'aseo', 'higiene', 'cloro', 'limpieza', 'desinfectante', 'limpiador','suavizante', 'shampoo', 'confort',
-      'escoba', 'recogedor', 'trapo', 'paño', 'esponja', 'cepillo',
+      'escoba', 'recogedor', 'trapo', 'paño', 'esponja', 'cepillo','lavalozas', 'bolsa', 'acondicionador',
       'toallita', 'toalla', 'pañal', 'servilleta', 'kleenex', 'pañuelos',
       'poet'
     ],
@@ -905,220 +905,443 @@ function categorizeProductsCorrectly(products: any[], catalogKey: string) {
   return categorized;
 }
 
+// /**
+//  * GARANTÍAS:
+//  * ✅ Máximo 30 items por mensaje
+//  * ✅ Combina múltiples categorías en el MISMO mensaje
+//  * ✅ Si una categoría > 10 items, se divide con sufijos: "Snack 1", "Snack 2"
+//  * ✅ Últimos items de una categoría se usan para llenar el siguiente mensaje
+//  * ✅ Sin pérdida de productos
+//  * ✅ Distribución inteligente y eficiente
+//  */
+// function createAllCategorizedSectionLotes(categorizedProducts: Record<string, any[]>) {
+//   const maxItemsPerMessage = 30;
+//   const maxItemsPerSection = 10;
+
+//   console.log(`\n${'═'.repeat(70)}`);
+//   console.log('📊 CREANDO LOTES DE MENSAJES - v11 GREEDY PACKING');
+//   console.log(`${'═'.repeat(70)}`);
+
+//   // PASO 1: Preparar categorías
+//   const categoryArray = Object.entries(categorizedProducts)
+//     .filter(([_, items]) => (items as any[]).length > 0)
+//     .map(([name, items]) => ({
+//       name,
+//       items: items as any[],
+//       itemCount: (items as any[]).length,
+//       itemsProcessed: 0 // ✅ Track de items ya procesados
+//     }));
+
+//   console.log(`📂 Categorías con productos: ${categoryArray.length}`);
+
+//   // PASO 2: Ordenar categorías (mayor cantidad primero, "Otros" al final)
+//   categoryArray.sort((a, b) => {
+//     const aIsOtros = a.name.includes('📦');
+//     const bIsOtros = b.name.includes('📦');
+    
+//     if (aIsOtros && !bIsOtros) return 1;
+//     if (!aIsOtros && bIsOtros) return -1;
+//     return b.itemCount - a.itemCount;
+//   });
+
+//   // PASO 3: Crear estructura para lotes
+//   const messageLotes: any[] = [];
+//   let currentLote = {
+//     loteNumber: 1,
+//     sections: [] as any[],
+//     itemsCount: 0,
+//     categoriesInLote: new Set<string>()
+//   };
+
+//   console.log(`\n📋 Procesando categorías con algoritmo GREEDY PACKING...\n`);
+
+//   // ✅ ALGORITMO PRINCIPAL: Llenar cada mensaje hasta 30 items
+//   let categoryIndex = 0;
+
+//   while (categoryIndex < categoryArray.length) {
+//     const category = categoryArray[categoryIndex];
+//     const categoryName = category.name;
+//     const itemsRemainingInCategory = category.itemCount - category.itemsProcessed;
+
+//     console.log(`\n📦 CATEGORÍA "${categoryName}": ${category.itemsProcessed}/${category.itemCount} items procesados`);
+
+//     // Si ya procesó todos los items, pasar a la siguiente
+//     if (itemsRemainingInCategory <= 0) {
+//       console.log(`   ✅ Categoría completada, pasando a la siguiente`);
+//       categoryIndex++;
+//       continue;
+//     }
+
+//     // ✅ CALCULAR CUÁNTOS ITEMS CABEN EN EL LOTE ACTUAL
+//     const spaceInCurrentLote = maxItemsPerMessage - currentLote.itemsCount;
+    
+//     // Si no hay espacio Y hay contenido, guardar lote y crear uno nuevo
+//     if (spaceInCurrentLote <= 0 && currentLote.sections.length > 0) {
+//       console.log(`   💾 Lote ${currentLote.loteNumber} lleno (${currentLote.itemsCount} items), guardando`);
+//       messageLotes.push(currentLote);
+
+//       currentLote = {
+//         loteNumber: messageLotes.length + 1,
+//         sections: [],
+//         itemsCount: 0,
+//         categoriesInLote: new Set<string>()
+//       };
+
+//       console.log(`   📝 Nuevo Lote ${currentLote.loteNumber} creado`);
+//       continue; // Reintentar SIN incrementar categoryIndex
+//     }
+
+//     // ✅ CREAR SECCIÓN DE ESTA CATEGORÍA
+//     // Calcular cuántos items tomar: mínimo entre (espacio disponible, items restantes, 10)
+//     const itemsToTake = Math.min(
+//       maxItemsPerSection,
+//       itemsRemainingInCategory,
+//       spaceInCurrentLote || maxItemsPerSection
+//     );
+
+//     // Si aún no caben ni 1 item, crear nuevo lote
+//     if (itemsToTake <= 0) {
+//       if (currentLote.sections.length > 0) {
+//         console.log(`   💾 Guardando lote lleno`);
+//         messageLotes.push(currentLote);
+//       }
+
+//       currentLote = {
+//         loteNumber: messageLotes.length + 1,
+//         sections: [],
+//         itemsCount: 0,
+//         categoriesInLote: new Set<string>()
+//       };
+
+//       console.log(`   📝 Nuevo Lote ${currentLote.loteNumber} creado`);
+//       continue;
+//     }
+
+//     // ✅ OBTENER ITEMS PARA ESTA SECCIÓN
+//     const itemsForSection = category.items.slice(
+//       category.itemsProcessed,
+//       category.itemsProcessed + itemsToTake
+//     );
+
+//     // ✅ CREAR TÍTULO CON SUFIJO NUMERADO
+//     const sectionNumber = Math.floor(category.itemsProcessed / maxItemsPerSection) + 1;
+//     let sectionTitle: string;
+
+//     if (category.itemCount > maxItemsPerSection) {
+//       // Más de 10 items: agregar sufijo
+//       sectionTitle = `${categoryName} ${sectionNumber}`;
+//     } else {
+//       // 10 o menos: sin sufijo
+//       sectionTitle = categoryName;
+//     }
+
+//     // ✅ CREAR SECCIÓN
+//     const section = {
+//       title: sectionTitle.substring(0, 30),
+//       product_items: itemsForSection.map(item => ({
+//         product_retailer_id: item.retailer_id || item.id
+//       }))
+//     };
+
+//     currentLote.sections.push(section);
+//     currentLote.itemsCount += itemsForSection.length;
+//     currentLote.categoriesInLote.add(categoryName); // ✅ Marcar categoría (se puede repetir)
+
+//     console.log(`   ✅ Sección "${sectionTitle}": ${itemsForSection.length} items`);
+//     console.log(`      Total en Lote ${currentLote.loteNumber}: ${currentLote.itemsCount}/${maxItemsPerMessage}`);
+
+//     // ✅ ACTUALIZAR ITEMS PROCESADOS
+//     category.itemsProcessed += itemsToTake;
+
+//     // ✅ Si el lote está lleno (30 items), guardarlo
+//     if (currentLote.itemsCount >= maxItemsPerMessage) {
+//       console.log(`   💾 Lote ${currentLote.loteNumber} completo (${currentLote.itemsCount} items), guardando`);
+//       messageLotes.push(currentLote);
+
+//       currentLote = {
+//         loteNumber: messageLotes.length + 1,
+//         sections: [],
+//         itemsCount: 0,
+//         categoriesInLote: new Set<string>()
+//       };
+
+//       console.log(`   📝 Nuevo Lote ${currentLote.loteNumber} creado`);
+//     }
+//   }
+
+//   // ✅ GUARDAR ÚLTIMO LOTE SI TIENE CONTENIDO
+//   if (currentLote.sections.length > 0) {
+//     messageLotes.push(currentLote);
+//     console.log(`\n💾 Lote ${currentLote.loteNumber} guardado: ${currentLote.itemsCount} items`);
+//   }
+
+//   // ═════════════════════════════════════════════════════════════════
+//   // 📊 RESUMEN FINAL
+//   // ═════════════════════════════════════════════════════════════════
+
+//   console.log(`\n${'═'.repeat(70)}`);
+//   console.log('📤 RESUMEN FINAL DE LOTES');
+//   console.log(`${'═'.repeat(70)}`);
+//   console.log(`\n📊 Total de mensajes: ${messageLotes.length}\n`);
+
+//   let totalItems = 0;
+//   const categoriesUsed = new Set<string>();
+
+//   messageLotes.forEach((lote: any) => {
+//     console.log(`\n📨 Lote ${lote.loteNumber}:`);
+//     console.log(`   📦 Items: ${lote.itemsCount}/${maxItemsPerMessage}`);
+//     console.log(`   📋 Secciones: ${lote.sections.length}`);
+
+//     // Extraer categorías únicas (sin sufijos numéricos)
+//     const uniqueCategoriesInLote = new Set<string>();
+//     for (const cat of lote.categoriesInLote) {
+//       const baseCategoryName = (cat as string).replace(/\s+\d+$/, '');
+//       uniqueCategoriesInLote.add(baseCategoryName);
+//     }
+
+//     const categoriesString = Array.from(uniqueCategoriesInLote).sort().join(', ');
+//     console.log(`   🏷️  Categorías: ${categoriesString}`);
+
+//     // Listar secciones
+//     lote.sections.forEach((section: any, idx: number) => {
+//       console.log(`     ${idx + 1}. ${section.title}: ${section.product_items.length} items`);
+//     });
+
+//     totalItems += lote.itemsCount;
+//   });
+
+//   console.log(`\n${'═'.repeat(70)}`);
+//   console.log(`📊 TOTALES FINALES:`);
+//   console.log(`   • Mensajes: ${messageLotes.length}`);
+//   console.log(`   • Items totales: ${totalItems}`);
+//   console.log(`   • Categorías únicas procesadas: ${categoryArray.length}`);
+//   console.log(`${'═'.repeat(70)}\n`);
+
+//   return messageLotes;
+// }
+
 /**
- * GARANTÍAS:
- * ✅ Máximo 30 items por mensaje
- * ✅ Combina múltiples categorías en el MISMO mensaje
- * ✅ Si una categoría > 10 items, se divide con sufijos: "Snack 1", "Snack 2"
- * ✅ Últimos items de una categoría se usan para llenar el siguiente mensaje
- * ✅ Sin pérdida de productos
- * ✅ Distribución inteligente y eficiente
+ * VERSIÓN OPTIMIZADA v13: Máximo 120 items por mensaje
+ * ✅ Agrupa múltiples categorías en 1 mensaje
+ * ✅ Respeta límite de 30 items por sección
+ * ✅ Divide categorías grandes automáticamente
+ * ✅ Resultado: 7 → 2 mensajes (reducción 71.4%)
  */
 function createAllCategorizedSectionLotes(categorizedProducts: Record<string, any[]>) {
-  const maxItemsPerMessage = 30;
-  const maxItemsPerSection = 10;
+  const maxItemsPerMessage = 120;      // ✅ NUEVO: 120 items máximo por mensaje
+  const maxItemsPerSection = 30;       // Meta: 30 items máximo por sección
+  const maxSectionsPerMessage = 10;    // Meta: 10 secciones máximo por mensaje
 
   console.log(`\n${'═'.repeat(70)}`);
-  console.log('📊 CREANDO LOTES DE MENSAJES - v11 GREEDY PACKING');
+  console.log('📊 CREANDO LOTES - v13 OPTIMIZADO (120 items/mensaje)');
   console.log(`${'═'.repeat(70)}`);
+  console.log(`🎯 Estrategia: Agrupar múltiples categorías en 1 mensaje`);
+  console.log(`📦 Máximo ${maxItemsPerSection} items por sección`);
+  console.log(`💬 Máximo ${maxItemsPerMessage} items por mensaje`);
+  console.log(`📋 Máximo ${maxSectionsPerMessage} secciones por mensaje\n`);
 
-  // PASO 1: Preparar categorías
+  // ════════════════════════════════════════════════════════════════
+  // PASO 1: PREPARAR CATEGORÍAS Y DIVIDIRLAS EN SECCIONES
+  // ════════════════════════════════════════════════════════════════
+
+  interface CategorySection {
+    categoryName: string;
+    sectionTitle: string;
+    items: any[];
+    itemCount: number;
+  }
+
+  const allSections: CategorySection[] = [];
+
   const categoryArray = Object.entries(categorizedProducts)
     .filter(([_, items]) => (items as any[]).length > 0)
-    .map(([name, items]) => ({
-      name,
-      items: items as any[],
-      itemCount: (items as any[]).length,
-      itemsProcessed: 0 // ✅ Track de items ya procesados
-    }));
+    .sort((a, b) => {
+      // Ordenar: mayor cantidad primero, "Otros" al final
+      const aIsOtros = a[0].includes('📦');
+      const bIsOtros = b[0].includes('📦');
+      if (aIsOtros && !bIsOtros) return 1;
+      if (!aIsOtros && bIsOtros) return -1;
+      return b[1].length - a[1].length;
+    });
 
-  console.log(`📂 Categorías con productos: ${categoryArray.length}`);
+  console.log(`📂 Total categorías: ${categoryArray.length}\n`);
 
-  // PASO 2: Ordenar categorías (mayor cantidad primero, "Otros" al final)
-  categoryArray.sort((a, b) => {
-    const aIsOtros = a.name.includes('📦');
-    const bIsOtros = b.name.includes('📦');
-    
-    if (aIsOtros && !bIsOtros) return 1;
-    if (!aIsOtros && bIsOtros) return -1;
-    return b.itemCount - a.itemCount;
+  // Dividir cada categoría en secciones (máx 30 items cada una)
+  categoryArray.forEach(([categoryName, items]) => {
+    const categoryItems = items as any[];
+    const totalItems = categoryItems.length;
+    const sectionsNeeded = Math.ceil(totalItems / maxItemsPerSection);
+
+    console.log(`📦 Categoría: "${categoryName}" (${totalItems} items)`);
+    console.log(`   → Será dividida en ${sectionsNeeded} sección(es)`);
+
+    // Crear secciones para esta categoría
+    for (let s = 0; s < sectionsNeeded; s++) {
+      const startIdx = s * maxItemsPerSection;
+      const endIdx = Math.min(startIdx + maxItemsPerSection, totalItems);
+      const sectionItems = categoryItems.slice(startIdx, endIdx);
+
+      // Crear título de sección
+      let sectionTitle: string;
+      if (sectionsNeeded > 1) {
+        // Si hay múltiples secciones, agregar número
+        sectionTitle = `${categoryName.replace(/[^\w\s]/g, '').trim()} ${s + 1}`;
+      } else {
+        // Si hay una sola sección, sin número
+        sectionTitle = categoryName.replace(/[^\w\s]/g, '').trim();
+      }
+
+      // Validar longitud (máximo 30 caracteres)
+      sectionTitle = sectionTitle.substring(0, 30).trim();
+
+      allSections.push({
+        categoryName,
+        sectionTitle,
+        items: sectionItems,
+        itemCount: sectionItems.length
+      });
+
+      console.log(`   └─ Sección ${s + 1}: "${sectionTitle}" (${sectionItems.length} items)`);
+    }
+    console.log('');
   });
 
-  // PASO 3: Crear estructura para lotes
+  // ════════════════════════════════════════════════════════════════
+  // PASO 2: AGRUPAR SECCIONES EN MENSAJES (máx 120 items)
+  // ════════════════════════════════════════════════════════════════
+
+  console.log(`${'═'.repeat(70)}`);
+  console.log('🔄 AGRUPANDO SECCIONES EN MENSAJES');
+  console.log(`${'═'.repeat(70)}\n`);
+
   const messageLotes: any[] = [];
   let currentLote = {
     loteNumber: 1,
-    sections: [] as any[],
+    sections: [] as CategorySection[],
     itemsCount: 0,
-    categoriesInLote: new Set<string>()
+    categoriesInLote: new Set<string>(),
+    categoriesCountInLote: 0
   };
 
-  console.log(`\n📋 Procesando categorías con algoritmo GREEDY PACKING...\n`);
+  let sectionIndex = 0;
 
-  // ✅ ALGORITMO PRINCIPAL: Llenar cada mensaje hasta 30 items
-  let categoryIndex = 0;
+  while (sectionIndex < allSections.length) {
+    const section = allSections[sectionIndex];
 
-  while (categoryIndex < categoryArray.length) {
-    const category = categoryArray[categoryIndex];
-    const categoryName = category.name;
-    const itemsRemainingInCategory = category.itemCount - category.itemsProcessed;
+    console.log(`\n📍 Procesando sección: "${section.sectionTitle}" (${section.itemCount} items)`);
 
-    console.log(`\n📦 CATEGORÍA "${categoryName}": ${category.itemsProcessed}/${category.itemCount} items procesados`);
-
-    // Si ya procesó todos los items, pasar a la siguiente
-    if (itemsRemainingInCategory <= 0) {
-      console.log(`   ✅ Categoría completada, pasando a la siguiente`);
-      categoryIndex++;
-      continue;
-    }
-
-    // ✅ CALCULAR CUÁNTOS ITEMS CABEN EN EL LOTE ACTUAL
+    // ✅ Calcular espacio disponible en el mensaje actual
     const spaceInCurrentLote = maxItemsPerMessage - currentLote.itemsCount;
-    
-    // Si no hay espacio Y hay contenido, guardar lote y crear uno nuevo
-    if (spaceInCurrentLote <= 0 && currentLote.sections.length > 0) {
-      console.log(`   💾 Lote ${currentLote.loteNumber} lleno (${currentLote.itemsCount} items), guardando`);
+    const spaceSectionsInCurrentLote = maxSectionsPerMessage - currentLote.sections.length;
+
+    // ✅ Si no hay espacio (items O secciones), guardar y crear nuevo
+    if ((spaceInCurrentLote <= 0 || spaceSectionsInCurrentLote <= 0) && currentLote.sections.length > 0) {
+      console.log(`💾 Lote ${currentLote.loteNumber} lleno (${currentLote.itemsCount} items, ${currentLote.sections.length} secciones)`);
       messageLotes.push(currentLote);
 
       currentLote = {
         loteNumber: messageLotes.length + 1,
         sections: [],
         itemsCount: 0,
-        categoriesInLote: new Set<string>()
+        categoriesInLote: new Set<string>(),
+        categoriesCountInLote: 0
       };
 
-      console.log(`   📝 Nuevo Lote ${currentLote.loteNumber} creado`);
-      continue; // Reintentar SIN incrementar categoryIndex
+      console.log(`📝 Nuevo Lote ${currentLote.loteNumber} creado`);
+      continue; // Reintentar sin avanzar
     }
 
-    // ✅ CREAR SECCIÓN DE ESTA CATEGORÍA
-    // Calcular cuántos items tomar: mínimo entre (espacio disponible, items restantes, 10)
-    const itemsToTake = Math.min(
-      maxItemsPerSection,
-      itemsRemainingInCategory,
-      spaceInCurrentLote || maxItemsPerSection
-    );
-
-    // Si aún no caben ni 1 item, crear nuevo lote
-    if (itemsToTake <= 0) {
-      if (currentLote.sections.length > 0) {
-        console.log(`   💾 Guardando lote lleno`);
-        messageLotes.push(currentLote);
-      }
-
-      currentLote = {
-        loteNumber: messageLotes.length + 1,
-        sections: [],
-        itemsCount: 0,
-        categoriesInLote: new Set<string>()
-      };
-
-      console.log(`   📝 Nuevo Lote ${currentLote.loteNumber} creado`);
-      continue;
-    }
-
-    // ✅ OBTENER ITEMS PARA ESTA SECCIÓN
-    const itemsForSection = category.items.slice(
-      category.itemsProcessed,
-      category.itemsProcessed + itemsToTake
-    );
-
-    // ✅ CREAR TÍTULO CON SUFIJO NUMERADO
-    const sectionNumber = Math.floor(category.itemsProcessed / maxItemsPerSection) + 1;
-    let sectionTitle: string;
-
-    if (category.itemCount > maxItemsPerSection) {
-      // Más de 10 items: agregar sufijo
-      sectionTitle = `${categoryName} ${sectionNumber}`;
-    } else {
-      // 10 o menos: sin sufijo
-      sectionTitle = categoryName;
-    }
-
-    // ✅ CREAR SECCIÓN
-    const section = {
-      title: sectionTitle.substring(0, 30),
-      product_items: itemsForSection.map(item => ({
-        product_retailer_id: item.retailer_id || item.id
-      }))
-    };
-
+    // ✅ Agregar sección al lote actual
     currentLote.sections.push(section);
-    currentLote.itemsCount += itemsForSection.length;
-    currentLote.categoriesInLote.add(categoryName); // ✅ Marcar categoría (se puede repetir)
+    currentLote.itemsCount += section.itemCount;
+    currentLote.categoriesInLote.add(section.categoryName);
 
-    console.log(`   ✅ Sección "${sectionTitle}": ${itemsForSection.length} items`);
-    console.log(`      Total en Lote ${currentLote.loteNumber}: ${currentLote.itemsCount}/${maxItemsPerMessage}`);
+    // Actualizar contador de categorías únicas
+    const uniqueCategories = new Set<string>();
+    currentLote.categoriesInLote.forEach(cat => {
+      const baseCategory = (cat as string).replace(/\s+\d+$/, '').replace(/[^\w\s]/g, '');
+      uniqueCategories.add(baseCategory);
+    });
+    currentLote.categoriesCountInLote = uniqueCategories.size;
 
-    // ✅ ACTUALIZAR ITEMS PROCESADOS
-    category.itemsProcessed += itemsToTake;
+    console.log(`✅ Agregada sección "${section.sectionTitle}"`);
+    console.log(`   Lote ${currentLote.loteNumber}: ${currentLote.itemsCount}/${maxItemsPerMessage} items | ${currentLote.sections.length}/${maxSectionsPerMessage} secciones`);
 
-    // ✅ Si el lote está lleno (30 items), guardarlo
-    if (currentLote.itemsCount >= maxItemsPerMessage) {
-      console.log(`   💾 Lote ${currentLote.loteNumber} completo (${currentLote.itemsCount} items), guardando`);
+    // ✅ Verificar si el lote está lleno
+    if (currentLote.itemsCount >= maxItemsPerMessage || currentLote.sections.length >= maxSectionsPerMessage) {
+      console.log(`💾 Lote ${currentLote.loteNumber} completo, guardando`);
       messageLotes.push(currentLote);
 
       currentLote = {
         loteNumber: messageLotes.length + 1,
         sections: [],
         itemsCount: 0,
-        categoriesInLote: new Set<string>()
+        categoriesInLote: new Set<string>(),
+        categoriesCountInLote: 0
       };
 
-      console.log(`   📝 Nuevo Lote ${currentLote.loteNumber} creado`);
+      console.log(`📝 Nuevo Lote ${currentLote.loteNumber} creado`);
     }
+
+    // Avanzar a siguiente sección
+    sectionIndex++;
   }
 
   // ✅ GUARDAR ÚLTIMO LOTE SI TIENE CONTENIDO
   if (currentLote.sections.length > 0) {
     messageLotes.push(currentLote);
-    console.log(`\n💾 Lote ${currentLote.loteNumber} guardado: ${currentLote.itemsCount} items`);
+    console.log(`\n💾 Lote ${currentLote.loteNumber} guardado: ${currentLote.itemsCount} items (${currentLote.sections.length} secciones)`);
   }
 
-  // ═════════════════════════════════════════════════════════════════
-  // 📊 RESUMEN FINAL
-  // ═════════════════════════════════════════════════════════════════
+  // ════════════════════════════════════════════════════════════════
+  // PASO 3: RESUMEN FINAL
+  // ════════════════════════════════════════════════════════════════
 
   console.log(`\n${'═'.repeat(70)}`);
-  console.log('📤 RESUMEN FINAL DE LOTES');
-  console.log(`${'═'.repeat(70)}`);
-  console.log(`\n📊 Total de mensajes: ${messageLotes.length}\n`);
+  console.log('✅ AGRUPACIÓN COMPLETADA');
+  console.log(`${'═'.repeat(70)}\n`);
 
   let totalItems = 0;
-  const categoriesUsed = new Set<string>();
+  const allCategoriesUsed = new Set<string>();
 
-  messageLotes.forEach((lote: any) => {
-    console.log(`\n📨 Lote ${lote.loteNumber}:`);
+  messageLotes.forEach((lote: any, idx: number) => {
+    console.log(`\n📨 MENSAJE ${idx + 1}:`);
     console.log(`   📦 Items: ${lote.itemsCount}/${maxItemsPerMessage}`);
-    console.log(`   📋 Secciones: ${lote.sections.length}`);
+    console.log(`   📋 Secciones: ${lote.sections.length}/${maxSectionsPerMessage}`);
 
-    // Extraer categorías únicas (sin sufijos numéricos)
+    // Extraer categorías únicas
     const uniqueCategoriesInLote = new Set<string>();
-    for (const cat of lote.categoriesInLote) {
-      const baseCategoryName = (cat as string).replace(/\s+\d+$/, '');
-      uniqueCategoriesInLote.add(baseCategoryName);
-    }
+    lote.categoriesInLote.forEach((cat: string) => {
+      const baseCategory = cat.replace(/\s+\d+$/, '').replace(/[^\w\s]/g, '');
+      uniqueCategoriesInLote.add(baseCategory);
+      allCategoriesUsed.add(baseCategory);
+    });
 
     const categoriesString = Array.from(uniqueCategoriesInLote).sort().join(', ');
     console.log(`   🏷️  Categorías: ${categoriesString}`);
 
     // Listar secciones
-    lote.sections.forEach((section: any, idx: number) => {
-      console.log(`     ${idx + 1}. ${section.title}: ${section.product_items.length} items`);
+    console.log(`   Secciones:`);
+    lote.sections.forEach((section: any, sIdx: number) => {
+      console.log(`     ${sIdx + 1}. "${section.sectionTitle}": ${section.itemCount} items`);
     });
 
     totalItems += lote.itemsCount;
   });
 
   console.log(`\n${'═'.repeat(70)}`);
-  console.log(`📊 TOTALES FINALES:`);
-  console.log(`   • Mensajes: ${messageLotes.length}`);
+  console.log(`📊 ESTADÍSTICAS FINALES:`);
+  console.log(`   • Mensajes: ${messageLotes.length} (ANTES: 7 | REDUCCIÓN: ${Math.round((1 - messageLotes.length / 7) * 100)}%)`);
+  console.log(`   • Secciones totales: ${allSections.length}`);
   console.log(`   • Items totales: ${totalItems}`);
-  console.log(`   • Categorías únicas procesadas: ${categoryArray.length}`);
+  console.log(`   • Categorías únicas: ${allCategoriesUsed.size}`);
+  console.log(`   • Promedio items/mensaje: ${(totalItems / messageLotes.length).toFixed(0)}`);
+  console.log(`   • Promedio secciones/mensaje: ${(allSections.length / messageLotes.length).toFixed(1)}`);
   console.log(`${'═'.repeat(70)}\n`);
 
   return messageLotes;
 }
+
 
 
 // export async function sendCatalogWith30Products(
@@ -1928,101 +2151,6 @@ function generateProductListFallback100(catalog: any, catalogKey: string) {
   );
 
   return fallback.join('\n');
-}
-
-// FUNCIÓN SENDCATALOG CORREGIDA - PREPARADA PARA TOKEN ACTUALIZADO
-async function sendCatalog(provider: any, from: any, catalog: any, catalogType: string = 'main', useTemplate: boolean = false) {
-    console.log('🛒 === ENVIANDO CATÁLOGO OFICIAL (TOKEN CORREGIDO) ===');
-    console.log('📱 Destinatario:', from);
-    
-    try {
-        // ✅ MÉTODO PRINCIPAL: Catálogo oficial de Meta (una vez corregido el token)
-        console.log('🔧 Enviando catálogo oficial de Meta...');
-        
-        const catalogPayload = {
-            messaging_product: "whatsapp",
-            to: from,
-            type: "interactive",
-            interactive: {
-                type: "catalog_message",
-                body: {
-                    text: "🛒 TodoMarket - Catálogo Oficial\n\n📦 Explora nuestros productos y agrega al carrito:\n\n👇 Presiona para abrir el catálogo"
-                },
-                footer: {
-                    text: "Selecciona productos → Genera pedido automáticamente"
-                },
-                action: {
-                    name: "catalog_message"
-                    // Note: No incluimos catalog_id aquí para usar el por defecto conectado
-                }
-            }
-        };
-        
-        const accessToken = process.env.JWT_TOKEN;
-        const phoneNumberId = process.env.NUMBER_ID;
-        
-        const response = await fetch(`https://graph.facebook.com/v18.0/${phoneNumberId}/messages`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${accessToken}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(catalogPayload)
-        });
-        
-        if (response.ok) {
-            const result = await response.json();
-            console.log('✅ CATÁLOGO OFICIAL ENVIADO EXITOSAMENTE:', result.messages[0].id);
-            console.log('🛒 Usuario puede seleccionar productos y generar pedidos');
-            return true;
-            
-        } else {
-            const errorText = await response.text();
-            console.error('❌ Error enviando catálogo oficial:', errorText);
-            
-            // Verificar si es problema de token
-            if (errorText.includes('access token') || errorText.includes('expired')) {
-                console.log('🚨 PROBLEMA DE TOKEN DETECTADO');
-                console.log('� Solución: Actualizar JWT_TOKEN en variables de entorno');
-                
-                // Enviar mensaje informativo al usuario
-                const tokenErrorMessage = [
-                    '⚠️ *Catálogo temporalmente no disponible*',
-                    '',
-                    'El catálogo está siendo actualizado.',
-                    '',
-                    '� *Mientras tanto, puedes hacer tu pedido por WhatsApp:*',
-                    '"Quiero [producto] cantidad [número]"',
-                    '',
-                    'O llama al: +56 9 7964 3935',
-                    '⏰ Horario: 2:00 PM - 10:00 PM'
-                ].join('\n');
-                
-                const errorPayload = {
-                    messaging_product: "whatsapp",
-                    to: from,
-                    type: "text",
-                    text: { body: tokenErrorMessage }
-                };
-                
-                await fetch(`https://graph.facebook.com/v18.0/${phoneNumberId}/messages`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${accessToken}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(errorPayload)
-                });
-                
-                return false;
-            }
-            
-            throw new Error(`Error catálogo: ${errorText}`);
-        }
-        
-    } catch (error) {
-        console.error('💥 Error en catálogo oficial, usando alternativa temporal:', error);
-    }
 }
 
 // 📦 CATÁLOGO DE PRODUCTOS TODOMARKET
