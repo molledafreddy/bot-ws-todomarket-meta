@@ -947,7 +947,7 @@ const flowPrincipal = addKeyword<Provider, Database>(utils.setEvent('welcome'))
      }
  );
 
-/**
+ /**
  * INTERFAZ DE TIPO: Define la estructura de categoryPatterns
  */
 interface CategoryPattern {
@@ -1785,8 +1785,6 @@ function generateProductListFallback100(catalog: any, catalogKey: string) {
   return fallback.join('\n');
 }
 
-
-
 // FUNCIÓN SENDCATALOG CORREGIDA - PREPARADA PARA TOKEN ACTUALIZADO
 async function sendCatalog(provider: any, from: any, catalog: any, catalogType: string = 'main', useTemplate: boolean = false) {
     console.log('🛒 === ENVIANDO CATÁLOGO OFICIAL (TOKEN CORREGIDO) ===');
@@ -1879,77 +1877,6 @@ async function sendCatalog(provider: any, from: any, catalog: any, catalogType: 
         
     } catch (error) {
         console.error('💥 Error en catálogo oficial, usando alternativa temporal:', error);
-        
-        // 🔄 FALLBACK: Lista interactiva temporal (mientras se corrige el token)
-        try {
-            console.log('🔄 Enviando lista interactiva como alternativa temporal...');
-            
-            const alternativePayload = createProductList(from);
-            const accessToken = process.env.JWT_TOKEN;
-            const phoneNumberId = process.env.NUMBER_ID;
-            
-            const alternativeResponse = await fetch(`https://graph.facebook.com/v18.0/${phoneNumberId}/messages`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${accessToken}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(alternativePayload)
-            });
-            
-            if (alternativeResponse.ok) {
-                const result = await alternativeResponse.json();
-                console.log('✅ LISTA TEMPORAL ENVIADA:', result.messages[0].id);
-                console.log('� Esta es una solución temporal hasta corregir el catálogo oficial');
-                return true;
-            } else {
-                console.error('❌ Error en lista temporal');
-                throw new Error('Fallo en método alternativo');
-            }
-            
-        } catch (alternativeError) {
-            console.error('❌ Error en método alternativo:', alternativeError);
-            
-            // 📞 ÚLTIMO RECURSO: Mensaje de texto con información de contacto
-            const contactMessage = [
-                '❌ *Catálogo temporalmente no disponible*',
-                '',
-                '📞 *Haz tu pedido directamente:*',
-                '+56 9 7964 3935',
-                '',
-                '💬 *O escribe tu pedido aquí:*',
-                '"Quiero [producto] cantidad [número]"',
-                '',
-                '⏰ *Horario:* 2:00 PM - 10:00 PM',
-                '',
-                '🔧 Estamos solucionando el catálogo'
-            ].join('\n');
-            
-            const contactPayload = {
-                messaging_product: "whatsapp",
-                to: from,
-                type: "text",
-                text: { body: contactMessage }
-            };
-            
-            try {
-                await fetch(`https://graph.facebook.com/v18.0/${process.env.NUMBER_ID}/messages`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${process.env.JWT_TOKEN}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(contactPayload)
-                });
-                
-                console.log('✅ Mensaje de contacto directo enviado');
-                return true;
-                
-            } catch (contactError) {
-                console.error('❌ Error total en envío:', contactError);
-                return false;
-            }
-        }
     }
 }
 
@@ -2110,58 +2037,6 @@ async function getProductDetailsFromMeta(productId: string, catalogId: string, p
         } catch (catalogError) {
             console.log('❌ Error consultando catálogo completo:', catalogError);
         }
-        
-        // Método 2: Intentar consultar producto individual (si el método anterior falla)
-        // try {
-        //     console.log('📡 Método 2: Consultando producto individual');
-            
-        //     // Buscar si existe un producto con ese retailer_id específico
-        //     const productUrl = `https://graph.facebook.com/v22.0/${catalogId}/products`;
-        //     const productParams = {
-        //         fields: 'id,name,description,price,currency,retailer_id,availability,condition,brand',
-        //         access_token: accessToken,
-        //         retailer_id: productId
-        //     };
-            
-        //     const productQueryString = new URLSearchParams(productParams).toString();
-        //     const productFullUrl = `${productUrl}?${productQueryString}`;
-            
-        //     console.log('📡 URL producto individual:', productFullUrl.replace(accessToken, '***TOKEN***'));
-            
-        //     const productResponse = await fetch(productFullUrl, {
-        //         method: 'GET',
-        //         headers: {
-        //             'Content-Type': 'application/json',
-        //         }
-        //     });
-            
-        //     if (productResponse.ok) {
-        //         const productData = await productResponse.json();
-        //         console.log('📦 Respuesta producto individual:', JSON.stringify(productData, null, 2));
-                
-        //         if (productData && productData.data && Array.isArray(productData.data) && productData.data.length > 0) {
-        //             const product = productData.data[0];
-        //             console.log('✅ Producto encontrado (método 2):', product.name);
-                    
-        //             return {
-        //                 id: productId,
-        //                 name: product.name || `Producto ${productId}`,
-        //                 description: product.description || null,
-        //                 brand: product.brand || null,
-        //                 metaPrice: product.price || null,
-        //                 currency: product.currency || 'CLP',
-        //                 availability: product.availability || null,
-        //                 source: 'meta_api_individual'
-        //             };
-        //         }
-        //     } else {
-        //         console.log('❌ Error HTTP producto individual:', productResponse.status, productResponse.statusText);
-        //         const errorText = await productResponse.text();
-        //         console.log('📄 Respuesta de error:', errorText);
-        //     }
-        // } catch (individualError) {
-        //     console.log('❌ Error consultando producto individual:', individualError);
-        // }
         
         console.log('⚠️ Producto no encontrado con ningún método');
         return null;
