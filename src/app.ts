@@ -2509,6 +2509,7 @@ async function notificationDelivery(order: any, address: any, paymentMethod: any
         console.log('📧 Enviando notificación de pedido:', finalMessage);
         
         await provider.sendText('56936499908@s.whatsapp.net', finalMessage);
+        await provider.sendText('56953941370@s.whatsapp.net', finalMessage);
         console.log('✅ Notificación de pedido enviada exitosamente');
         
     } catch (error) {
