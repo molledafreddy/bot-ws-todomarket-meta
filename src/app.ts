@@ -830,17 +830,12 @@ function categorizeProductsCorrectly(products: any[], catalogKey: string) {
     ]
   };
 
-  console.log(`\n${'═'.repeat(60)}`);
-  console.log('🔍 INICIANDO CATEGORIZACIÓN DE PRODUCTOS');
-  console.log(`${'═'.repeat(60)}`);
-
   // 🔍 PROCESAR CADA PRODUCTO
   products.forEach((product: any, index: number) => {
     const productId = product.id || product.retailer_id;
     
     // ⛔ SALTAR SI YA FUE PROCESADO
     if (processedIds.has(productId)) {
-      console.log(`⚠️  PRODUCTO ${index + 1}: DUPLICADO DETECTADO (${productId}) - IGNORADO`);
       return;
     }
     processedIds.add(productId);
@@ -852,10 +847,10 @@ function categorizeProductsCorrectly(products: any[], catalogKey: string) {
     let assignedCategory = '📦 Otros'; // Fallback por defecto
     let foundMatch = false;
 
-    console.log(`\n📦 PRODUCTO ${index + 1}: "${product.name}"`);
-    if (productDesc) {
-      console.log(`   📝 Descripción: "${productDesc}"`);
-    }
+    // console.log(`\n📦 PRODUCTO ${index + 1}: "${product.name}"`);
+    // if (productDesc) {
+    //   console.log(`   📝 Descripción: "${productDesc}"`);
+    // }
 
     // ⚠️ ITERACIÓN SECUENCIAL: Primera coincidencia gana
     for (const [categoryName, keywords] of Object.entries(categoryKeywords)) {
@@ -869,15 +864,10 @@ function categorizeProductsCorrectly(products: any[], catalogKey: string) {
       if (matchedKeywords.length > 0) {
         assignedCategory = categoryName;
         foundMatch = true;
-        console.log(`   ✅ ASIGNADO: ${categoryName}`);
-        console.log(`   💡 Palabras clave encontradas: ${matchedKeywords.join(', ')}`);
+        // console.log(`   ✅ ASIGNADO: ${categoryName}`);
+        // console.log(`   💡 Palabras clave encontradas: ${matchedKeywords.join(', ')}`);
         break; // ✅ SALIR INMEDIATAMENTE EN LA PRIMERA COINCIDENCIA
       }
-    }
-
-    // Si no encontró categoría, mostrar que va a "Otros"
-    if (!foundMatch) {
-      console.log(`   ⚠️  ASIGNADO: ${assignedCategory} (sin coincidencias de palabras clave)`);
     }
 
     // Agregar producto a su categoría (UNA SOLA VEZ)
@@ -886,22 +876,13 @@ function categorizeProductsCorrectly(products: any[], catalogKey: string) {
     }
     categorized[assignedCategory].push(product);
   });
-
-  // RESUMEN FINAL
-  console.log(`\n${'═'.repeat(60)}`);
-  console.log('✅ CATEGORIZACIÓN COMPLETADA (SIN DUPLICADOS)');
-  console.log(`${'═'.repeat(60)}`);
   
   let totalProducts = 0;
   Object.entries(categorized).forEach(([category, categoryProducts]) => {
     const count = (categoryProducts as any[]).length;
     totalProducts += count;
-    console.log(`   ${category}: ${count} productos`);
   });
   
-  console.log(`\n📊 TOTAL: ${totalProducts} productos en ${Object.keys(categorized).length} categorías`);
-  console.log(`${'═'.repeat(60)}\n`);
-
   return categorized;
 }
 
@@ -1694,12 +1675,10 @@ export async function sendCatalogWith30Products(
       const productsData = await productsResponse.json();
 
       if (!productsResponse.ok) {
-        console.error('❌ Error consultando productos:', productsData);
         throw new Error(`Error obteniendo productos página ${pageNumber}: ${productsData.error?.message}`);
       }
 
       const pageProducts = productsData.data || [];
-      console.log(`✅ Productos en página ${pageNumber}: ${pageProducts.length}`);
       
       // ✅ AGREGAR PRODUCTOS DE ESTA PÁGINA AL TOTAL
       allProducts = allProducts.concat(pageProducts);
@@ -1710,22 +1689,13 @@ export async function sendCatalogWith30Products(
       
       if (pagingInfo && pagingInfo.cursors && pagingInfo.cursors.after) {
         nextCursor = pagingInfo.cursors.after;
-        console.log(`➡️  Hay más productos, siguiente cursor disponible`);
         pageNumber++;
       } else {
         nextCursor = null;
-        console.log(`✅ No hay más páginas`);
         pageNumber++;
       }
 
     } while (nextCursor !== null); // ✅ Continuar mientras haya más páginas
-
-    console.log(`\n${'═'.repeat(70)}`);
-    console.log(`✅ DESCARGA COMPLETA DE CATÁLOGO`);
-    console.log(`${'═'.repeat(70)}`);
-    console.log(`📦 Total de productos descargados: ${allProducts.length}`);
-    console.log(`📄 Páginas consultadas: ${pageNumber - 1}`);
-    console.log(`${'═'.repeat(70)}\n`);
 
     if (allProducts.length === 0) {
       throw new Error('No hay productos en el catálogo');
