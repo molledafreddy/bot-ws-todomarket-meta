@@ -255,16 +255,15 @@ const flowValidMedia = addKeyword([EVENTS.MEDIA, EVENTS.VOICE_NOTE, EVENTS.LOCAT
     }
 });
 
-/**
-* captura El evento que se genera cuando se recibe un pedido proveniente del carrito de compra.
-*/
- const flowOrder = addKeyword([EVENTS.ORDER])
+const flowOrder = addKeyword([EVENTS.ORDER])
  .addAction(async(ctx,{gotoFlow, fallBack, provider, globalState}) => {
+    const userPhone = ctx.from;  // 🔑 CLAVE ÚNICA
+    
     try {
-        console.log('🛒 === ORDEN RECIBIDA ===');
+        console.log(`🛒 === ORDEN RECIBIDA DE ${userPhone} ===`);
         console.log('📦 Contexto completo de la orden:', JSON.stringify(ctx, null, 2));
         
-        // Verificar estructura correcta de la orden según Meta API
+        // ✅ VERIFICAR ESTRUCTURA CORRECTA DE LA ORDEN
         if (ctx?.order || ctx?.message?.order) {
             const orderData = ctx.order || ctx.message.order;
             console.log('📋 Datos de la orden:', orderData);
@@ -273,110 +272,132 @@ const flowValidMedia = addKeyword([EVENTS.MEDIA, EVENTS.VOICE_NOTE, EVENTS.LOCAT
             const catalogId = orderData.catalog_id;
             const productItems = orderData.product_items || [];
             
-            console.log('🏷️ Catalog ID:', catalogId);
-            console.log('📦 Productos seleccionados:', productItems);
+            console.log(`🏷️ Catalog ID: ${catalogId}`);
+            console.log(`📦 Productos seleccionados: ${productItems.length}`);
             
             if (catalogId && productItems.length > 0) {
-                // Procesar los productos de la orden con proveedor para obtener detalles
+                // ✅ PROCESAR LOS PRODUCTOS DE LA ORDEN
                 const processedOrder = await processOrderFromCatalog(productItems, catalogId, provider);
                 
                 if (processedOrder && processedOrder.length > 0) {
-                    // Guardar la orden en el estado global
+                    // ✅ GUARDAR LA ORDEN CON NAMESPACE DEL USUARIO
+                    console.log(`💾 Guardando orden para usuario ${userPhone}...`);
+                    
                     await globalState.update({ 
-                        order: processedOrder,
-                        catalogId: catalogId,
-                        customerPhone: ctx.from,
-                        customerName: ctx.pushName || ctx.name
+                        [`order_${userPhone}`]: processedOrder,
+                        [`catalogId_${userPhone}`]: catalogId,
+                        [`customerPhone_${userPhone}`]: userPhone,
+                        [`customerName_${userPhone}`]: ctx.pushName || ctx.name,
+                        [`orderTimestamp_${userPhone}`]: new Date().toISOString()
                     });
                     
-                    console.log('✅ Orden procesada exitosamente');
-                    console.log('🔄 Redirigiendo a flowEndShoppingCart');
+                    console.log(`✅ Orden guardada exitosamente para usuario ${userPhone}`);
+                    console.log(`🔄 Redirigiendo a flowEndShoppingCart`);
+                    
                     return gotoFlow(flowEndShoppingCart);
                 } else {
                     console.log('❌ No se pudieron procesar los productos');
-                    return fallBack("❌ *Error procesando la orden*\n\nNo se pudieron obtener los detalles de los productos seleccionados.");
+                    
+                    const errorMessage = "❌ *Error procesando la orden*\n\nNo se pudieron obtener los detalles de los productos seleccionados.";
+                    console.log(`📤 Enviando error a ${userPhone}`);
+                    
+                    return fallBack(errorMessage);
                 }
             } else {
                 console.log('❌ Orden incompleta - falta catalog_id o product_items');
-                return fallBack("❌ *Orden incompleta*\n\nLa orden no contiene todos los datos necesarios.");
+                
+                const errorMessage = "❌ *Orden incompleta*\n\nLa orden no contiene todos los datos necesarios.";
+                console.log(`📤 Enviando error a ${userPhone}`);
+                
+                return fallBack(errorMessage);
             }
         } else {
             console.log('❌ No se encontró estructura de orden válida');
-            return fallBack("❌ *No se recibió información válida*\n\nPara concretar la compra debe seleccionar los productos desde el carrito de compra.");
+            
+            const errorMessage = "❌ *No se recibió información válida*\n\nPara concretar la compra debe seleccionar los productos desde el carrito de compra.";
+            console.log(`📤 Enviando error a ${userPhone}`);
+            
+            return fallBack(errorMessage);
         }
     } catch (error) {
-        console.error('💥 Error en flowOrder:', error);
-        return fallBack("❌ *Error procesando la orden*\n\nHubo un problema técnico. Por favor intenta nuevamente.");
+        console.error(`💥 Error en flowOrder para ${userPhone}:`, error);
+        
+        const errorMessage = "❌ *Error procesando la orden*\n\nHubo un problema técnico. Por favor intenta nuevamente.";
+        console.log(`📤 Enviando error a ${userPhone}`);
+        
+        return fallBack(errorMessage);
     }
 });
 
+
 // const flowEndShoppingCart = addKeyword(utils.setEvent('END_SHOPPING_CART'))
-// .addAction(async (ctx, { globalState, endFlow, fallBack }) => {
-//     // Verificar que existe una orden procesada
-//     const orderData = globalState.get('order');
-//     const catalogId = globalState.get('catalogId');
-    
-//     if (!orderData || !catalogId) {
-//         console.log('❌ flowEndShoppingCart: No hay orden válida en globalState');
-//         return endFlow('❌ *Error*\n\nNo se encontró información de pedido válida. Por favor, seleccione productos desde el catálogo nuevamente.');
-//     }
-    
-//     console.log('✅ flowEndShoppingCart: Orden válida encontrada, solicitando dirección');
-//     return; // Continuar al siguiente paso
+// .addAction(async (ctx, { globalState, endFlow, flowDynamic }) => {
+//     console.log('✅ flowEndShoppingCart: Validación exitosa, continuando con datos de entrega');
+//     return;
 // })
-// .addAnswer([
-//     'Su Pedido está siendo procesado 🛒', 
-//     'Para completar su pedido necesitamos los siguientes datos:',
-    
-// ])
 // .addAnswer(
 //     [
-//         '📍 *PASO 1: Dirección de entrega*\n',
-//         'Ingrese su dirección con la siguiente estructura:\n',
-//         '*Nombre Calle Numeración, Comuna, Dto/Bloque/Lote Referencia*\n',
+//         '✅ *PASO 1: Dirección de entrega*\n',
+//         'Ingrese su dirección completa:\n',
+//         '*Nombre Calle Numeración, Comuna, Depto*\n',
 //         '',
-//         'Ejemplo: Juan Pérez Av. Libertador 123, Santiago, Depto 4B Torre Norte'
+//         'Ejemplo: Juan Pérez Av. Libertador 123, Santiago, Depto 4B',
 //     ],
-//     { capture: true, delay: 3000, idle: 960000 },
-//     async(ctx, {fallBack, globalState}) => {
+//     { capture: true, delay: 1500, idle: 960000 },
+//     async(ctx, { fallBack, globalState, flowDynamic }) => {
 //         try {
 //             const userAddress = ctx.body?.trim();
+//             const orderData = globalState.get('order');
+//             const lastOrderHash = globalState.get('lastOrderHash');
+//             const currentOrderHash = JSON.stringify(orderData);
+//             const isNewOrder = currentOrderHash !== lastOrderHash;
 
 //             console.log('📍 Dirección recibida:', userAddress);
+//             console.log('📝 Longitud:', userAddress?.length);
 
-//             // Validar que se ingresó una dirección válida
-//             if (!userAddress || userAddress.length < 10) {
-//                 console.log('❌ Dirección inválida recibida');
-//                 return fallBack('❌ *Dirección inválida*\n\nPor favor ingrese una dirección completa con la estructura indicada:\n*Nombre Calle Numeración, Comuna, Depto/Bloque/Lote Referencia*');
+//             // ✅ VALIDACIÓN 1: ¿Está vacío?
+//             if (!userAddress) {
+//                 console.log('❌ Dirección vacía');
+//                 return fallBack('❌ *Campo requerido*\n\nPor favor ingrese una dirección válida.');
 //             }
 
-//             // Guardar dirección en globalState
-//             await globalState.update({address: userAddress});
-//             console.log('✅ Dirección guardada correctamente');
-            
-//             // Continuar al siguiente paso automáticamente
-//             return; // Permitir que el flujo continúe
+//             // ✅ VALIDACIÓN 2: ¿Es demasiado corta?
+//             if (userAddress.length < 10) {
+//                 console.log('❌ Dirección demasiado corta:', userAddress.length);
+//                 return fallBack(
+//                     '❌ *Dirección incompleta*\n\n' +
+//                     'Por favor ingrese una dirección completa con:\n' +
+//                     '• Calle y número\n' +
+//                     '• Comuna\n' +
+//                     '• Depto/Bloque (si aplica)\n\n' +
+//                     'Ejemplo: Av. Libertador 123, Santiago, Depto 4B'
+//                 );
+//             }
 
+//             // ✅ GUARDADO DE DIRECCIÓN
+//             await globalState.update({ address: userAddress });
+//             console.log('✅ Dirección guardada exitosamente');
+
+//             return;            
 //         } catch (error) {
 //             console.error('💥 Error procesando dirección:', error);
-//             return fallBack('❌ *Error técnico*\n\nHubo un problema procesando su dirección. Por favor inténtelo nuevamente.');
+//             return fallBack('❌ *Error técnico*\n\nHubo un problema procesando tu dirección. Por favor inténtelo nuevamente.');
 //         }
 //     }
 // )
-// .addAnswer('✅ *Dirección registrada correctamente*')
 // .addAnswer(
 //     [
 //         '💳 *PASO 2: Método de pago*\n',
-//         'Seleccione su método de pago preferido:\n',
+//         'Selecciona tu método de pago preferido:\n',
 //         '',
 //         '👉 *1* - Efectivo 💵',
 //         '👉 *2* - Transferencia bancaria 🏦', 
 //         '👉 *3* - Punto de venta (POS) 💳',
 //         '',
-//         'Escriba solo el *número* de su opción (1, 2 o 3):'
+//         'Escribe solo el *número* de tu opción (1, 2 o 3):'
 //     ],
-//     { capture: true, delay: 3000, idle: 960000 },
-//     async(ctx, {endFlow, fallBack, provider, globalState}) => {
+//     { capture: true, delay: 1500, idle: 960000 },
+//     async(ctx, { endFlow, fallBack, provider, globalState }) => {
 //         try {
 //             const name = ctx.pushName || 'Cliente';
 //             const phone = ctx.from;
@@ -384,54 +405,70 @@ const flowValidMedia = addKeyword([EVENTS.MEDIA, EVENTS.VOICE_NOTE, EVENTS.LOCAT
 
 //             console.log('💳 Método de pago recibido:', paymentOption);
 
-//             // Validar que se ingresó una opción válida (1, 2 o 3)
-//             if (paymentOption !== '1' && paymentOption !== '2' && paymentOption !== '3') {
-//                 console.log('❌ Método de pago inválido recibido:', paymentOption);
-//                 return fallBack('❌ *Opción inválida*\n\nPor favor ingrese un número válido:\n\n👉 *1* - Efectivo 💵\n👉 *2* - Transferencia bancaria 🏦\n👉 *3* - Punto de venta (POS) 💳');
+//             // ✅ VALIDACIÓN: Opción válida
+//             if (!paymentOption || (paymentOption !== '1' && paymentOption !== '2' && paymentOption !== '3')) {
+//                 console.log('❌ Opción de pago inválida:', paymentOption);
+//                 return fallBack(
+//                     '❌ *Opción inválida*\n\n' +
+//                     'Por favor selecciona una opción válida:\n\n' +
+//                     '👉 *1* - Efectivo 💵\n' +
+//                     '👉 *2* - Transferencia bancaria 🏦\n' +
+//                     '👉 *3* - Punto de venta (POS) 💳'
+//                 );
 //             }
 
-//             // Mapear número a método de pago
+//             // ✅ MAPEAR OPCIÓN A NOMBRE
 //             let paymentMethod = '';
+//             let paymentInstructions = '';
+            
 //             switch (paymentOption) {
 //                 case '1':
 //                     paymentMethod = 'Efectivo 💵';
+//                     paymentInstructions = '\n\n💵 *Pago en efectivo*\nTenga el monto exacto preparado para el repartidor.';
 //                     break;
 //                 case '2':
 //                     paymentMethod = 'Transferencia bancaria 🏦';
+//                     paymentInstructions = '\n\n🏦 *Datos para transferencia:*\nNombre: TodoMarket\nBanco: Santander\nTipo: Corriente\nCuenta: 0-000-7748055-2\nRUT: 77.210.237-6\n\n📸 *Importante:* Transfiera luego de confirmar el pedido.';
 //                     break;
 //                 case '3':
 //                     paymentMethod = 'Punto de venta (POS) 💳';
+//                     paymentInstructions = '\n\n💳 *Punto de venta disponible*\nNuestro repartidor llevará el equipo POS para procesar su pago con tarjeta.';
 //                     break;
 //             }
 
-//             // Guardar método de pago en globalState
-//             await globalState.update({paymentMethod: paymentMethod});
-            
-//             // Obtener todos los datos del pedido
+//             // ✅ GUARDAR MÉTODO DE PAGO
+//             await globalState.update({ paymentMethod: paymentMethod });
+//             console.log('✅ Método de pago guardado:', paymentMethod);
+
+//             // ✅ OBTENER TODOS LOS DATOS FINALES
 //             const dataOrder = globalState.get('order');
 //             const dataAddress = globalState.get('address');
 //             const dataPaymentMethod = globalState.get('paymentMethod');
 //             const catalogId = globalState.get('catalogId');
             
-//             console.log('📦 Datos finales del pedido:');
+//             console.log('📦 DATOS FINALES DEL PEDIDO:');
 //             console.log('- Orden:', dataOrder);
 //             console.log('- Dirección:', dataAddress);
 //             console.log('- Método de pago:', dataPaymentMethod);
 //             console.log('- Catálogo ID:', catalogId);
 
-//             // Verificar que tenemos todos los datos necesarios
+//             // ⛔ VALIDACIÓN FINAL: Todos los datos están presentes
 //             if (!dataOrder || !dataAddress || !dataPaymentMethod) {
 //                 console.log('❌ Datos incompletos en globalState');
-//                 return endFlow('❌ *Error procesando pedido*\n\nFaltan datos del pedido. Por favor inténtelo nuevamente.');
+//                 return endFlow(
+//                     '❌ *Error procesando pedido*\n\n' +
+//                     'Faltaron datos del pedido. Por favor inténtelo nuevamente.\n\n' +
+//                     'Escribe "hola" para volver al menú principal.'
+//                 );
 //             }
 
-//             // Calcular el total del pedido desde dataOrder
+//             // ✅ CALCULAR TOTAL
 //             let totalPedido = 0;
 //             if (Array.isArray(dataOrder)) {
-//                 // Buscar el total en el último elemento del array (si existe)
-//                 const totalLine = dataOrder.find(item => typeof item === 'string' && item.includes('Total a Pagar'));
+//                 const totalLine = dataOrder.find(item => 
+//                     typeof item === 'string' && item.includes('Total a Pagar')
+//                 );
 //                 if (totalLine) {
-//                     // Extraer el monto del string "Total a Pagar: $XXX"
 //                     const totalMatch = totalLine.match(/\$(\d+)/);
 //                     if (totalMatch) {
 //                         totalPedido = parseInt(totalMatch[1]);
@@ -439,35 +476,29 @@ const flowValidMedia = addKeyword([EVENTS.MEDIA, EVENTS.VOICE_NOTE, EVENTS.LOCAT
 //                 }
 //             }
 
-//             // Enviar notificación al negocio
+//             // ✅ ENVIAR NOTIFICACIÓN AL NEGOCIO
+//             console.log('📧 Enviando notificación al negocio...');
 //             await notificationDelivery(dataOrder, dataAddress, dataPaymentMethod, name, phone, provider);
-            
-//             // Limpiar globalState después de procesar
+
+//             // ✅ LIMPIAR GLOBALSTATE
+//             console.log('🧹 Limpiando globalState...');
 //             await globalState.update({ 
 //                 order: null, 
 //                 address: null, 
 //                 paymentMethod: null,
 //                 catalogId: null,
 //                 customerPhone: null,
-//                 customerName: null 
+//                 customerName: null,
+//                 lastOrderHash: null
 //             });
 
-//             console.log('✅ Pedido procesado exitosamente y globalState limpiado');
-            
-//             // Mensaje de confirmación personalizado según método de pago
-//             let paymentInstructions = '';
-//             if (paymentOption === '2') { // Transferencia
-//                 paymentInstructions = '\n\n💳 *Datos para transferencia:*\nNombre: [TodoMarket]\nBanco: [Santander]\nTipo: [Corriente]\nCuenta: [0-000-7748055-2]\nRUT: [77.210.237-6]\n\n📸 *Importante:* Transfiera luego de confirmar el pedido.';
-//             } else if (paymentOption === '3') { // POS
-//                 paymentInstructions = '\n\n💳 *Punto de venta disponible*\nNuestro repartidor llevará el equipo POS para procesar su pago con tarjeta.';
-//             } else { // Efectivo
-//                 paymentInstructions = '\n\n💵 *Pago en efectivo*\nTenga el monto exacto preparado para el repartidor.';
-//             }
-            
-//             // Formatear el total para mostrar
-//             const totalDisplay = totalPedido > 0 ? `💰 *Total a pagar:* $${totalPedido.toLocaleString('es-CL')}` : '💡 *Nota:* El total se confirmará al momento de la entrega.';
-            
-//             return endFlow([
+//             // ✅ FORMATEAR TOTAL
+//             const totalDisplay = totalPedido > 0 
+//                 ? `💰 *Total a pagar:* $${totalPedido.toLocaleString('es-CL')}` 
+//                 : '💡 *Nota:* El total se confirmará al momento de la entrega.';
+
+//             // ✅ MENSAJE DE CONFIRMACIÓN FINAL
+//             const confirmationMessage = [
 //                 '✅ *¡Pedido confirmado!* 🛒',
 //                 '',
 //                 `💳 *Método de pago:* ${dataPaymentMethod}`,
@@ -478,19 +509,82 @@ const flowValidMedia = addKeyword([EVENTS.MEDIA, EVENTS.VOICE_NOTE, EVENTS.LOCAT
 //                 '',
 //                 '📞 También puede contactarnos directamente al: +56 9 3649 9908',
 //                 '',
-//                 '⏰ *Horario de entrega:* Lunes a Domingo 2:00 PM - 10:00 PM'
-//             ].join('\n'));
+//                 '⏰ *Horario de entrega:* Lunes a Domingo 2:00 PM - 10:00 PM',
+//                 '',
+//                 '🔄 Escribe "hola" para hacer otro pedido.'
+//             ].join('\n');
+
+//             console.log('✅ Pedido procesado exitosamente');
+//             return endFlow(confirmationMessage);
 
 //         } catch (error) {
-//             console.error('💥 Error en flowEndShoppingCart:', error);
-//             return endFlow('❌ *Error técnico*\n\nHubo un problema procesando su pedido. Por favor contacte directamente al +56 9 3649 9908');
+//             console.error('💥 Error en método de pago:', error);
+//             return endFlow(
+//                 '❌ *Error técnico*\n\n' +
+//                 'Hubo un problema procesando su pedido.\n\n' +
+//                 'Por favor contacte directamente al +56 9 3649 9908\n\n' +
+//                 'Escribe "hola" para volver al menú'
+//             );
 //         }
 //     }
 // );
 
 const flowEndShoppingCart = addKeyword(utils.setEvent('END_SHOPPING_CART'))
 .addAction(async (ctx, { globalState, endFlow, flowDynamic }) => {
-    console.log('✅ flowEndShoppingCart: Validación exitosa, continuando con datos de entrega');
+    const userPhone = ctx.from;  // 🔑 CLAVE ÚNICA
+    
+    console.log(`🛒 === FLUJO DE PAGO - USUARIO ${userPhone} ===`);
+    console.log(`📱 Iniciando validación de orden...`);
+    
+    // ✅ LEER DATOS SOLO DE ESTE USUARIO
+    const orderKey = `order_${userPhone}`;
+    const addressKey = `address_${userPhone}`;
+    const paymentKey = `payment_${userPhone}`;
+    const hashKey = `hash_${userPhone}`;
+    
+    const orderData = globalState.get(orderKey);
+    const previousAddress = globalState.get(addressKey);
+    const previousPaymentMethod = globalState.get(paymentKey);
+    const currentOrderHash = JSON.stringify(orderData);
+    const lastOrderHash = globalState.get(hashKey);
+    
+    console.log(`📦 Datos de ${userPhone}:`);
+    console.log(`   - Orden: ${orderData ? 'Presente' : 'Ausente'}`);
+    console.log(`   - Dirección previa: ${previousAddress || 'Ausente'}`);
+    console.log(`   - Método pago previo: ${previousPaymentMethod || 'Ausente'}`);
+    
+    // ⛔ VALIDACIÓN: ¿Existe una orden válida?
+    if (!orderData || !Array.isArray(orderData) || orderData.length === 0) {
+        console.log(`❌ flowEndShoppingCart: No hay orden válida para ${userPhone}`);
+        
+        const errorMessage = '❌ *Error*\n\nNo se encontró información de pedido válida. Por favor, seleccione productos desde el catálogo nuevamente.';
+        console.log(`📤 Enviando error a ${userPhone}`);
+        
+        return endFlow(errorMessage);
+    }
+    
+    // ✅ DETECTAR SI ES UNA NUEVA ITERACIÓN
+    const isNewOrder = currentOrderHash !== lastOrderHash;
+    
+    if (isNewOrder) {
+        console.log(`🆕 NUEVA ORDEN DETECTADA para usuario ${userPhone}`);
+        console.log(`   - Hash anterior: ${lastOrderHash ? 'Presente' : 'Ausente'}`);
+        console.log(`   - Hash actual: ${currentOrderHash.substring(0, 50)}...`);
+        
+        // ✅ LIMPIAR SOLO DATOS DE ESTE USUARIO
+        console.log(`🧹 Limpiando datos previos de ${userPhone}...`);
+        await globalState.update({
+            [addressKey]: null,
+            [paymentKey]: null,
+            [hashKey]: currentOrderHash
+        });
+        
+        console.log(`✅ Datos limpios para nueva orden de ${userPhone}`);
+    } else {
+        console.log(`♻️ ORDEN ANTERIOR detectada para usuario ${userPhone}`);
+    }
+    
+    console.log(`✅ Validación completada, continuando con datos de entrega`);
     return;
 })
 .addAnswer(
@@ -503,43 +597,82 @@ const flowEndShoppingCart = addKeyword(utils.setEvent('END_SHOPPING_CART'))
     ],
     { capture: true, delay: 1500, idle: 960000 },
     async(ctx, { fallBack, globalState, flowDynamic }) => {
+        const userPhone = ctx.from;  // 🔑 CLAVE ÚNICA
+        const userAddress = ctx.body?.trim();
+        
+        const orderKey = `order_${userPhone}`;
+        const addressKey = `address_${userPhone}`;
+        
+        console.log(`📍 === CAPTURA DE DIRECCIÓN - USUARIO ${userPhone} ===`);
+        console.log(`📍 Dirección recibida: "${userAddress}"`);
+        console.log(`📝 Longitud: ${userAddress?.length} caracteres`);
+
         try {
-            const userAddress = ctx.body?.trim();
-            const orderData = globalState.get('order');
-            const lastOrderHash = globalState.get('lastOrderHash');
-            const currentOrderHash = JSON.stringify(orderData);
-            const isNewOrder = currentOrderHash !== lastOrderHash;
-
-            console.log('📍 Dirección recibida:', userAddress);
-            console.log('📝 Longitud:', userAddress?.length);
-
             // ✅ VALIDACIÓN 1: ¿Está vacío?
             if (!userAddress) {
-                console.log('❌ Dirección vacía');
-                return fallBack('❌ *Campo requerido*\n\nPor favor ingrese una dirección válida.');
+                console.log(`❌ Dirección vacía para ${userPhone}`);
+                
+                const errorMessage = '❌ *Campo requerido*\n\nPor favor ingrese una dirección válida.';
+                console.log(`📤 Enviando error a ${userPhone}`);
+                
+                return fallBack(errorMessage);
             }
 
             // ✅ VALIDACIÓN 2: ¿Es demasiado corta?
             if (userAddress.length < 10) {
-                console.log('❌ Dirección demasiado corta:', userAddress.length);
-                return fallBack(
-                    '❌ *Dirección incompleta*\n\n' +
+                console.log(`❌ Dirección demasiado corta para ${userPhone}: ${userAddress.length} caracteres`);
+                
+                const errorMessage = '❌ *Dirección incompleta*\n\n' +
                     'Por favor ingrese una dirección completa con:\n' +
                     '• Calle y número\n' +
                     '• Comuna\n' +
                     '• Depto/Bloque (si aplica)\n\n' +
-                    'Ejemplo: Av. Libertador 123, Santiago, Depto 4B'
-                );
+                    'Ejemplo: Av. Libertador 123, Santiago, Depto 4B';
+                
+                console.log(`📤 Enviando error a ${userPhone}`);
+                
+                return fallBack(errorMessage);
             }
 
-            // ✅ GUARDADO DE DIRECCIÓN
-            await globalState.update({ address: userAddress });
-            console.log('✅ Dirección guardada exitosamente');
+            // ✅ VALIDACIÓN 3: ¿Contiene información mínima?
+            const hasComma = userAddress.includes(',');
+            if (!hasComma) {
+                console.log(`❌ Dirección sin separadores para ${userPhone}`);
+                
+                const errorMessage = '❌ *Formato incorrecto*\n\n' +
+                    'La dirección debe incluir comas para separar:\n' +
+                    '*Calle, Comuna, Depto*\n\n' +
+                    'Ejemplo: Av. Libertador 123, Santiago, Depto 4B';
+                
+                console.log(`📤 Enviando error a ${userPhone}`);
+                
+                return fallBack(errorMessage);
+            }
 
-            return;            
+            // ✅ GUARDADO DE DIRECCIÓN - SOLO PARA ESTE USUARIO
+            console.log(`💾 Guardando dirección para usuario ${userPhone}...`);
+            await globalState.update({ [addressKey]: userAddress });
+            console.log(`✅ Dirección guardada exitosamente para ${userPhone}`);
+
+            // ✅ CONFIRMACIÓN VISUAL
+            console.log(`📤 Enviando confirmación a ${userPhone}...`);
+            await flowDynamic([
+                '✅ *Dirección registrada*',
+                `📍 ${userAddress}`,
+                '',
+                '⏳ Continuando al siguiente paso...'
+            ]);
+            
+            console.log(`✅ Confirmación enviada, continuando a PASO 2`);
+            return;
+            
         } catch (error) {
-            console.error('💥 Error procesando dirección:', error);
-            return fallBack('❌ *Error técnico*\n\nHubo un problema procesando tu dirección. Por favor inténtelo nuevamente.');
+            console.error(`💥 Error procesando dirección para ${userPhone}:`, error);
+            
+            const errorMessage = '❌ *Error técnico*\n\nHubo un problema procesando tu dirección. Por favor inténtelo nuevamente.';
+            console.log(`📤 Enviando error a ${userPhone}`);
+            
+            return fallBack(errorMessage);
         }
     }
 )
@@ -556,23 +689,35 @@ const flowEndShoppingCart = addKeyword(utils.setEvent('END_SHOPPING_CART'))
     ],
     { capture: true, delay: 1500, idle: 960000 },
     async(ctx, { endFlow, fallBack, provider, globalState }) => {
+        const userPhone = ctx.from;  // 🔑 CLAVE ÚNICA
+        const paymentOption = ctx.body?.trim();
+        const name = ctx.pushName || 'Cliente';
+        
+        const orderKey = `order_${userPhone}`;
+        const addressKey = `address_${userPhone}`;
+        const paymentKey = `payment_${userPhone}`;
+        const catalogKey = `catalogId_${userPhone}`;
+        const hashKey = `hash_${userPhone}`;
+        const customerNameKey = `customerName_${userPhone}`;
+        const orderTimestampKey = `orderTimestamp_${userPhone}`;
+
+        console.log(`💳 === CAPTURA DE PAGO - USUARIO ${userPhone} ===`);
+        console.log(`💳 Opción recibida: "${paymentOption}"`);
+
         try {
-            const name = ctx.pushName || 'Cliente';
-            const phone = ctx.from;
-            const paymentOption = ctx.body?.trim();
-
-            console.log('💳 Método de pago recibido:', paymentOption);
-
             // ✅ VALIDACIÓN: Opción válida
             if (!paymentOption || (paymentOption !== '1' && paymentOption !== '2' && paymentOption !== '3')) {
-                console.log('❌ Opción de pago inválida:', paymentOption);
-                return fallBack(
-                    '❌ *Opción inválida*\n\n' +
+                console.log(`❌ Opción de pago inválida para ${userPhone}: "${paymentOption}"`);
+                
+                const errorMessage = '❌ *Opción inválida*\n\n' +
                     'Por favor selecciona una opción válida:\n\n' +
                     '👉 *1* - Efectivo 💵\n' +
                     '👉 *2* - Transferencia bancaria 🏦\n' +
-                    '👉 *3* - Punto de venta (POS) 💳'
-                );
+                    '👉 *3* - Punto de venta (POS) 💳';
+                
+                console.log(`📤 Enviando error a ${userPhone}`);
+                
+                return fallBack(errorMessage);
             }
 
             // ✅ MAPEAR OPCIÓN A NOMBRE
@@ -594,30 +739,36 @@ const flowEndShoppingCart = addKeyword(utils.setEvent('END_SHOPPING_CART'))
                     break;
             }
 
-            // ✅ GUARDAR MÉTODO DE PAGO
-            await globalState.update({ paymentMethod: paymentMethod });
-            console.log('✅ Método de pago guardado:', paymentMethod);
+            // ✅ GUARDAR MÉTODO DE PAGO - SOLO PARA ESTE USUARIO
+            console.log(`💾 Guardando método de pago "${paymentMethod}" para usuario ${userPhone}...`);
+            await globalState.update({ [paymentKey]: paymentMethod });
+            console.log(`✅ Método de pago guardado para ${userPhone}`);
 
-            // ✅ OBTENER TODOS LOS DATOS FINALES
-            const dataOrder = globalState.get('order');
-            const dataAddress = globalState.get('address');
-            const dataPaymentMethod = globalState.get('paymentMethod');
-            const catalogId = globalState.get('catalogId');
+            // ✅ OBTENER TODOS LOS DATOS FINALES - SOLO DE ESTE USUARIO
+            console.log(`📦 Recuperando datos finales de ${userPhone}...`);
             
-            console.log('📦 DATOS FINALES DEL PEDIDO:');
-            console.log('- Orden:', dataOrder);
-            console.log('- Dirección:', dataAddress);
-            console.log('- Método de pago:', dataPaymentMethod);
-            console.log('- Catálogo ID:', catalogId);
+            const dataOrder = globalState.get(orderKey);
+            const dataAddress = globalState.get(addressKey);
+            const dataPaymentMethod = globalState.get(paymentKey);
+            const catalogId = globalState.get(catalogKey);
+            
+            console.log(`📊 DATOS FINALES DEL PEDIDO - ${userPhone}:`);
+            console.log(`   - Orden: ${dataOrder ? `${dataOrder.length} items` : 'Ausente'}`);
+            console.log(`   - Dirección: ${dataAddress || 'Ausente'}`);
+            console.log(`   - Método de pago: ${dataPaymentMethod || 'Ausente'}`);
+            console.log(`   - Catálogo ID: ${catalogId || 'Ausente'}`);
 
             // ⛔ VALIDACIÓN FINAL: Todos los datos están presentes
             if (!dataOrder || !dataAddress || !dataPaymentMethod) {
-                console.log('❌ Datos incompletos en globalState');
-                return endFlow(
-                    '❌ *Error procesando pedido*\n\n' +
+                console.log(`❌ Datos incompletos en globalState para ${userPhone}`);
+                
+                const errorMessage = '❌ *Error procesando pedido*\n\n' +
                     'Faltaron datos del pedido. Por favor inténtelo nuevamente.\n\n' +
-                    'Escribe "hola" para volver al menú principal.'
-                );
+                    'Escribe "hola" para volver al menú principal.';
+                
+                console.log(`📤 Enviando error a ${userPhone}`);
+                
+                return endFlow(errorMessage);
             }
 
             // ✅ CALCULAR TOTAL
@@ -633,22 +784,28 @@ const flowEndShoppingCart = addKeyword(utils.setEvent('END_SHOPPING_CART'))
                     }
                 }
             }
+            
+            console.log(`💰 Total del pedido: $${totalPedido}`);
 
             // ✅ ENVIAR NOTIFICACIÓN AL NEGOCIO
-            console.log('📧 Enviando notificación al negocio...');
-            await notificationDelivery(dataOrder, dataAddress, dataPaymentMethod, name, phone, provider);
+            console.log(`📧 Enviando notificación de pedido para ${userPhone}...`);
+            await notificationDelivery(dataOrder, dataAddress, dataPaymentMethod, name, userPhone, provider);
+            console.log(`✅ Notificación enviada`);
 
-            // ✅ LIMPIAR GLOBALSTATE
-            console.log('🧹 Limpiando globalState...');
+            // ✅ LIMPIAR GLOBALSTATE - SOLO DATOS DE ESTE USUARIO
+            console.log(`🧹 Limpiando estado SOLO del usuario ${userPhone}...`);
             await globalState.update({ 
-                order: null, 
-                address: null, 
-                paymentMethod: null,
-                catalogId: null,
-                customerPhone: null,
-                customerName: null,
-                lastOrderHash: null
+                [orderKey]: null,
+                [addressKey]: null,
+                [paymentKey]: null,
+                [catalogKey]: null,
+                [hashKey]: null,
+                [customerNameKey]: null,
+                [orderTimestampKey]: null
             });
+            
+            console.log(`✅ Estado limpiado AISLADAMENTE para ${userPhone}`);
+            console.log(`⚠️  IMPORTANTE: Otros clientes NO fueron afectados`);
 
             // ✅ FORMATEAR TOTAL
             const totalDisplay = totalPedido > 0 
@@ -672,23 +829,39 @@ const flowEndShoppingCart = addKeyword(utils.setEvent('END_SHOPPING_CART'))
                 '🔄 Escribe "hola" para hacer otro pedido.'
             ].join('\n');
 
-            console.log('✅ Pedido procesado exitosamente');
+            console.log(`✅ Pedido procesado exitosamente para ${userPhone}`);
+            console.log(`📤 Enviando confirmación final...`);
+            
             return endFlow(confirmationMessage);
 
         } catch (error) {
-            console.error('💥 Error en método de pago:', error);
-            return endFlow(
-                '❌ *Error técnico*\n\n' +
+            console.error(`💥 Error en método de pago para ${userPhone}:`, error);
+            
+            const errorMessage = '❌ *Error técnico*\n\n' +
                 'Hubo un problema procesando su pedido.\n\n' +
                 'Por favor contacte directamente al +56 9 3649 9908\n\n' +
-                'Escribe "hola" para volver al menú'
-            );
+                'Escribe "hola" para volver al menú';
+            
+            console.log(`📤 Enviando error a ${userPhone}`);
+            
+            return endFlow(errorMessage);
         }
     }
 );
 
 const flowPrincipal = addKeyword<Provider, Database>(utils.setEvent('welcome'))
- .addAction(async (ctx, { gotoFlow }) => start(ctx, gotoFlow, IDLETIME))
+ .addAction(async (ctx, { gotoFlow, state }) => {
+     const userPhone = ctx.from;  // 🔑 OBTENER CLAVE ÚNICA DEL USUARIO
+     
+     console.log(`📊 === FLOWPRINCIPAL.addAction() ===`);
+     console.log(`📱 Usuario: ${userPhone}`);
+     
+     // ✅ LEER DATOS DEL USUARIO SI EXISTEN (opcional, para uso futuro)
+     const userData = state.get(`user_${userPhone}`);
+     console.log(`👤 Datos del usuario:`, userData);
+     
+     return start(ctx, gotoFlow, IDLETIME);
+ })
  .addAnswer([
     '🚚 Hola, Bienvenido a *Minimarket TodoMarket* 🛵', 
     '⌛ Horario disponible desde las 1:00 PM hasta las 10:00 PM. ⌛',
@@ -697,22 +870,30 @@ const flowPrincipal = addKeyword<Provider, Database>(utils.setEvent('welcome'))
  .addAnswer(
      [
         '*Indica el Número de la opción que desees:*', 
-        '👉 #1 Catalogos de compra whatsApp', 
+        '👉 #1 Catalogos de compra', 
         '👉 #2 Conversar con un Agente', 
     ].join('\n'),
     { capture: true, delay: 1000, idle: 900000 },
     async (ctx,{ provider, fallBack, gotoFlow, state, endFlow}) => {
-        console.log('ctx.body flowPrincipal', ctx.body)
+        const userPhone = ctx.from;  // 🔑 CLAVE ÚNICA
+        
+        console.log(`📱 === FLOWPRINCIPAL.addAnswer() ===`);
+        console.log(`👤 Usuario: ${userPhone}`);
+        console.log(`💬 Opción seleccionada: ${ctx.body}`);
+        
         const userInput = ctx.body.toLowerCase().trim();
         
-        // Opción 1: Catálogo oficial de Meta (ENVÍO DIRECTO)
+        // ✅ OPCIÓN 1: CATÁLOGO OFICIAL DE META (ENVÍO DIRECTO)
         if (userInput === '1') {
-            stop(ctx)
-            console.log('🛒 Usuario seleccionó opción 1 - Catálogo oficial');
-            console.log('📋 Enviando catálogo oficial de Meta...');
+            stop(ctx);
+            
+            console.log(`🛒 Usuario ${userPhone} seleccionó opción 1 - Catálogo oficial`);
+            console.log(`📋 Iniciando envío de catálogos...`);
             
             try {
                 // ✅ MOSTRAR MENSAJE INFORMATIVO ANTES DE ENVIAR EL CATÁLOGO
+                console.log(`📤 Enviando mensaje informativo a ${userPhone}...`);
+                
                 await provider.sendText(ctx.from, [
                     '📦 *CÓMO USAR NUESTROS CATÁLOGOS:*\n',
                     '🔹 Recibirás varios mensajes con catálogos\n',
@@ -728,32 +909,68 @@ const flowPrincipal = addKeyword<Provider, Database>(utils.setEvent('welcome'))
                     '👇 Abriendo catálogos... espera un momento'
                 ].join(''));
                 
-                // Pequeña pausa para que lea el mensaje
+                console.log(`✅ Mensaje informativo enviado a ${userPhone}`);
+                
+                // ✅ PEQUEÑA PAUSA PARA QUE LEA EL MENSAJE
+                console.log(`⏳ Esperando 1 segundo antes de enviar catálogos...`);
                 await new Promise(resolve => setTimeout(resolve, 1000));
                 
-                // Enviar catálogo oficial directamente
+                // ✅ ENVIAR CATÁLOGO OFICIAL DIRECTAMENTE
+                console.log(`📤 Enviando catálogo oficial a ${userPhone}...`);
                 const result = await sendCatalogWith30Products(ctx.from, 'principal', provider);
-                console.log('✅ Catálogo oficial enviado exitosamente');
+                
+                console.log(`✅ Catálogo oficial enviado exitosamente para ${userPhone}`);
+                console.log(`📊 Resultado:`, result);
+                
+                return; // ✅ FINALIZAR FLUJO CORRECTAMENTE
+                
             } catch (error) {
-                console.error('❌ Error enviando catálogo:', error);
-                await provider.sendText(ctx.from,
-                    '❌ *Error temporal con el catálogo*\n\nContacta al +56 9 7964 3935'
-                );
+                console.error(`❌ Error enviando catálogo a ${userPhone}:`, error);
+                
+                // ✅ FALLBACK: ENVIAR MENSAJE DE ERROR
+                const errorMessage = [
+                    '❌ *Error temporal con el catálogo*\n\n',
+                    '📞 Por favor contacta al: +56 9 3649 9908\n',
+                    '⏰ Horario: 2:00 PM - 10:00 PM\n\n',
+                    'O escribe "hola" para intentar nuevamente'
+                ].join('');
+                
+                try {
+                    await provider.sendText(ctx.from, errorMessage);
+                    console.log(`✅ Mensaje de error enviado a ${userPhone}`);
+                } catch (sendError) {
+                    console.error(`❌ Error enviando mensaje de error a ${userPhone}:`, sendError);
+                }
+                
+                return endFlow(errorMessage);
             }
-            return;
         }
    
-        // Opción 2: Agente
+        // ✅ OPCIÓN 2: AGENTE
         if (userInput === '2' || userInput.includes('agente')) {
-            stop(ctx)
-            console.log('👥 Usuario seleccionó opción 2 - Agente');
+            stop(ctx);
+            
+            console.log(`👥 Usuario ${userPhone} seleccionó opción 2 - Agente`);
+            console.log(`🔄 Redirigiendo a FlowAgente2...`);
+            
             return gotoFlow(FlowAgente2);
         }
         
-        // Opción inválida
-        console.log('❌ Opción inválida recibida:', ctx.body);
-        reset(ctx, gotoFlow, IDLETIME)
-        return fallBack("*Opcion no valida*, \nPor favor seleccione una opcion valida:\n👉 #1 Carrito de compra\n👉 #2 Conversar con un Agente");
+        // ❌ OPCIÓN INVÁLIDA
+        console.log(`❌ Opción inválida recibida de ${userPhone}: "${ctx.body}"`);
+        
+        reset(ctx, gotoFlow, IDLETIME);
+        
+        const invalidMessage = [
+            "*Opcion no valida*\n\n",
+            "Por favor seleccione una opcion valida:\n",
+            "👉 #1 Catalogos de compra\n",
+            "👉 #2 Conversar con un Agente"
+        ].join('');
+        
+        console.log(`📤 Enviando mensaje de opción inválida a ${userPhone}...`);
+        
+        return fallBack(invalidMessage);
      }
  );
 
@@ -2508,61 +2725,42 @@ const flowDisable = addKeyword("disable")
 const flowValidTime = addKeyword<Provider, Database>(EVENTS.WELCOME)
  .addAction(async(ctx, {gotoFlow, provider, state}) => {
      try {
-        console.log('� === MENSAJE RECIBIDO ===');
-        console.log('📱 De:', ctx.from);
-        console.log('📝 Mensaje:', ctx.body);
-        console.log('👤 Nombre:', ctx.pushName);
-        console.log('🆔 Message ID:', ctx.message_id);
-        console.log('🔍 Contexto completo:', JSON.stringify(ctx, null, 2));
+        const userPhone = ctx.from;  // 🔑 CLAVE ÚNICA
         
-        console.log('🔄 Paso 1: Iniciando markMessageAsRead...');
-        // ✅ HABILITADO - función corregida según documentación oficial
-        // if (ctx.message_id) {
-        //     try {
-        //         await markMessageAsRead(ctx, provider);
-        //         console.log('✅ markMessageAsRead exitoso');
-        //     } catch (markReadError) {
-        //         console.error('❌ Error en markMessageAsRead (continuando flujo):', markReadError);
-        //     }
-        // } else {
-        //     console.log('⚠️ No hay message_id disponible');
-        // }
-        console.log('🔄 Paso 2: markMessageAsRead completado, continuando flujo...');
-
-        console.log('🔄 Paso 3: Actualizando estado del usuario...');
-        // Guardar información del usuario
+        console.log('🔐 === REGISTRANDO USUARIO ===');
+        console.log('📱 UserPhone (clave única):', userPhone);
+        console.log('👤 Nombre:', ctx.pushName);
+        
+        // ✅ GUARDAR DATOS DEL USUARIO CON NAMESPACE
         await state.update({ 
-            name: ctx.pushName || ctx.body,
-            phone: ctx.from,
-            lastActivity: new Date().toISOString()
+            [`user_${userPhone}`]: {
+                name: ctx.pushName || ctx.body,
+                phone: userPhone,
+                lastActivity: new Date().toISOString(),
+                joinedAt: new Date().toISOString(),
+                sessionId: `session_${userPhone}_${Date.now()}`
+            }
         });
-        console.log('🔄 Paso 4: Estado actualizado, iniciando validación horario...');
-
-        // Validación de horario
+        
+        console.log(`✅ Usuario registrado: user_${userPhone}`);
+        
+        // Validación de horario...
         const horaActual = moment();
-        const horario = "01:00-00:00"; // Horario de atención (2:00 PM - 10:00 PM)
+        const horario = "01:00-00:00";
         const rangoHorario = horario.split("-");
         const horaInicio = moment(rangoHorario[0], "HH:mm");
         const horaFin = moment(rangoHorario[1], "HH:mm");
         
-        console.log(`⏰ Hora actual: ${horaActual.format('HH:mm')} | Horario: ${horario}`);
-        console.log('🔄 Paso 5: Verificando horario...');
-        
-        // Verificar si está en horario de atención
         if (horaActual.isBetween(horaInicio, horaFin)) {
-            console.log('✅ Dentro del horario de atención - Redirigiendo a flowPrincipal');
-            console.log('🔄 Paso 6A: Ejecutando gotoFlow(flowPrincipal)');
+            console.log(`✅ Usuario ${userPhone} dentro de horario`);
             return gotoFlow(flowPrincipal);
         } else {
-            console.log('❌ Fuera del horario de atención - Redirigiendo a flowDisable');
-            console.log('🔄 Paso 6B: Ejecutando gotoFlow(flowDisable)');
-            // return gotoFlow(flowDisable); // Flujo para horario no disponible
-            return gotoFlow(flowPrincipal);
+            console.log(`⚠️ Usuario ${userPhone} fuera de horario`);
+            return gotoFlow(flowPrincipal);  // O flowDisable
         }
 
     } catch (error) {
         console.error('💥 Error en flowValidTime:', error);
-        // En caso de error, redirigir al flujo principal
         return gotoFlow(flowPrincipal);
     }
  });
