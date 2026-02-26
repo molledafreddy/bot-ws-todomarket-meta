@@ -329,205 +329,6 @@ const flowOrder = addKeyword([EVENTS.ORDER])
 });
 
 
-// const flowEndShoppingCart = addKeyword(utils.setEvent('END_SHOPPING_CART'))
-// .addAction(async (ctx, { globalState, endFlow, flowDynamic }) => {
-//     console.log('✅ flowEndShoppingCart: Validación exitosa, continuando con datos de entrega');
-//     return;
-// })
-// .addAnswer(
-//     [
-//         '✅ *PASO 1: Dirección de entrega*\n',
-//         'Ingrese su dirección completa:\n',
-//         '*Nombre Calle Numeración, Comuna, Depto*\n',
-//         '',
-//         'Ejemplo: Juan Pérez Av. Libertador 123, Santiago, Depto 4B',
-//     ],
-//     { capture: true, delay: 1500, idle: 960000 },
-//     async(ctx, { fallBack, globalState, flowDynamic }) => {
-//         try {
-//             const userAddress = ctx.body?.trim();
-//             const orderData = globalState.get('order');
-//             const lastOrderHash = globalState.get('lastOrderHash');
-//             const currentOrderHash = JSON.stringify(orderData);
-//             const isNewOrder = currentOrderHash !== lastOrderHash;
-
-//             console.log('📍 Dirección recibida:', userAddress);
-//             console.log('📝 Longitud:', userAddress?.length);
-
-//             // ✅ VALIDACIÓN 1: ¿Está vacío?
-//             if (!userAddress) {
-//                 console.log('❌ Dirección vacía');
-//                 return fallBack('❌ *Campo requerido*\n\nPor favor ingrese una dirección válida.');
-//             }
-
-//             // ✅ VALIDACIÓN 2: ¿Es demasiado corta?
-//             if (userAddress.length < 10) {
-//                 console.log('❌ Dirección demasiado corta:', userAddress.length);
-//                 return fallBack(
-//                     '❌ *Dirección incompleta*\n\n' +
-//                     'Por favor ingrese una dirección completa con:\n' +
-//                     '• Calle y número\n' +
-//                     '• Comuna\n' +
-//                     '• Depto/Bloque (si aplica)\n\n' +
-//                     'Ejemplo: Av. Libertador 123, Santiago, Depto 4B'
-//                 );
-//             }
-
-//             // ✅ GUARDADO DE DIRECCIÓN
-//             await globalState.update({ address: userAddress });
-//             console.log('✅ Dirección guardada exitosamente');
-
-//             return;            
-//         } catch (error) {
-//             console.error('💥 Error procesando dirección:', error);
-//             return fallBack('❌ *Error técnico*\n\nHubo un problema procesando tu dirección. Por favor inténtelo nuevamente.');
-//         }
-//     }
-// )
-// .addAnswer(
-//     [
-//         '💳 *PASO 2: Método de pago*\n',
-//         'Selecciona tu método de pago preferido:\n',
-//         '',
-//         '👉 *1* - Efectivo 💵',
-//         '👉 *2* - Transferencia bancaria 🏦', 
-//         '👉 *3* - Punto de venta (POS) 💳',
-//         '',
-//         'Escribe solo el *número* de tu opción (1, 2 o 3):'
-//     ],
-//     { capture: true, delay: 1500, idle: 960000 },
-//     async(ctx, { endFlow, fallBack, provider, globalState }) => {
-//         try {
-//             const name = ctx.pushName || 'Cliente';
-//             const phone = ctx.from;
-//             const paymentOption = ctx.body?.trim();
-
-//             console.log('💳 Método de pago recibido:', paymentOption);
-
-//             // ✅ VALIDACIÓN: Opción válida
-//             if (!paymentOption || (paymentOption !== '1' && paymentOption !== '2' && paymentOption !== '3')) {
-//                 console.log('❌ Opción de pago inválida:', paymentOption);
-//                 return fallBack(
-//                     '❌ *Opción inválida*\n\n' +
-//                     'Por favor selecciona una opción válida:\n\n' +
-//                     '👉 *1* - Efectivo 💵\n' +
-//                     '👉 *2* - Transferencia bancaria 🏦\n' +
-//                     '👉 *3* - Punto de venta (POS) 💳'
-//                 );
-//             }
-
-//             // ✅ MAPEAR OPCIÓN A NOMBRE
-//             let paymentMethod = '';
-//             let paymentInstructions = '';
-            
-//             switch (paymentOption) {
-//                 case '1':
-//                     paymentMethod = 'Efectivo 💵';
-//                     paymentInstructions = '\n\n💵 *Pago en efectivo*\nTenga el monto exacto preparado para el repartidor.';
-//                     break;
-//                 case '2':
-//                     paymentMethod = 'Transferencia bancaria 🏦';
-//                     paymentInstructions = '\n\n🏦 *Datos para transferencia:*\nNombre: TodoMarket\nBanco: Santander\nTipo: Corriente\nCuenta: 0-000-7748055-2\nRUT: 77.210.237-6\n\n📸 *Importante:* Transfiera luego de confirmar el pedido.';
-//                     break;
-//                 case '3':
-//                     paymentMethod = 'Punto de venta (POS) 💳';
-//                     paymentInstructions = '\n\n💳 *Punto de venta disponible*\nNuestro repartidor llevará el equipo POS para procesar su pago con tarjeta.';
-//                     break;
-//             }
-
-//             // ✅ GUARDAR MÉTODO DE PAGO
-//             await globalState.update({ paymentMethod: paymentMethod });
-//             console.log('✅ Método de pago guardado:', paymentMethod);
-
-//             // ✅ OBTENER TODOS LOS DATOS FINALES
-//             const dataOrder = globalState.get('order');
-//             const dataAddress = globalState.get('address');
-//             const dataPaymentMethod = globalState.get('paymentMethod');
-//             const catalogId = globalState.get('catalogId');
-            
-//             console.log('📦 DATOS FINALES DEL PEDIDO:');
-//             console.log('- Orden:', dataOrder);
-//             console.log('- Dirección:', dataAddress);
-//             console.log('- Método de pago:', dataPaymentMethod);
-//             console.log('- Catálogo ID:', catalogId);
-
-//             // ⛔ VALIDACIÓN FINAL: Todos los datos están presentes
-//             if (!dataOrder || !dataAddress || !dataPaymentMethod) {
-//                 console.log('❌ Datos incompletos en globalState');
-//                 return endFlow(
-//                     '❌ *Error procesando pedido*\n\n' +
-//                     'Faltaron datos del pedido. Por favor inténtelo nuevamente.\n\n' +
-//                     'Escribe "hola" para volver al menú principal.'
-//                 );
-//             }
-
-//             // ✅ CALCULAR TOTAL
-//             let totalPedido = 0;
-//             if (Array.isArray(dataOrder)) {
-//                 const totalLine = dataOrder.find(item => 
-//                     typeof item === 'string' && item.includes('Total a Pagar')
-//                 );
-//                 if (totalLine) {
-//                     const totalMatch = totalLine.match(/\$(\d+)/);
-//                     if (totalMatch) {
-//                         totalPedido = parseInt(totalMatch[1]);
-//                     }
-//                 }
-//             }
-
-//             // ✅ ENVIAR NOTIFICACIÓN AL NEGOCIO
-//             console.log('📧 Enviando notificación al negocio...');
-//             await notificationDelivery(dataOrder, dataAddress, dataPaymentMethod, name, phone, provider);
-
-//             // ✅ LIMPIAR GLOBALSTATE
-//             console.log('🧹 Limpiando globalState...');
-//             await globalState.update({ 
-//                 order: null, 
-//                 address: null, 
-//                 paymentMethod: null,
-//                 catalogId: null,
-//                 customerPhone: null,
-//                 customerName: null,
-//                 lastOrderHash: null
-//             });
-
-//             // ✅ FORMATEAR TOTAL
-//             const totalDisplay = totalPedido > 0 
-//                 ? `💰 *Total a pagar:* $${totalPedido.toLocaleString('es-CL')}` 
-//                 : '💡 *Nota:* El total se confirmará al momento de la entrega.';
-
-//             // ✅ MENSAJE DE CONFIRMACIÓN FINAL
-//             const confirmationMessage = [
-//                 '✅ *¡Pedido confirmado!* 🛒',
-//                 '',
-//                 `💳 *Método de pago:* ${dataPaymentMethod}`,
-//                 totalDisplay,
-//                 '',
-//                 'Gracias por su pedido. En breve nos comunicaremos con usted para coordinar la entrega.',
-//                 paymentInstructions,
-//                 '',
-//                 '📞 También puede contactarnos directamente al: +56 9 3649 9908',
-//                 '',
-//                 '⏰ *Horario de entrega:* Lunes a Domingo 2:00 PM - 10:00 PM',
-//                 '',
-//                 '🔄 Escribe "hola" para hacer otro pedido.'
-//             ].join('\n');
-
-//             console.log('✅ Pedido procesado exitosamente');
-//             return endFlow(confirmationMessage);
-
-//         } catch (error) {
-//             console.error('💥 Error en método de pago:', error);
-//             return endFlow(
-//                 '❌ *Error técnico*\n\n' +
-//                 'Hubo un problema procesando su pedido.\n\n' +
-//                 'Por favor contacte directamente al +56 9 3649 9908\n\n' +
-//                 'Escribe "hola" para volver al menú'
-//             );
-//         }
-//     }
-// );
-
 const flowEndShoppingCart = addKeyword(utils.setEvent('END_SHOPPING_CART'))
 .addAction(async (ctx, { globalState, endFlow, flowDynamic }) => {
     const userPhone = ctx.from;  // 🔑 CLAVE ÚNICA
@@ -700,7 +501,7 @@ const flowEndShoppingCart = addKeyword(utils.setEvent('END_SHOPPING_CART'))
             switch (paymentOption) {
                 case '1':
                     paymentMethod = 'Efectivo 💵';
-                    paymentInstructions = '\n\n💵 *Pago en efectivo*\nTenga el monto exacto preparado para el repartidor.';
+                    paymentInstructions = '\n\n💵 *Pago en efectivo*\n El Agente le confirmara el Monto a cancelar.';
                     break;
                 case '2':
                     paymentMethod = 'Transferencia bancaria 🏦';
@@ -793,11 +594,12 @@ const flowEndShoppingCart = addKeyword(utils.setEvent('END_SHOPPING_CART'))
                 totalDisplay,
                 '',
                 'Gracias por su pedido. En breve nos comunicaremos con usted para coordinar la entrega.',
+                'Si desea otro producto, se lo indica al agente.',
                 paymentInstructions,
                 '',
                 '📞 También puede contactarnos directamente al: +56 9 3649 9908',
                 '',
-                '⏰ *Horario de entrega:* Lunes a Domingo 2:00 PM - 10:00 PM',
+                '⏰ *Horario de entrega:* Lunes a Domingo 1:00 PM - 10:00 PM',
                 '',
                 '🔄 Escribe "hola" para hacer otro pedido.'
             ].join('\n');
@@ -981,13 +783,13 @@ function categorizeProductsCorrectly(products: any[], catalogKey: string) {
     ],
     
     '🍞 Panadería': [
-      'pan', 'cereal', 'avena', 'hallulla', 'bimbo', 'molde',
+      'pan', 'cereal', 'avena', 'hallulla', 'bimbo', 'molde', 'fajitas',
       'pan integral', 'pan blanco', 'pan francés', 'panadería', 'biscocho',
       'bizcocho', 'tostadas', 'catalinas'
     ],
 
     '🥛 Lácteos': [
-      'leche', 'yogurt', 'queso', 'huevo', 'mantequilla', 'crema', 'lácteo',
+      'leche', 'yogurt', 'Gauda', 'margarina', 'queso', 'huevo', 'mantequilla', 'crema', 'lácteo',
       'soprole', 'colún', 'dairy', 'yogur', 'requesón', 'quesillo',
       'leche descremada', 'leche entera', 'manteca'
     ],
@@ -1013,9 +815,9 @@ function categorizeProductsCorrectly(products: any[], catalogKey: string) {
       'costilla', 'pescado', 'salmón', 'trucha', 'merluza'
     ],
 
-    '🧼 Limpieza': [
-      'detergente', 'jabón', 'nova', 'champú', 'pasta dental', 'papel higiénico',
-      'aseo', 'higiene', 'cloro', 'limpieza', 'desinfectante', 'limpiador',
+    '🧼 Limpieza y Higiene': [
+      'detergente', 'jabón', 'jabon', 'Baño', 'preservativo', 'ambientador', 'nova', 'champú', 'pasta dental', 'papel higiénico',
+      'aseo', 'higiene', 'cloro', 'limpieza', 'desinfectante', 'limpiador','suavizante', 'shampoo', 'confort',
       'escoba', 'recogedor', 'trapo', 'paño', 'esponja', 'cepillo',
       'toallita', 'toalla', 'pañal', 'servilleta', 'kleenex', 'pañuelos',
       'poet'
