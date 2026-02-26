@@ -1614,10 +1614,11 @@ function createAllCategorizedSectionLotes(categorizedProducts: Record<string, an
 // }
 
 /**
- * FUNCIÓN MEJORADA: Obtiene TODOS los productos del catálogo con paginación
+ * FUNCIÓN MEJORADA v13.1: Obtiene TODOS los productos del catálogo con paginación
  * ✅ Soporta catálogos con 100+ productos
  * ✅ Implementa paginación automática
- * ✅ Agrupa en mensajes de máximo 30 items
+ * ✅ Agrupa en mensajes de máximo 120 items
+ * ✅ CORREGIDO: Validación segura de títulos de sección
  * ✅ Compatible con Meta Graph API v23.0
  */
 export async function sendCatalogWith30Products(
@@ -1682,6 +1683,7 @@ export async function sendCatalogWith30Products(
       
       // ✅ AGREGAR PRODUCTOS DE ESTA PÁGINA AL TOTAL
       allProducts = allProducts.concat(pageProducts);
+      console.log(`✅ Productos en página ${pageNumber}: ${pageProducts.length}`);
       console.log(`📊 Total acumulado: ${allProducts.length} productos`);
 
       // ✅ VERIFICAR SI HAY MÁS PÁGINAS
@@ -1689,13 +1691,22 @@ export async function sendCatalogWith30Products(
       
       if (pagingInfo && pagingInfo.cursors && pagingInfo.cursors.after) {
         nextCursor = pagingInfo.cursors.after;
+        console.log(`➡️  Hay más productos, siguiente cursor disponible`);
         pageNumber++;
       } else {
         nextCursor = null;
+        console.log(`✅ No hay más páginas`);
         pageNumber++;
       }
 
     } while (nextCursor !== null); // ✅ Continuar mientras haya más páginas
+
+    console.log(`\n${'═'.repeat(70)}`);
+    console.log(`✅ DESCARGA COMPLETA DE CATÁLOGO`);
+    console.log(`${'═'.repeat(70)}`);
+    console.log(`📦 Total de productos descargados: ${allProducts.length}`);
+    console.log(`📄 Páginas consultadas: ${pageNumber - 1}`);
+    console.log(`${'═'.repeat(70)}\n`);
 
     if (allProducts.length === 0) {
       throw new Error('No hay productos en el catálogo');
@@ -1793,25 +1804,7 @@ export async function sendCatalogWith30Products(
         console.log(`✅ Body ajustado: ${bodyText.length} caracteres`);
       }
 
-      // ✅ SANITIZAR SECCIONES - REMOVER CARACTERES PROBLEMÁTICOS
-      const sanitizedSections = lote.sections.map((section: any) => {
-        return {
-          title: section.title
-            .replace(/[^\w\s\-]/g, '') // Remover caracteres especiales excepto guiones
-            .substring(0, 30) // Límite de 30 caracteres
-            .trim(),
-          product_items: section.product_items.map((item: any) => ({
-            product_retailer_id: String(item.product_retailer_id).trim()
-          }))
-        };
-      });
-
-      console.log(`📋 Secciones sanitizadas: ${sanitizedSections.length}`);
-      sanitizedSections.forEach((section: any, idx: number) => {
-        console.log(`   ${idx + 1}. "${section.title}" (${section.product_items.length} items)`);
-      });
-
-      // ✅ CONSTRUCCIÓN DEL MENSAJE CON VALIDACIONES
+      // ✅ CONSTRUCCIÓN DEL MENSAJE CON VALIDACIONES - VERSIÓN CORREGIDA
       const productListMessage = {
         messaging_product: "whatsapp",
         recipient_type: "individual",
@@ -1831,7 +1824,30 @@ export async function sendCatalogWith30Products(
           },
           action: {
             catalog_id: catalog.catalogId,
-            sections: sanitizedSections
+            sections: lote.sections.map((section: any, index: number) => {
+              // ✅ VALIDACIÓN SEGURA: Verificar que title exista
+              let safeTitle = section.sectionTitle || section.title || `Section ${index + 1}`;
+              
+              // ✅ SANITIZAR: Remover emojis y caracteres especiales
+              safeTitle = safeTitle
+                .replace(/[^\w\s\-]/g, '')  // Remover caracteres especiales
+                .substring(0, 30)            // Limitar a 30 caracteres
+                .trim();
+              
+              // ✅ VALIDAR QUE NO ESTÉ VACÍO
+              if (!safeTitle || safeTitle.length === 0) {
+                safeTitle = `Products ${index + 1}`;
+              }
+              
+              console.log(`✅ Sección sanitizada: "${safeTitle}" (${section.items?.length || section.product_items?.length || 0} items)`);
+              
+              return {
+                title: safeTitle,
+                product_items: (section.items || section.product_items || []).map((item: any) => ({
+                  product_retailer_id: String(item.product_retailer_id || item.id || item.retailer_id).trim()
+                }))
+              };
+            })
           }
         }
       };
@@ -1839,8 +1855,8 @@ export async function sendCatalogWith30Products(
       console.log(`📋 Payload preparado:`);
       console.log(`   Header: "${productListMessage.interactive.header.text}" (${headerText.length}/60)`);
       console.log(`   Body: ${bodyText.length} caracteres (Máx: 1024)`);
-      console.log(`   Secciones: ${sanitizedSections.length}`);
-      console.log(`   Total items: ${sanitizedSections.reduce((sum, s) => sum + s.product_items.length, 0)}`);
+      console.log(`   Secciones: ${productListMessage.interactive.action.sections.length}`);
+      console.log(`   Total items: ${productListMessage.interactive.action.sections.reduce((sum: number, s: any) => sum + (s.product_items?.length || 0), 0)}`);
 
       try {
         // ✅ ESPERA MÁS LARGA ENTRE MENSAJES (Meta requiere 1-2 segundos)
@@ -1872,14 +1888,15 @@ export async function sendCatalogWith30Products(
             console.error(`   🚨 ERROR #131000: "Something went wrong"`);
             console.error(`   📋 Detalles: ${result.error?.error_data?.details || 'No especificado'}`);
             
-            // Intentar envío alternativo sin emoji en títulos
+            // Intentar envío alternativo sin caracteres especiales
             if (result.error?.error_data?.details?.includes('section')) {
               console.log(`   🔄 Intentando con secciones simplificadas...`);
               
-              const simplifiedSections = lote.sections.map((section: any) => ({
+              const simplifiedSections = productListMessage.interactive.action.sections.map((section: any, idx: number) => ({
                 title: section.title
                   .replace(/\W/g, '') // Remover TODOS los caracteres especiales
-                  .substring(0, 20),
+                  .substring(0, 20)
+                  .trim() || `Products${idx + 1}`,
                 product_items: section.product_items
               }));
 
@@ -1900,7 +1917,7 @@ export async function sendCatalogWith30Products(
               const retryResult = await retryResponse.json();
               
               if (retryResponse.ok) {
-                console.log(`✅ Reintenyo exitoso - Lote ${lote.loteNumber} enviado`);
+                console.log(`✅ Reintento exitoso - Lote ${lote.loteNumber} enviado`);
                 successCount++;
               } else {
                 console.error(`❌ Reintento también falló:`, retryResult);
