@@ -168,10 +168,442 @@ const FlowAgente2 = addKeyword(['Agente', 'AGENTE', 'agente'])
     const name = ctx?.pushName;
     const numAgente = ctx?.from;
     const message = `El cliente ${name} con el celular ${numAgente} solicita atencion personalizada`;
-    await provider.sendText('56936499908@s.whatsapp.net', message)
+    await provider.sendText('56936499908@s.whatsapp.net', message);
+    await provider.sendText('56953941370@s.whatsapp.net', message);
     return endFlow('*Gracias*');
    }
 );
+
+// ════════════════════════════════════════════════════════════════════
+// 🎯 NUEVA ESTRATEGIA: CATÁLOGOS CON SELECCIÓN DE CATEGORÍAS
+// ════════════════════════════════════════════════════════════════════
+
+/**
+ * FUNCIÓN 1: Listar todas las categorías disponibles (dinámicamente)
+ * ✅ Obtiene productos de Meta API
+ * ✅ Categoriza usando palabras clave (como categorizeProductsCorrectly)
+ * ✅ Envía menú interactivo con categorías
+ * ✅ Guarda datos en globalState con namespace de usuario
+ */
+async function listAvailableCategoriesAndSendMenu(
+  phoneNumber: string,
+  catalogKey: string,
+  provider: any,
+  globalState: any
+) {
+  const catalog = ENABLED_CATALOGS[catalogKey];
+
+  if (!catalog) {
+    throw new Error(`Catálogo ${catalogKey} no encontrado`);
+  }
+
+  const jwtToken = process.env.JWT_TOKEN || provider?.globalVendorArgs?.jwtToken;
+  const numberId = process.env.NUMBER_ID || provider?.globalVendorArgs?.numberId;
+
+  if (!jwtToken || !numberId) {
+    throw new Error('Faltan credenciales Meta');
+  }
+
+  try {
+    console.log(`\n📂 === LISTANDO CATEGORÍAS DINÁMICAMENTE ===`);
+    console.log(`📱 Usuario: ${phoneNumber}`);
+    console.log(`🏪 Catálogo: ${catalogKey}`);
+
+    // ✅ PASO 1: OBTENER TODOS LOS PRODUCTOS
+    console.log(`📤 Descargando productos del catálogo...`);
+    
+    let allProducts: any[] = [];
+    let nextCursor: string | null = null;
+
+    do {
+      let productUrl = `https://graph.facebook.com/v23.0/${catalog.catalogId}/products?fields=id,name,description,price,currency,retailer_id,category,availability,condition,brand&limit=100`;
+      
+      if (nextCursor) {
+        productUrl += `&after=${nextCursor}`;
+      }
+
+      const productsResponse = await fetch(productUrl, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${jwtToken}`,
+        }
+      });
+
+      const productsData = await productsResponse.json();
+
+      if (!productsResponse.ok) {
+        throw new Error(`Error obteniendo productos: ${productsData.error?.message}`);
+      }
+
+      const pageProducts = productsData.data || [];
+      allProducts = allProducts.concat(pageProducts);
+
+      const pagingInfo = productsData.paging;
+      nextCursor = (pagingInfo && pagingInfo.cursors && pagingInfo.cursors.after) ? pagingInfo.cursors.after : null;
+
+    } while (nextCursor !== null);
+
+    console.log(`✅ Total de productos descargados: ${allProducts.length}`);
+
+    // ✅ PASO 2: CATEGORIZAR PRODUCTOS (USANDO TU FUNCIÓN EXISTENTE)
+    console.log(`📂 Categorizando productos dinámicamente...`);
+    const organizedByCategory = categorizeProductsCorrectly(allProducts, catalogKey);
+    
+    // ✅ PASO 3: EXTRAER NOMBRES DE CATEGORÍAS (SIN EMOJIS PARA EL MENÚ)
+    const categoryNames = Object.keys(organizedByCategory)
+      .filter(cat => organizedByCategory[cat].length > 0)
+      .sort();
+
+    console.log(`\n📋 Categorías encontradas: ${categoryNames.length}`);
+    categoryNames.forEach((cat, idx) => {
+      const itemCount = organizedByCategory[cat].length;
+      console.log(`   ${idx + 1}. ${cat} (${itemCount} productos)`);
+    });
+
+    // ✅ PASO 4: GUARDAR EN GLOBALSTATE (NAMESPACE POR USUARIO)
+    const userCategoriesKey = `categories_${phoneNumber}`;
+    const userCatalogDataKey = `catalogData_${phoneNumber}`;
+    const userSelectedCategoriesKey = `selectedCategories_${phoneNumber}`;
+    const userCatalogKeyKey = `catalogKey_${phoneNumber}`;
+    
+    await globalState.update({
+      [userCategoriesKey]: categoryNames,
+      [userCatalogDataKey]: organizedByCategory,
+      [userSelectedCategoriesKey]: [],
+      [userCatalogKeyKey]: catalogKey
+    });
+
+    console.log(`💾 Datos guardados en globalState para ${phoneNumber}`);
+
+    // ✅ PASO 5: CREAR MENSAJE CON LISTA DE CATEGORÍAS
+    const categoryMenuMessage = [
+      `📂 *CATEGORÍAS DISPONIBLES EN ${catalog.name.toUpperCase()}*\n`,
+      `Tenemos ${categoryNames.length} categorías para ti:\n`,
+      '',
+      ...categoryNames.map((cat, idx) => {
+        const itemCount = organizedByCategory[cat].length;
+        const catWithoutEmoji = cat.replace(/[^\w\s]/g, '').trim();
+        return `${idx + 1}️⃣ *${catWithoutEmoji}* (${itemCount} productos)`;
+      }),
+      '',
+      `👉 Escribe el *número* de la categoría que deseas ver`,
+      `Ejemplo: escribe "1" para ver la primera categoría\n`,
+      '💡 Podrás mezclar productos de diferentes categorías en tu carrito'
+    ].join('\n');
+
+    console.log(`\n📤 Enviando menú de categorías a ${phoneNumber}...`);
+    
+    await provider.sendText(phoneNumber, categoryMenuMessage);
+
+    console.log(`✅ Menú de categorías enviado exitosamente`);
+
+    return {
+      success: true,
+      categoriesCount: categoryNames.length,
+      categories: categoryNames
+    };
+
+  } catch (error: any) {
+    console.error('❌ Error listando categorías:', error.message);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+/**
+ * FUNCIÓN 2: Enviar categoría específica como product_list
+ * ✅ Extrae productos de la categoría seleccionada
+ * ✅ Respeta límite de 30 items de Meta
+ * ✅ Divide categorías grandes automáticamente
+ */
+async function sendSpecificCategoryAsProductList(
+  phoneNumber: string,
+  categoryName: string,
+  provider: any,
+  globalState: any
+) {
+  const jwtToken = process.env.JWT_TOKEN || provider?.globalVendorArgs?.jwtToken;
+  const numberId = process.env.NUMBER_ID || provider?.globalVendorArgs?.numberId;
+
+  if (!jwtToken || !numberId) {
+    throw new Error('Faltan credenciales Meta');
+  }
+
+  try {
+    console.log(`\n🎯 === ENVIANDO CATEGORÍA ESPECÍFICA ===`);
+    console.log(`📱 Usuario: ${phoneNumber}`);
+    console.log(`📂 Categoría: ${categoryName}`);
+
+    // ✅ OBTENER DATOS DE GLOBALSTATE
+    const userCatalogDataKey = `catalogData_${phoneNumber}`;
+    const userCatalogKeyKey = `catalogKey_${phoneNumber}`;
+    const allCategoriesData = globalState.get(userCatalogDataKey);
+    const catalogKey = globalState.get(userCatalogKeyKey) || 'principal';
+    const catalog = ENABLED_CATALOGS[catalogKey];
+
+    if (!allCategoriesData || !allCategoriesData[categoryName]) {
+      throw new Error(`Categoría ${categoryName} no encontrada`);
+    }
+
+    const categoryProducts = allCategoriesData[categoryName];
+    console.log(`📦 Total de productos en categoría: ${categoryProducts.length}`);
+
+    // ✅ DIVIDIR EN SECCIONES SI HAY MÁS DE 30 ITEMS
+    const maxItemsPerSection = 30;
+    const sections: any[] = [];
+    
+    for (let i = 0; i < categoryProducts.length; i += maxItemsPerSection) {
+      const sectionProducts = categoryProducts.slice(i, i + maxItemsPerSection);
+      const sectionNumber = Math.floor(i / maxItemsPerSection) + 1;
+      const totalSections = Math.ceil(categoryProducts.length / maxItemsPerSection);
+
+      // Sanitizar título (sin emojis, máximo 30 caracteres)
+      let sectionTitle = categoryName.replace(/[^\w\s]/g, '').trim();
+      
+      if (totalSections > 1) {
+        sectionTitle = `${sectionTitle} ${sectionNumber}`;
+      }
+
+      sectionTitle = sectionTitle.substring(0, 30).trim();
+
+      sections.push({
+        title: sectionTitle,
+        product_items: sectionProducts.map(product => ({
+          product_retailer_id: product.retailer_id || product.id
+        }))
+      });
+
+      console.log(`✅ Sección "${sectionTitle}": ${sectionProducts.length} items`);
+    }
+
+    // ✅ CREAR PAYLOAD DEL MENSAJE
+    const categoryNameClean = categoryName.replace(/[^\w\s]/g, '').trim();
+    
+    const productListMessage = {
+      messaging_product: "whatsapp",
+      recipient_type: "individual",
+      to: phoneNumber,
+      type: "interactive",
+      interactive: {
+        type: "product_list",
+        header: {
+          type: "text",
+          text: `${catalog.emoji} ${categoryNameClean}`
+        },
+        body: {
+          text: `Explora los ${categoryProducts.length} productos disponibles en ${categoryNameClean}.\n\nAñade los que te interesan al carrito 🛒`
+        },
+        footer: {
+          text: "Selecciona productos • Agrega al carrito"
+        },
+        action: {
+          catalog_id: catalog.catalogId,
+          sections: sections
+        }
+      }
+    };
+
+    console.log(`📋 Payload preparado: ${sections.length} sección(es), ${categoryProducts.length} items totales`);
+
+    // ✅ ENVIAR MENSAJE
+    const response = await fetch(
+      `https://graph.facebook.com/v23.0/${numberId}/messages`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${jwtToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(productListMessage)
+      }
+    );
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      console.error(`❌ Error enviando categoría:`, result);
+      throw new Error(`Error Meta API: ${result.error?.message}`);
+    }
+
+    console.log(`✅ Categoría "${categoryName}" enviada exitosamente`);
+
+    // ✅ GUARDAR CATEGORÍA COMO VISTA
+    const userSelectedCategoriesKey = `selectedCategories_${phoneNumber}`;
+    const selectedCategories = globalState.get(userSelectedCategoriesKey) || [];
+    
+    if (!selectedCategories.includes(categoryName)) {
+      selectedCategories.push(categoryName);
+      await globalState.update({
+        [userSelectedCategoriesKey]: selectedCategories
+      });
+    }
+
+    return {
+      success: true,
+      categoryName,
+      itemsCount: categoryProducts.length,
+      sectionsCount: sections.length
+    };
+
+  } catch (error: any) {
+    console.error('❌ Error enviando categoría:', error.message);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+/**
+ * FLUJO 3: Manejar selección de categoría del usuario
+ * ✅ Valida entrada numérica
+ * ✅ Obtiene categoría seleccionada
+ * ✅ Envía product_list
+ */
+const flowSelectCategory = addKeyword(utils.setEvent('SELECT_CATEGORY'))
+  .addAction(async (ctx, { state, globalState, flowDynamic, fallBack, provider }) => {
+    const userPhone = ctx.from;
+    const userInput = ctx.body?.trim();
+
+    console.log(`\n🎯 === FLUJO SELECCIÓN DE CATEGORÍA ===`);
+    console.log(`📱 Usuario: ${userPhone}`);
+    console.log(`✍️  Entrada: ${userInput}`);
+
+    try {
+      // ✅ OBTENER CATEGORÍAS DEL USUARIO
+      const userCategoriesKey = `categories_${userPhone}`;
+      const categories = globalState.get(userCategoriesKey);
+
+      if (!categories || categories.length === 0) {
+        console.log(`❌ No hay categorías registradas para ${userPhone}`);
+        return fallBack('❌ Error: No se encontraron categorías. Por favor intenta nuevamente.');
+      }
+
+      console.log(`📂 Categorías disponibles: ${categories.length}`);
+
+      // ✅ VALIDAR ENTRADA
+      const categoryIndex = parseInt(userInput) - 1;
+
+      if (isNaN(categoryIndex) || categoryIndex < 0 || categoryIndex >= categories.length) {
+        console.log(`❌ Selección inválida: ${userInput}`);
+        
+        const validOptions = categories.map((cat, idx) => `${idx + 1}️⃣ ${cat}`).join('\n');
+        return fallBack(
+          `❌ *Opción inválida*\n\nPor favor selecciona una opción válida:\n\n${validOptions}\n\nEscribe solo el número`
+        );
+      }
+
+      const selectedCategory = categories[categoryIndex];
+      console.log(`✅ Categoría seleccionada: ${selectedCategory}`);
+
+      // ✅ MOSTRAR MENSAJE DE CARGA
+      await flowDynamic(`⏳ Cargando categoría: *${selectedCategory}*...\n\n(Aguarda un momento)`);
+
+      // ✅ ENVIAR CATEGORÍA SELECCIONADA
+      const result = await sendSpecificCategoryAsProductList(
+        userPhone,
+        selectedCategory,
+        provider,
+        globalState
+      );
+
+      if (!result.success) {
+        console.error(`❌ Error enviando categoría:`, result.error);
+        return fallBack(`❌ Error al cargar la categoría. Por favor intenta nuevamente.`);
+      }
+
+      console.log(`✅ Categoría enviada exitosamente`);
+      return;
+
+    } catch (error: any) {
+      console.error(`💥 Error en flowSelectCategory:`, error.message);
+      return fallBack(`❌ Error procesando tu selección. Por favor intenta nuevamente.`);
+    }
+  });
+
+/**
+ * FLUJO 4: Consultar si desea ver otra categoría o culminar pedido - CORREGIDO
+ * ✅ Se dispara después de que usuario interactúa con product_list
+ * ✅ Da opción de seguir comprando o proceder al pago
+ * ✅ CORREGIDO: Usa provider correcto
+ */
+const flowContinueOrCheckout = addKeyword(utils.setEvent('CONTINUE_OR_CHECKOUT'))
+  .addAnswer(
+    [
+      '✅ *¿Qué deseas hacer?*\n',
+      '👉 *1* - Ver otra categoría',
+      '👉 *2* - Finalizar mi pedido y pagar',
+      '',
+      'Escribe solo el número (1 o 2)'
+    ],
+    { capture: true, delay: 1000, idle: 960000 },
+    async (ctx, { state, globalState, flowDynamic, fallBack, gotoFlow, provider }) => {
+      // ✅ AGREGADO: provider en destructuring
+      const userPhone = ctx.from;
+      const userInput = ctx.body?.trim();
+
+      console.log(`\n🛒 === FLUJO CONTINUAR O FINALIZAR ===`);
+      console.log(`📱 Usuario: ${userPhone}`);
+      console.log(`🎯 Opción: ${userInput}`);
+
+      try {
+        // ✅ OPCIÓN 1: VER OTRA CATEGORÍA
+        if (userInput === '1') {
+          console.log(`👉 Usuario seleccionó: Ver otra categoría`);
+
+          const userCategoriesKey = `categories_${userPhone}`;
+          const userSelectedCategoriesKey = `selectedCategories_${userPhone}`;
+          
+          const categories = globalState.get(userCategoriesKey) || [];
+          const selectedCategories = globalState.get(userSelectedCategoriesKey) || [];
+          const unviewedCategories = categories.filter(cat => !selectedCategories.includes(cat));
+
+          if (unviewedCategories.length === 0) {
+            console.log(`🔄 Todas las categorías han sido vistas, reiniciando`);
+            await globalState.update({
+              [`selectedCategories_${userPhone}`]: []
+            });
+
+            const allCategoriesMenu = [
+              '📂 *CATEGORÍAS DISPONIBLES*\n',
+              ...categories.map((cat, idx) => `${idx + 1}️⃣ *${cat}`),
+              '',
+              '👉 Escribe el número de la categoría que deseas ver'
+            ].join('\n');
+
+            await flowDynamic(allCategoriesMenu);
+          } else {
+            const unviewedMenu = [
+              '📂 *CATEGORÍAS DISPONIBLES*\n',
+              ...unviewedCategories.map((cat, idx) => `${idx + 1}️⃣ *${cat}`),
+              '',
+              '👉 Escribe el número de la categoría que deseas ver'
+            ].join('\n');
+
+            await flowDynamic(unviewedMenu);
+          }
+
+          return;
+        }
+
+        // ✅ OPCIÓN 2: FINALIZAR PEDIDO
+        if (userInput === '2') {
+          console.log(`✅ Usuario seleccionó: Finalizar pedido`);
+          return gotoFlow(flowEndShoppingCart);
+        }
+
+        // ❌ OPCIÓN INVÁLIDA
+        console.log(`❌ Opción inválida: ${userInput}`);
+        return fallBack('❌ Opción inválida. Por favor escribe 1 o 2.');
+
+      } catch (error: any) {
+        console.error(`💥 Error en flowContinueOrCheckout:`, error.message);
+        return fallBack(`❌ Error. Por favor intenta nuevamente.`);
+      }
+    }
+  );
 
 /**
 * Captura una variedad de eventos multimedia que no son permitidos por el bot 
@@ -213,8 +645,6 @@ const flowValidMedia = addKeyword([EVENTS.MEDIA, EVENTS.VOICE_NOTE, EVENTS.LOCAT
                 mediaIcon = '😀';
             }
         }
-        
-        console.log(`🚫 Tipo de media detectado: ${mediaType} ${mediaIcon}`);
         
         // Enviar mensaje de error personalizado según el tipo
         const errorMessage = [
@@ -649,9 +1079,8 @@ const flowPrincipal = addKeyword<Provider, Database>(utils.setEvent('welcome'))
         '👉 #2 Conversar con un Agente', 
     ].join('\n'),
     { capture: true, delay: 1000, idle: 900000 },
-    async (ctx,{ provider, fallBack, gotoFlow, state, endFlow}) => {
+    async (ctx,{ provider, fallBack, gotoFlow, state, endFlow, globalState}) => {
         const userPhone = ctx.from;  // 🔑 CLAVE ÚNICA
-        
         console.log(`📱 === FLOWPRINCIPAL.addAnswer() ===`);
         console.log(`👤 Usuario: ${userPhone}`);
         console.log(`💬 Opción seleccionada: ${ctx.body}`);
@@ -668,7 +1097,11 @@ const flowPrincipal = addKeyword<Provider, Database>(utils.setEvent('welcome'))
             try {
                 // ✅ MOSTRAR MENSAJE INFORMATIVO ANTES DE ENVIAR EL CATÁLOGO
                 console.log(`📤 Enviando mensaje informativo a ${userPhone}...`);
-                
+                const userCatalogKeyKey = `catalogKey_${userPhone}`;
+                await globalState.update({
+                    [userCatalogKeyKey]: 'principal'
+                });
+
                 await provider.sendText(ctx.from, [
                     '📦 *CÓMO USAR NUESTROS CATÁLOGOS:*\n',
                     '🔹 Recibirás varios mensajes con catálogos\n',
@@ -692,11 +1125,23 @@ const flowPrincipal = addKeyword<Provider, Database>(utils.setEvent('welcome'))
                 
                 // ✅ ENVIAR CATÁLOGO OFICIAL DIRECTAMENTE
                 console.log(`📤 Enviando catálogo oficial a ${userPhone}...`);
-                const result = await sendCatalogWith30Products(ctx.from, 'principal', provider);
-                
-                console.log(`✅ Catálogo oficial enviado exitosamente para ${userPhone}`);
-                console.log(`📊 Resultado:`, result);
-                
+                // const result = await sendCatalogWith30Products(ctx.from, 'principal', provider);
+
+                const result = await listAvailableCategoriesAndSendMenu(
+                    userPhone,
+                    'principal',
+                    provider,
+                    globalState
+                );
+
+                if (!result.success) {
+                    console.error(`❌ Error listando categorías:`, result.error);
+                    return endFlow([
+                        '❌ *Error temporal con el catálogo*\n\n',
+                        '📞 Por favor contacta al: +56 9 3649 9908\n',
+                        '⏰ Horario: 2:00 PM - 10:00 PM'
+                    ].join(''));
+                }
                 return; // ✅ FINALIZAR FLUJO CORRECTAMENTE
                 
             } catch (error) {
@@ -1100,529 +1545,6 @@ function createAllCategorizedSectionLotes(categorizedProducts: Record<string, an
 
   return messageLotes;
 }
-
-// /**
-//  * VERSIÓN CORREGIDA v14: Máximo 30 items TOTALES por mensaje
-//  * ✅ Meta restricción real: 30 items máximo por mensaje (NO 120)
-//  * ✅ 1 sección por mensaje para categorías grandes
-//  * ✅ Múltiples secciones PEQUEÑAS (≤30 items) en mismo mensaje
-//  * ✅ Resultado: 195 → ~7 mensajes
-//  */
-// function createAllCategorizedSectionLotes(categorizedProducts: Record<string, any[]>) {
-//   const maxItemsPerMessage = 30;      // ✅ RESTRICCIÓN REAL DE META
-//   const maxItemsPerSection = 30;      // Meta: 30 items máximo por sección
-
-//   console.log(`\n${'═'.repeat(70)}`);
-//   console.log('📊 CREANDO LOTES - v14 CORREGIDO (30 items máximo/mensaje)');
-//   console.log(`${'═'.repeat(70)}`);
-//   console.log(`🎯 RESTRICCIÓN META DESCUBIERTA: Máximo 30 items TOTALES por mensaje`);
-//   console.log(`📦 Máximo ${maxItemsPerSection} items por sección`);
-//   console.log(`💬 Máximo ${maxItemsPerMessage} items por mensaje (RESTRICCIÓN REAL)\n`);
-
-//   // ════════════════════════════════════════════════════════════════
-//   // PASO 1: PREPARAR CATEGORÍAS Y DIVIDIRLAS EN SECCIONES
-//   // ════════════════════════════════════════════════════════════════
-
-//   interface CategorySection {
-//     categoryName: string;
-//     sectionTitle: string;
-//     items: any[];
-//     itemCount: number;
-//   }
-
-//   const allSections: CategorySection[] = [];
-
-//   const categoryArray = Object.entries(categorizedProducts)
-//     .filter(([_, items]) => (items as any[]).length > 0)
-//     .sort((a, b) => {
-//       const aIsOtros = a[0].includes('📦');
-//       const bIsOtros = b[0].includes('📦');
-//       if (aIsOtros && !bIsOtros) return 1;
-//       if (!aIsOtros && bIsOtros) return -1;
-//       return b[1].length - a[1].length;
-//     });
-
-//   console.log(`📂 Total categorías: ${categoryArray.length}\n`);
-
-//   // Dividir cada categoría en secciones (máx 30 items cada una)
-//   categoryArray.forEach(([categoryName, items]) => {
-//     const categoryItems = items as any[];
-//     const totalItems = categoryItems.length;
-//     const sectionsNeeded = Math.ceil(totalItems / maxItemsPerSection);
-
-//     console.log(`📦 Categoría: "${categoryName}" (${totalItems} items)`);
-//     console.log(`   → Será dividida en ${sectionsNeeded} sección(es)`);
-
-//     // Crear secciones para esta categoría
-//     for (let s = 0; s < sectionsNeeded; s++) {
-//       const startIdx = s * maxItemsPerSection;
-//       const endIdx = Math.min(startIdx + maxItemsPerSection, totalItems);
-//       const sectionItems = categoryItems.slice(startIdx, endIdx);
-
-//       // Crear título de sección
-//       let sectionTitle: string;
-//       if (sectionsNeeded > 1) {
-//         sectionTitle = `${categoryName.replace(/[^\w\s]/g, '').trim()} ${s + 1}`;
-//       } else {
-//         sectionTitle = categoryName.replace(/[^\w\s]/g, '').trim();
-//       }
-
-//       sectionTitle = sectionTitle.substring(0, 30).trim();
-
-//       allSections.push({
-//         categoryName,
-//         sectionTitle,
-//         items: sectionItems,
-//         itemCount: sectionItems.length
-//       });
-
-//       console.log(`   └─ Sección ${s + 1}: "${sectionTitle}" (${sectionItems.length} items)`);
-//     }
-//     console.log('');
-//   });
-
-//   // ════════════════════════════════════════════════════════════════
-//   // PASO 2: AGRUPAR SECCIONES EN MENSAJES (máx 30 items TOTALES)
-//   // ════════════════════════════════════════════════════════════════
-
-//   console.log(`${'═'.repeat(70)}`);
-//   console.log('🔄 AGRUPANDO SECCIONES EN MENSAJES (30 items máximo)');
-//   console.log(`${'═'.repeat(70)}\n`);
-
-//   const messageLotes: any[] = [];
-//   let currentLote = {
-//     loteNumber: 1,
-//     sections: [] as CategorySection[],
-//     itemsCount: 0,
-//     categoriesInLote: new Set<string>(),
-//   };
-
-//   let sectionIndex = 0;
-
-//   while (sectionIndex < allSections.length) {
-//     const section = allSections[sectionIndex];
-
-//     console.log(`\n📍 Procesando sección: "${section.sectionTitle}" (${section.itemCount} items)`);
-
-//     // ✅ Calcular espacio disponible
-//     const spaceInCurrentLote = maxItemsPerMessage - currentLote.itemsCount;
-
-//     // ✅ Si agregar esta sección excede el límite Y hay contenido, guardar y crear nuevo
-//     if ((currentLote.itemsCount + section.itemCount > maxItemsPerMessage) && currentLote.sections.length > 0) {
-//       console.log(`💾 Lote ${currentLote.loteNumber} lleno (${currentLote.itemsCount} items)`);
-//       messageLotes.push(currentLote);
-
-//       currentLote = {
-//         loteNumber: messageLotes.length + 1,
-//         sections: [],
-//         itemsCount: 0,
-//         categoriesInLote: new Set<string>(),
-//       };
-
-//       console.log(`📝 Nuevo Lote ${currentLote.loteNumber} creado`);
-//       continue; // Reintentar sin avanzar sectionIndex
-//     }
-
-//     // ✅ Si la sección sola no cabe (>30), guardar el lote actual primero
-//     if (section.itemCount > maxItemsPerMessage) {
-//       if (currentLote.sections.length > 0) {
-//         console.log(`💾 Guardando lote actual para hacer espacio a sección grande`);
-//         messageLotes.push(currentLote);
-
-//         currentLote = {
-//           loteNumber: messageLotes.length + 1,
-//           sections: [],
-//           itemsCount: 0,
-//           categoriesInLote: new Set<string>(),
-//         };
-//       }
-
-//       // ⚠️ PROBLEMA: Sección excede el límite de 30
-//       console.error(`❌ SECCIÓN MÁS GRANDE QUE 30: "${section.sectionTitle}" (${section.itemCount} items)`);
-//       console.error(`   ⚠️ Meta no permite secciones > 30 items`);
-//       console.error(`   💡 La categoría original tiene ${section.itemCount} items pero Meta limita a 30`);
-//       console.error(`   🔧 Solución: Dividir la categoría en más secciones`);
-      
-//       // Saltar esta sección (no se puede procesar)
-//       sectionIndex++;
-//       continue;
-//     }
-
-//     // ✅ Agregar sección al lote actual
-//     currentLote.sections.push(section);
-//     currentLote.itemsCount += section.itemCount;
-//     currentLote.categoriesInLote.add(section.categoryName);
-
-//     console.log(`✅ Agregada sección "${section.sectionTitle}"`);
-//     console.log(`   Lote ${currentLote.loteNumber}: ${currentLote.itemsCount}/${maxItemsPerMessage} items | ${currentLote.sections.length} secciones`);
-
-//     // ✅ Si el lote está lleno o casi lleno, guardarlo
-//     if (currentLote.itemsCount >= maxItemsPerMessage || 
-//         (sectionIndex === allSections.length - 1)) {
-      
-//       if (currentLote.sections.length > 0) {
-//         console.log(`💾 Lote ${currentLote.loteNumber} completo/final (${currentLote.itemsCount} items)`);
-//         messageLotes.push(currentLote);
-
-//         currentLote = {
-//           loteNumber: messageLotes.length + 1,
-//           sections: [],
-//           itemsCount: 0,
-//           categoriesInLote: new Set<string>(),
-//         };
-//       }
-//     }
-
-//     // Avanzar a siguiente sección
-//     sectionIndex++;
-//   }
-
-//   // ✅ GUARDAR ÚLTIMO LOTE SI TIENE CONTENIDO
-//   if (currentLote.sections.length > 0) {
-//     messageLotes.push(currentLote);
-//     console.log(`\n💾 Lote ${currentLote.loteNumber} guardado: ${currentLote.itemsCount} items`);
-//   }
-
-//   // ════════════════════════════════════════════════════════════════
-//   // PASO 3: RESUMEN FINAL
-//   // ════════════════════════════════════════════════════════════════
-
-//   console.log(`\n${'═'.repeat(70)}`);
-//   console.log('✅ AGRUPACIÓN COMPLETADA (RESPETANDO LÍMITE META)');
-//   console.log(`${'═'.repeat(70)}\n`);
-
-//   let totalItems = 0;
-//   const allCategoriesUsed = new Set<string>();
-
-//   messageLotes.forEach((lote: any, idx: number) => {
-//     console.log(`\n📨 MENSAJE ${idx + 1}:`);
-//     console.log(`   📦 Items: ${lote.itemsCount}/${maxItemsPerMessage}`);
-//     console.log(`   📋 Secciones: ${lote.sections.length}`);
-
-//     // Extraer categorías únicas
-//     const uniqueCategoriesInLote = new Set<string>();
-//     lote.categoriesInLote.forEach((cat: string) => {
-//       const baseCategory = cat.replace(/\s+\d+$/, '').replace(/[^\w\s]/g, '');
-//       uniqueCategoriesInLote.add(baseCategory);
-//       allCategoriesUsed.add(baseCategory);
-//     });
-
-//     const categoriesString = Array.from(uniqueCategoriesInLote).sort().join(', ');
-//     console.log(`   🏷️  Categorías: ${categoriesString}`);
-
-//     // Listar secciones
-//     console.log(`   Secciones:`);
-//     lote.sections.forEach((section: any, sIdx: number) => {
-//       console.log(`     ${sIdx + 1}. "${section.sectionTitle}": ${section.itemCount} items`);
-//     });
-
-//     totalItems += lote.itemsCount;
-//   });
-
-//   console.log(`\n${'═'.repeat(70)}`);
-//   console.log(`📊 ESTADÍSTICAS FINALES:`);
-//   console.log(`   • Mensajes necesarios: ${messageLotes.length}`);
-//   console.log(`   • Secciones totales: ${allSections.length}`);
-//   console.log(`   • Items totales: ${totalItems}`);
-//   console.log(`   • Categorías únicas: ${allCategoriesUsed.size}`);
-//   console.log(`   • Promedio items/mensaje: ${(totalItems / messageLotes.length).toFixed(1)}`);
-//   console.log(`   • Promedio secciones/mensaje: ${(allSections.length / messageLotes.length).toFixed(1)}`);
-//   console.log(`\n   🎯 RESTRICCIÓN META: Máximo 30 items por mensaje`);
-//   console.log(`   ✅ Todos los mensajes respetan límite de 30 items`);
-//   console.log(`${'═'.repeat(70)}\n`);
-
-//   return messageLotes;
-// }
-
-
-
-// export async function sendCatalogWith30Products(
-//   phoneNumber: string,
-//   catalogKey: string,
-//   provider: any
-// ) {
-//   const catalog = ENABLED_CATALOGS[catalogKey];
-
-//   if (!catalog) {
-//     throw new Error(`Catálogo ${catalogKey} no encontrado`);
-//   }
-
-//   const jwtToken = process.env.JWT_TOKEN || provider?.globalVendorArgs?.jwtToken;
-//   const numberId = process.env.NUMBER_ID || provider?.globalVendorArgs?.numberId;
-
-//   if (!jwtToken || !numberId) {
-//     throw new Error('Faltan credenciales Meta');
-//   }
-
-//   try {
-//     console.log(`\n📤 PASO 1: Consultando productos del catálogo ${catalogKey}...`);
-    
-//     const productsResponse = await fetch(
-//       `https://graph.facebook.com/v23.0/${catalog.catalogId}/products?fields=id,name,description,price,currency,retailer_id,category,availability&limit=100`,
-//       {
-//         method: 'GET',
-//         headers: {
-//           'Authorization': `Bearer ${jwtToken}`,
-//         }
-//       }
-//     );
-
-//     const productsData = await productsResponse.json();
-
-//     if (!productsResponse.ok) {
-//       console.error('❌ Error consultando productos:', productsData);
-//       throw new Error(`Error obteniendo productos: ${productsData.error?.message}`);
-//     }
-
-//     let allProducts = productsData.data || [];
-//     console.log(`✅ Total de productos encontrados: ${allProducts.length}`);
-
-//     if (allProducts.length === 0) {
-//       throw new Error('No hay productos en el catálogo');
-//     }
-
-//     // 📋 CATEGORIZAR PRODUCTOS
-//     const organizedByCategory = categorizeProductsCorrectly(allProducts, catalogKey);
-    
-//     console.log(`\n📑 Categorías encontradas: ${Object.keys(organizedByCategory).length}`);
-//     Object.entries(organizedByCategory).forEach(([category, products]) => {
-//       console.log(`  • ${category}: ${(products as any[]).length} productos`);
-//     });
-
-//     // 🔧 CREAR TODOS LOS LOTES DE MENSAJES
-//     const messageLotes = createAllCategorizedSectionLotes(organizedByCategory);
-    
-//     console.log(`\n📤 PASO 2: Preparando ${messageLotes.length} mensaje(s) para envío...`);
-    
-//     let successCount = 0;
-//     let failureCount = 0;
-
-//     // 📤 ENVIAR CADA LOTE EN UN MENSAJE SEPARADO
-//     for (const lote of messageLotes) {
-//       console.log(`\n📨 Enviando Lote ${lote.loteNumber}/${messageLotes.length}...`);
-//       console.log(`   • Items: ${lote.itemsCount}`);
-//       console.log(`   • Secciones: ${lote.sections.length}`);
-
-//       // ✅ EXTRAER CATEGORÍAS ÚNICAS Y CREAR DESCRIPCIÓN
-//       const categoriesInLote = Array.from(lote.categoriesInLote) as string[];
-      
-//       // Crear string de categorías sin números (eliminar " 1", " 2", " 3", etc.)
-//       const uniqueCategories = new Set<string>();
-      
-//       categoriesInLote.forEach((cat: string) => {
-//         // Remover sufijo numérico si existe
-//         const baseCategoryName = cat.replace(/\s+\d+$/, ''); // Elimina " 1", " 2", " 3", etc.
-//         uniqueCategories.add(baseCategoryName);
-//       });
-
-//       // Convertir Set a array y ordenar
-//       const uniqueCategoriesArray = Array.from(uniqueCategories).sort();
-//       let categoriesDescription = uniqueCategoriesArray.join(', ');
-
-//       console.log(`🏷️  Categorías únicas en Lote ${lote.loteNumber}: ${categoriesDescription}`);
-
-//       // ✅ VALIDAR Y LIMITAR LONGITUD DEL HEADER (MAX 60 CARACTERES)
-//       const headerTemplate = `${catalog.emoji} ${catalog.name} (${lote.loteNumber}/${messageLotes.length})`;
-//       let headerText = headerTemplate;
-
-//       console.log(`📏 Longitud header: ${headerText.length} caracteres (Límite: 60)`);
-
-//       if (headerText.length > 60) {
-//         console.log(`⚠️  Header demasiado largo (${headerText.length}), truncando...`);
-        
-//         const maxCatalogNameLength = 35;
-//         const truncatedName = catalog.name.substring(0, maxCatalogNameLength);
-//         headerText = `${catalog.emoji} ${truncatedName} (${lote.loteNumber}/${messageLotes.length})`;
-        
-//         if (headerText.length > 60) {
-//           headerText = `${catalog.emoji} Catálogo (${lote.loteNumber}/${messageLotes.length})`;
-//         }
-        
-//         console.log(`✅ Header ajustado: "${headerText}" (${headerText.length} caracteres)`);
-//       }
-
-//       // ✅ NUEVO BODY MEJORADO - VALIDADO PARA META
-//       let bodyText = '';
-      
-//       if (lote.loteNumber === 1 && messageLotes.length > 1) {
-//         // PRIMER CATÁLOGO - Incluir instrucciones
-//         bodyText = `${lote.itemsCount} productos disponibles\n\n` +
-//                    `📂 Categorías:\n${categoriesDescription}\n\n` +
-//                    `ℹ️ USAR CATÁLOGOS:\n` +
-//                    `1️⃣ Abre este catálogo\n` +
-//                    `2️⃣ Ve los siguientes (${messageLotes.length - 1} más)\n` +
-//                    `3️⃣ Selecciona productos\n` +
-//                    `4️⃣ Envía pedido desde cualquiera\n\n`;
-//       } else if (lote.loteNumber === messageLotes.length) {
-//         // ÚLTIMO CATÁLOGO - Incluir instrucción de envío de pedido
-//         bodyText = `${lote.itemsCount} productos disponibles\n\n` +
-//                    `📂 Categorías:\n${categoriesDescription}\n\n` +
-//                    `✅ FINALIZAR COMPRA:\n` +
-//                    `Presiona "Generar pedido" para completar tu compra de los ${messageLotes.length} catálogos.\n\n`;
-//       } else {
-//         // CATÁLOGOS INTERMEDIOS
-//         bodyText = `${lote.itemsCount} productos disponibles\n\n` +
-//                    `📂 Categorías:\n${categoriesDescription}\n\n` +
-//                    `➡️ Continúa con los siguientes catálogos\n\n`;
-//       }
-
-//       // ✅ VALIDAR LONGITUD DEL BODY (MAX 1024 CARACTERES)
-//       if (bodyText.length > 1024) {
-//         console.log(`⚠️  Body demasiado largo (${bodyText.length}), truncando...`);
-//         bodyText = bodyText.substring(0, 1020) + '...';
-//         console.log(`✅ Body ajustado: ${bodyText.length} caracteres`);
-//       }
-
-//       // ✅ SANITIZAR SECCIONES - REMOVER CARACTERES PROBLEMÁTICOS
-//       const sanitizedSections = lote.sections.map((section: any) => {
-//         return {
-//           title: section.title
-//             .replace(/[^\w\s\-]/g, '') // Remover caracteres especiales excepto guiones
-//             .substring(0, 30) // Límite de 30 caracteres
-//             .trim(),
-//           product_items: section.product_items.map((item: any) => ({
-//             product_retailer_id: String(item.product_retailer_id).trim()
-//           }))
-//         };
-//       });
-
-//       console.log(`📋 Secciones sanitizadas: ${sanitizedSections.length}`);
-//       sanitizedSections.forEach((section: any, idx: number) => {
-//         console.log(`   ${idx + 1}. "${section.title}" (${section.product_items.length} items)`);
-//       });
-
-//       // ✅ CONSTRUCCIÓN DEL MENSAJE CON VALIDACIONES
-//       const productListMessage = {
-//         messaging_product: "whatsapp",
-//         recipient_type: "individual",
-//         to: phoneNumber,
-//         type: "interactive",
-//         interactive: {
-//           type: "product_list",
-//           header: {
-//             type: "text",
-//             text: headerText
-//           },
-//           body: {
-//             text: bodyText
-//           },
-//           footer: {
-//             text: "Agrega al carrito. Finaliza tu compra"
-//           },
-//           action: {
-//             catalog_id: catalog.catalogId,
-//             sections: sanitizedSections
-//           }
-//         }
-//       };
-
-//       console.log(`📋 Payload preparado:`);
-//       console.log(`   Header: "${productListMessage.interactive.header.text}" (${headerText.length}/60)`);
-//       console.log(`   Body: ${bodyText.length} caracteres (Máx: 1024)`);
-//       console.log(`   Secciones: ${sanitizedSections.length}`);
-//       console.log(`   Total items: ${sanitizedSections.reduce((sum, s) => sum + s.product_items.length, 0)}`);
-
-//       try {
-//         // ✅ ESPERA MÁS LARGA ENTRE MENSAJES (Meta requiere 1-2 segundos)
-//         if (lote.loteNumber > 1) {
-//           console.log(`⏳ Esperando 2 segundos antes de enviar Lote ${lote.loteNumber}...`);
-//           await new Promise(resolve => setTimeout(resolve, 2000));
-//         }
-
-//         const response = await fetch(
-//           `https://graph.facebook.com/v23.0/${numberId}/messages`,
-//           {
-//             method: 'POST',
-//             headers: {
-//               'Authorization': `Bearer ${jwtToken}`,
-//               'Content-Type': 'application/json',
-//             },
-//             body: JSON.stringify(productListMessage)
-//           }
-//         );
-
-//         const result = await response.json();
-
-//         if (!response.ok) {
-//           console.error(`❌ Error en Lote ${lote.loteNumber}:`, result);
-//           failureCount++;
-          
-//           // Análisis detallado de errores
-//           if (result.error?.code === 131000) {
-//             console.error(`   🚨 ERROR #131000: "Something went wrong"`);
-//             console.error(`   📋 Detalles: ${result.error?.error_data?.details || 'No especificado'}`);
-            
-//             // Intentar envío alternativo sin emoji en títulos
-//             if (result.error?.error_data?.details?.includes('section')) {
-//               console.log(`   🔄 Intentando con secciones simplificadas...`);
-              
-//               const simplifiedSections = lote.sections.map((section: any) => ({
-//                 title: section.title
-//                   .replace(/\W/g, '') // Remover TODOS los caracteres especiales
-//                   .substring(0, 20),
-//                 product_items: section.product_items
-//               }));
-
-//               productListMessage.interactive.action.sections = simplifiedSections;
-              
-//               const retryResponse = await fetch(
-//                 `https://graph.facebook.com/v23.0/${numberId}/messages`,
-//                 {
-//                   method: 'POST',
-//                   headers: {
-//                     'Authorization': `Bearer ${jwtToken}`,
-//                     'Content-Type': 'application/json',
-//                   },
-//                   body: JSON.stringify(productListMessage)
-//                 }
-//               );
-
-//               const retryResult = await retryResponse.json();
-              
-//               if (retryResponse.ok) {
-//                 console.log(`✅ Reintenyo exitoso - Lote ${lote.loteNumber} enviado`);
-//                 successCount++;
-//               } else {
-//                 console.error(`❌ Reintento también falló:`, retryResult);
-//               }
-//             }
-//           } else if (result.error?.error_data?.details) {
-//             console.error('   Detalle:', result.error.error_data.details);
-//           }
-//         } else {
-//           console.log(`✅ Lote ${lote.loteNumber} enviado exitosamente`);
-//           console.log(`   📂 Contiene: ${categoriesDescription}`);
-//           console.log(`   📏 Header: "${headerText}" (${headerText.length}/60 caracteres)`);
-//           successCount++;
-//         }
-
-//       } catch (error) {
-//         console.error(`❌ Error enviando Lote ${lote.loteNumber}:`, error);
-//         failureCount++;
-//       }
-//     }
-
-//     console.log(`\n🎉 ENVÍO COMPLETADO:`);
-//     console.log(`   ✅ Éxito: ${successCount}/${messageLotes.length} mensajes`);
-//     console.log(`   ❌ Fallos: ${failureCount}/${messageLotes.length} mensajes`);
-//     console.log(`   📦 Total de productos: ${allProducts.length}`);
-
-//     return {
-//       success: successCount > 0,
-//       messagesCount: messageLotes.length,
-//       successCount,
-//       productsCount: allProducts.length
-//     };
-
-//   } catch (error: any) {
-//     console.error('❌ Error general:', error.message);
-//     return {
-//       success: false,
-//       error: error.message,
-//       fallbackMessage: generateProductListFallback100(catalog, catalogKey)
-//     };
-//   }
-// }
 
 /**
  * FUNCIÓN MEJORADA v13.1: Obtiene TODOS los productos del catálogo con paginación
@@ -2668,6 +2590,8 @@ const main = async () => {
         FlowAgente2,                    // Flujo para agente
         flowOrder,                      // Flujo para órdenes
         flowValidMedia,                 // Validación de media
+        flowSelectCategory,        // ✅ NUEVO
+        flowContinueOrCheckout,    // ✅ NUEVO
         idleFlow
     ])
     
