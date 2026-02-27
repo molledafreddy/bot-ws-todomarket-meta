@@ -1125,23 +1125,8 @@ const flowPrincipal = addKeyword<Provider, Database>(utils.setEvent('welcome'))
                 
                 // ✅ ENVIAR CATÁLOGO OFICIAL DIRECTAMENTE
                 console.log(`📤 Enviando catálogo oficial a ${userPhone}...`);
-                // const result = await sendCatalogWith30Products(ctx.from, 'principal', provider);
+                const result = await sendCatalogWith30Products(ctx.from, 'principal', provider);
 
-                const result = await listAvailableCategoriesAndSendMenu(
-                    userPhone,
-                    'principal',
-                    provider,
-                    globalState
-                );
-
-                if (!result.success) {
-                    console.error(`❌ Error listando categorías:`, result.error);
-                    return endFlow([
-                        '❌ *Error temporal con el catálogo*\n\n',
-                        '📞 Por favor contacta al: +56 9 3649 9908\n',
-                        '⏰ Horario: 2:00 PM - 10:00 PM'
-                    ].join(''));
-                }
                 return; // ✅ FINALIZAR FLUJO CORRECTAMENTE
                 
             } catch (error) {
