@@ -1138,6 +1138,8 @@ const flowPrincipal = addKeyword<Provider, Database>(utils.setEvent('welcome'))
                     provider,
                     globalState
                 );
+                // flowCategorySelection
+                return gotoFlow(flowCategorySelection);
 
                 return; // ✅ FINALIZAR FLUJO CORRECTAMENTE
                 
