@@ -178,6 +178,77 @@ const FlowAgente2 = addKeyword(['Agente', 'AGENTE', 'agente'])
 // 🎯 NUEVA ESTRATEGIA: CATÁLOGOS CON SELECCIÓN DE CATEGORÍAS
 // ════════════════════════════════════════════════════════════════════
 
+
+/**
+ * FLUJO PARA MANEJAR SELECCIÓN DE CATEGORÍAS
+ * ✅ Integrado directamente en la cadena de flujos
+ */
+const flowCategorySelection = addKeyword(utils.setEvent('CATEGORY_SELECTION'))
+  .addAction(async (ctx, { globalState, flowDynamic, fallBack, provider, gotoFlow }) => {
+    const userPhone = ctx.from;
+    const userInput = ctx.body?.trim();
+
+    console.log(`\n🎯 === FLUJO SELECCIÓN DE CATEGORÍA ===`);
+    console.log(`📱 Usuario: ${userPhone}`);
+    console.log(`✍️  Input: ${userInput}`);
+
+    try {
+      // ✅ OBTENER CATEGORÍAS DEL USUARIO
+      const userCategoriesKey = `categories_${userPhone}`;
+      const categories = globalState.get(userCategoriesKey);
+
+      if (!categories || categories.length === 0) {
+        console.log(`❌ No hay categorías registradas para ${userPhone}`);
+        return fallBack('❌ Error: No se encontraron categorías. Por favor intenta nuevamente escribiendo "hola".');
+      }
+
+      console.log(`📂 Categorías disponibles: ${categories.length}`);
+
+      // ✅ VALIDAR ENTRADA
+      const categoryIndex = parseInt(userInput) - 1;
+
+      if (isNaN(categoryIndex) || categoryIndex < 0 || categoryIndex >= categories.length) {
+        console.log(`❌ Selección inválida: ${userInput}`);
+        
+        const validOptions = categories.map((cat, idx) => `${idx + 1}️⃣ ${cat}`).join('\n');
+        return fallBack(
+          `❌ *Opción inválida*\n\nPor favor selecciona una opción válida:\n\n${validOptions}\n\nEscribe solo el número`
+        );
+      }
+
+      const selectedCategory = categories[categoryIndex];
+      console.log(`✅ Categoría seleccionada: ${selectedCategory}`);
+
+      // ✅ MOSTRAR MENSAJE DE CARGA
+      await flowDynamic(`⏳ Cargando categoría: *${selectedCategory}*...\n\n(Aguarda un momento)`);
+
+      // ✅ PEQUEÑA PAUSA
+      await new Promise(resolve => setTimeout(resolve, 1500));
+
+      // ✅ ENVIAR CATEGORÍA SELECCIONADA
+      const result = await sendSpecificCategoryAsProductList(
+        userPhone,
+        selectedCategory,
+        provider,
+        globalState
+      );
+
+      if (!result.success) {
+        console.error(`❌ Error enviando categoría:`, result.error);
+        return fallBack(`❌ Error al cargar la categoría. Por favor intenta nuevamente.`);
+      }
+
+      console.log(`✅ Categoría enviada exitosamente`);
+      
+      // ✅ DESPUÉS DE ENVIAR CATEGORÍA, IR A FLUJO DE CONTINUACIÓN
+      return gotoFlow(flowContinueOrCheckout);
+
+    } catch (error: any) {
+      console.error(`💥 Error en flowCategorySelection:`, error.message);
+      return fallBack(`❌ Error procesando tu selección. Por favor intenta nuevamente.`);
+    }
+  });
+
 /**
  * FUNCIÓN 1: Listar todas las categorías disponibles (dinámicamente)
  * ✅ Obtiene productos de Meta API
@@ -456,72 +527,6 @@ async function sendSpecificCategoryAsProductList(
   }
 }
 
-/**
- * FLUJO 3: Manejar selección de categoría del usuario
- * ✅ Valida entrada numérica
- * ✅ Obtiene categoría seleccionada
- * ✅ Envía product_list
- */
-const flowSelectCategory = addKeyword(utils.setEvent('SELECT_CATEGORY'))
-  .addAction(async (ctx, { state, globalState, flowDynamic, fallBack, provider }) => {
-    const userPhone = ctx.from;
-    const userInput = ctx.body?.trim();
-
-    console.log(`\n🎯 === FLUJO SELECCIÓN DE CATEGORÍA ===`);
-    console.log(`📱 Usuario: ${userPhone}`);
-    console.log(`✍️  Entrada: ${userInput}`);
-
-    try {
-      // ✅ OBTENER CATEGORÍAS DEL USUARIO
-      const userCategoriesKey = `categories_${userPhone}`;
-      const categories = globalState.get(userCategoriesKey);
-
-      if (!categories || categories.length === 0) {
-        console.log(`❌ No hay categorías registradas para ${userPhone}`);
-        return fallBack('❌ Error: No se encontraron categorías. Por favor intenta nuevamente.');
-      }
-
-      console.log(`📂 Categorías disponibles: ${categories.length}`);
-
-      // ✅ VALIDAR ENTRADA
-      const categoryIndex = parseInt(userInput) - 1;
-
-      if (isNaN(categoryIndex) || categoryIndex < 0 || categoryIndex >= categories.length) {
-        console.log(`❌ Selección inválida: ${userInput}`);
-        
-        const validOptions = categories.map((cat, idx) => `${idx + 1}️⃣ ${cat}`).join('\n');
-        return fallBack(
-          `❌ *Opción inválida*\n\nPor favor selecciona una opción válida:\n\n${validOptions}\n\nEscribe solo el número`
-        );
-      }
-
-      const selectedCategory = categories[categoryIndex];
-      console.log(`✅ Categoría seleccionada: ${selectedCategory}`);
-
-      // ✅ MOSTRAR MENSAJE DE CARGA
-      await flowDynamic(`⏳ Cargando categoría: *${selectedCategory}*...\n\n(Aguarda un momento)`);
-
-      // ✅ ENVIAR CATEGORÍA SELECCIONADA
-      const result = await sendSpecificCategoryAsProductList(
-        userPhone,
-        selectedCategory,
-        provider,
-        globalState
-      );
-
-      if (!result.success) {
-        console.error(`❌ Error enviando categoría:`, result.error);
-        return fallBack(`❌ Error al cargar la categoría. Por favor intenta nuevamente.`);
-      }
-
-      console.log(`✅ Categoría enviada exitosamente`);
-      return;
-
-    } catch (error: any) {
-      console.error(`💥 Error en flowSelectCategory:`, error.message);
-      return fallBack(`❌ Error procesando tu selección. Por favor intenta nuevamente.`);
-    }
-  });
 
 /**
  * FLUJO 4: Consultar si desea ver otra categoría o culminar pedido - CORREGIDO
@@ -1134,14 +1139,6 @@ const flowPrincipal = addKeyword<Provider, Database>(utils.setEvent('welcome'))
                     globalState
                 );
 
-                if (!result.success) {
-                    console.error(`❌ Error listando categorías:`, result.error);
-                    return endFlow([
-                        '❌ *Error temporal con el catálogo*\n\n',
-                        '📞 Por favor contacta al: +56 9 3649 9908\n',
-                        '⏰ Horario: 2:00 PM - 10:00 PM'
-                    ].join(''));
-                }
                 return; // ✅ FINALIZAR FLUJO CORRECTAMENTE
                 
             } catch (error) {
@@ -2534,146 +2531,6 @@ const flowDisable = addKeyword("disable")
 //     }
 // }
 
-/**
- * FLUJO 2: Enviar categoría seleccionada como product_list
- * ✅ Obtiene la categoría de globalState
- * ✅ Envía product_list a Meta
- */
-const flowSendCategory = addKeyword(utils.setEvent('SEND_CATEGORY'))
-  .addAction(async (ctx, { globalState, flowDynamic, fallBack, provider }) => {
-    const userPhone = ctx.from;
-
-    console.log(`\n📤 === FLUJO ENVIAR CATEGORÍA ===`);
-    console.log(`📱 Usuario: ${userPhone}`);
-
-    try {
-      // ✅ OBTENER CATEGORÍA SELECCIONADA
-      const userSelectedCategoryKey = `selectedCategory_${userPhone}`;
-      const selectedCategory = globalState.get(userSelectedCategoryKey);
-
-      if (!selectedCategory) {
-        console.log(`❌ No hay categoría seleccionada`);
-        return fallBack('❌ Error: Categoría no encontrada.');
-      }
-
-      console.log(`📂 Categoría a enviar: ${selectedCategory}`);
-
-      // ✅ MOSTRAR MENSAJE DE CARGA
-      await flowDynamic(`⏳ Cargando: *${selectedCategory}*...\n\n(Aguarda un momento)`);
-
-      // ✅ ENVIAR CATEGORÍA COMO PRODUCT_LIST
-      const result = await sendSpecificCategoryAsProductList(
-        userPhone,
-        selectedCategory,
-        provider,
-        globalState
-      );
-
-      if (!result.success) {
-        console.error(`❌ Error enviando categoría:`, result.error);
-        return fallBack(`❌ Error al cargar la categoría. Intenta nuevamente.`);
-      }
-
-      console.log(`✅ Categoría enviada: ${result.itemsCount} productos`);
-
-      // ✅ AQUÍ TERMINA EL FLUJO
-      // El usuario INTERACTÚA CON META (agrega productos)
-      // Luego meta genera un ORDER event que dispara flowOrder
-
-      return;
-
-    } catch (error: any) {
-      console.error(`❌ Error en flowSendCategory:`, error.message);
-      return fallBack('❌ Error. Intenta nuevamente.');
-    }
-  });
-
-const flowShowCategories = addKeyword(utils.setEvent('SHOW_CATEGORIES'))
-  .addAction(async (ctx, { flowDynamic, globalState }) => {
-    const userPhone = ctx.from;
-    
-    console.log(`\n📂 === FLUJO MOSTRAR CATEGORÍAS ===`);
-    console.log(`📱 Usuario: ${userPhone}`);
-    
-    try {
-      // ✅ OBTENER CATEGORÍAS DE GLOBALSTATE
-      const userCategoriesKey = `categories_${userPhone}`;
-      const categories = globalState.get(userCategoriesKey);
-
-      if (!categories || categories.length === 0) {
-        console.log(`❌ No hay categorías para ${userPhone}`);
-        return;
-      }
-
-      console.log(`📂 Categorías encontradas: ${categories.length}`);
-
-      // ✅ CONSTRUIR MENÚ
-      const categoryMenu = [
-        `📂 *CATEGORÍAS DISPONIBLES*\n`,
-        ...categories.map((cat, idx) => `${idx + 1}️⃣ *${cat}`),
-        '',
-        '👉 Escribe el número de la categoría que deseas ver'
-      ].join('\n');
-
-      await flowDynamic(categoryMenu);
-
-    } catch (error: any) {
-      console.error(`❌ Error en flowShowCategories:`, error.message);
-      await flowDynamic('❌ Error cargando categorías. Intenta nuevamente.');
-    }
-  })
-  .addAnswer('',  // ✅ ESCUCHAR ENTRADA DEL USUARIO
-    { capture: true, delay: 1000, idle: 960000 },
-    async (ctx, { globalState, flowDynamic, fallBack, gotoFlow }) => {
-      const userPhone = ctx.from;
-      const userInput = ctx.body?.trim();
-
-      console.log(`\n🎯 === PROCESANDO SELECCIÓN ===`);
-      console.log(`📱 Usuario: ${userPhone}`);
-      console.log(`✍️  Input: ${userInput}`);
-
-      try {
-        // ✅ OBTENER CATEGORÍAS
-        const userCategoriesKey = `categories_${userPhone}`;
-        const categories = globalState.get(userCategoriesKey);
-
-        if (!categories || categories.length === 0) {
-          console.log(`❌ No hay categorías disponibles`);
-          return fallBack('❌ Error: Categorías no encontradas.');
-        }
-
-        // ✅ VALIDAR ENTRADA
-        const categoryIndex = parseInt(userInput) - 1;
-
-        if (isNaN(categoryIndex) || categoryIndex < 0 || categoryIndex >= categories.length) {
-          console.log(`❌ Entrada inválida: ${userInput}`);
-          const validOptions = categories.map((cat, idx) => `${idx + 1}️⃣ ${cat}`).join('\n');
-          return fallBack(
-            `❌ *Opción inválida*\n\nOpciones válidas:\n\n${validOptions}\n\nEscribe solo el número`
-          );
-        }
-
-        const selectedCategory = categories[categoryIndex];
-        console.log(`✅ Categoría seleccionada: ${selectedCategory}`);
-
-        // ✅ GUARDAR SELECCIÓN
-        const userSelectedCategoryKey = `selectedCategory_${userPhone}`;
-        await globalState.update({
-          [userSelectedCategoryKey]: selectedCategory
-        });
-
-        console.log(`💾 Categoría guardada en globalState`);
-
-        // ✅ IR A FLUJO DE ENVÍO DE CATEGORÍA
-        console.log(`🔄 Redirigiendo a flowSendCategory`);
-        return gotoFlow(flowSendCategory);
-
-      } catch (error: any) {
-        console.error(`❌ Error procesando selección:`, error.message);
-        return fallBack('❌ Error. Intenta nuevamente.');
-      }
-    }
-  );
 
 const flowValidTime = addKeyword<Provider, Database>(EVENTS.WELCOME)
  .addAction(async(ctx, {gotoFlow, provider, state}) => {
@@ -2725,16 +2582,14 @@ const main = async () => {
     const adapterFlow = createFlow([
         flowEndShoppingCart,
         flowValidTime,                  // Flujo de validación de horario
-        // flowPrincipalInteractivo,       // 🎯 Menú principal CON CARRITO INTEGRADO
         flowPrincipal,                  // 🔄 Menú principal legacy (backup)
         flowDisable,                    // ⚠️ Flujo fuera de horario
         FlowAgente2,                    // Flujo para agente
         flowOrder,                      // Flujo para órdenes
         flowValidMedia,                 // Validación de media
-        flowSelectCategory,        // ✅ NUEVO
+        // flowSelectCategory,        // ✅ NUEVO
+        flowCategorySelection,
         flowContinueOrCheckout,    // ✅ NUEVO
-        flowShowCategories, 
-        flowSendCategory,
         idleFlow
     ])
     
