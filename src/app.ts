@@ -90,78 +90,6 @@ if (process.env.NODE_ENV === 'production') {
     }
 }
 
-/**
- * Crea un payload de lista interactiva con categorías de productos
- * @param phoneNumber Número del destinatario
- * @returns Payload para envío directo a Meta API
- */
-function createProductList(phoneNumber: string) {
-    return {
-        messaging_product: "whatsapp",
-        to: phoneNumber,
-        type: "interactive",
-        interactive: {
-            type: "list",
-            header: {
-                type: "text",
-                text: "🛍️ TodoMarket - Catálogo"
-            },
-            body: {
-                text: "Selecciona una categoría de productos para ver los artículos disponibles:"
-            },
-            footer: {
-                text: "Selecciona una opción de la lista"
-            },
-            action: {
-                button: "Ver Categorías",
-                sections: [
-                    {
-                        title: "🛒 Categorías Principales",
-                        rows: [
-                            {
-                                id: "categoria_bebidas",
-                                title: "🥤 Bebidas",
-                                description: "Refrescos, jugos, aguas"
-                            },
-                            {
-                                id: "categoria_panaderia", 
-                                title: "🍞 Panadería",
-                                description: "Pan, cereales, galletas"
-                            },
-                            {
-                                id: "categoria_lacteos",
-                                title: "🥛 Lácteos",
-                                description: "Leche, queso, yogurt, huevos"
-                            }
-                        ]
-                    },
-                    {
-                        title: "🍎 Más Categorías",
-                        rows: [
-                            {
-                                id: "categoria_abarrotes",
-                                title: "🌾 Abarrotes", 
-                                description: "Arroz, fideos, aceite, azúcar"
-                            },
-                            {
-                                id: "categoria_frutas",
-                                title: "🍎 Frutas y Verduras",
-                                description: "Frutas frescas y verduras"
-                            },
-                            {
-                                id: "categoria_limpieza",
-                                title: "🧼 Limpieza",
-                                description: "Detergente, jabón, papel"
-                            }
-                        ]
-                    }
-                ]
-            }
-        }
-    };
-}
-
-
 const FlowAgente2 = addKeyword(['Agente', 'AGENTE', 'agente'])
 .addAnswer(["*Estamos desviando tu conversacion a nuestro Agente*"], null,
    async(ctx, {provider, endFlow}) => {
@@ -1089,6 +1017,9 @@ const flowPrincipal = addKeyword<Provider, Database>(utils.setEvent('welcome'))
         console.log(`📱 === FLOWPRINCIPAL.addAnswer() ===`);
         console.log(`👤 Usuario: ${userPhone}`);
         console.log(`💬 Opción seleccionada: ${ctx.body}`);
+        const message = `El cliente con el celular ${userPhone} Esta interactuando con el bot`;
+        await provider.sendText('56936499908@s.whatsapp.net', message);
+        await provider.sendText('56953941370@s.whatsapp.net', message);
         
         const userInput = ctx.body.toLowerCase().trim();
         
