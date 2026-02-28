@@ -1130,16 +1130,17 @@ const flowPrincipal = addKeyword<Provider, Database>(utils.setEvent('welcome'))
                 
                 // ✅ ENVIAR CATÁLOGO OFICIAL DIRECTAMENTE
                 console.log(`📤 Enviando catálogo oficial a ${userPhone}...`);
-                // const result = await sendCatalogWith30Products(ctx.from, 'principal', provider);
 
-                const result = await listAvailableCategoriesAndSendMenu(
-                    userPhone,
-                    'principal',
-                    provider,
-                    globalState
-                );
-                // flowCategorySelection
-                return gotoFlow(flowCategorySelection);
+                const result = await sendCatalogWith30Products(ctx.from, 'principal', provider);
+
+                // const result = await listAvailableCategoriesAndSendMenu(
+                //     userPhone,
+                //     'principal',
+                //     provider,
+                //     globalState
+                // );
+                // // flowCategorySelection
+                // return gotoFlow(flowCategorySelection);
 
                 return; // ✅ FINALIZAR FLUJO CORRECTAMENTE
                 
