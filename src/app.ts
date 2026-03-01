@@ -2490,7 +2490,7 @@ const flowValidTime = addKeyword<Provider, Database>(EVENTS.WELCOME)
         
         // Validación de horario...
         const horaActual = moment();
-        const horario = "01:00-00:00";
+        const horario = "13:00-22:00";
         const rangoHorario = horario.split("-");
         const horaInicio = moment(rangoHorario[0], "HH:mm");
         const horaFin = moment(rangoHorario[1], "HH:mm");
