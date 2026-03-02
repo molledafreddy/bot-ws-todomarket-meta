@@ -2006,92 +2006,248 @@ function generateProductListFallback100(catalog: any, catalogKey: string) {
 
 // 📦 CATÁLOGO DE PRODUCTOS TODOMARKET
 // Mapeo de productos reales del minimarket (actualizar con tus productos)
+// 📦 CATÁLOGO DE PRODUCTOS TODOMARKET
+// Actualizado automáticamente
+// Fecha: 2026-03-02T02:09:15.250Z
+// Total: 195 productos
+// 📦 CATÁLOGO DE PRODUCTOS TODOMARKET
+// Actualizado automáticamente
+// Fecha: 2026-03-02T02:55:00.000Z
+// Total: 195 productos
 const PRODUCT_CATALOG = {
-    // 🥤 IDs REALES DE TU CATÁLOGO (basados en tu ejemplo)
-    '51803h3qku': 'Coca Cola Lata 350ml Original',
-    'ip1nctw0hq': 'Pan de Molde Integral Bimbo 500g',
-    '5snmm6fndt': 'Leche Entera Soprole 1L',
-    'ypgstd82t1': 'Arroz Grado 1 Tucapel 1kg',
-    
-    // 🥤 BEBIDAS Y REFRESCOS
-    'bebida_001': 'Pepsi Lata 350ml',
-    'bebida_002': 'Sprite Lata 350ml',
-    'bebida_003': 'Fanta Naranja 350ml',
-    'bebida_004': 'Agua Mineral Cachantun 1.5L',
-    'bebida_005': 'Jugo Watts Durazno 1L',
-    'bebida_006': 'Néctar Andes Manzana 1L',
-    'bebida_007': 'Cerveza Cristal Lata 350ml',
-    'bebida_008': 'Pisco Capel 35° 750ml',
-    
-    // 🍞 PANADERÍA Y CEREALES
-    'pan_001': 'Pan Blanco Molde Ideal 500g',
-    'pan_002': 'Hallulla Tradicional x6 unidades',
-    'pan_003': 'Pan Pita Árabe x4 unidades',
-    'pan_004': 'Cereal Corn Flakes Kelloggs 500g',
-    'pan_005': 'Avena Quaker 500g',
-    'pan_006': 'Galletas McKay Soda 200g',
-    
-    // 🥛 LÁCTEOS Y HUEVOS
-    'lacteo_001': 'Leche Descremada Soprole 1L',
-    'lacteo_002': 'Yogurt Natural Soprole 150g',
-    'lacteo_003': 'Queso Gouda Colún 200g',
-    'lacteo_004': 'Mantequilla Colún 250g',
-    'lacteo_005': 'Huevos Blancos Docena',
-    'lacteo_006': 'Crema Ácida Soprole 200ml',
-    
-    // 🌾 ABARROTES Y DESPENSA
-    'abarrote_001': 'Fideos Espagueti Carozzi 500g',
-    'abarrote_002': 'Aceite Vegetal Chef 1L',
-    'abarrote_003': 'Azúcar Granulada Iansa 1kg',
-    'abarrote_004': 'Sal de Mesa Lobos 1kg',
-    'abarrote_005': 'Harina Sin Polvos Selecta 1kg',
-    'abarrote_006': 'Lentejas San Antonio 500g',
-    'abarrote_007': 'Porotos Negros Anasac 500g',
-    'abarrote_008': 'Atún Desmenuzado Van Camp 160g',
-    
-    // 🍖 CARNES Y PESCADOS
-    'carne_001': 'Pollo Entero Congelado',
-    'carne_002': 'Pechuga de Pollo Deshuesada 1kg',
-    'carne_003': 'Carne Molida de Vacuno 500g',
-    'carne_004': 'Lomo Liso de Cerdo 1kg',
-    'pescado_001': 'Salmón Filete Fresco 400g',
-    'pescado_002': 'Merluza Entera Congelada',
-    
-    // 🍎 FRUTAS Y VERDURAS
-    'fruta_001': 'Plátanos de Seda x6 unidades',
-    'fruta_002': 'Manzanas Rojas Royal Gala x4',
-    'fruta_003': 'Naranjas de Ombligo x6',
-    'fruta_004': 'Paltas Hass x3 unidades',
-    'verdura_001': 'Tomates Redondos 1kg',
-    'verdura_002': 'Cebollas Blancas 1kg',
-    'verdura_003': 'Papas Blancas 2kg',
-    'verdura_004': 'Zanahorias 500g',
-    'verdura_005': 'Lechuga Escarola unidad',
-    
-    // 🧼 LIMPIEZA Y ASEO
-    'limpieza_001': 'Detergente Líquido Popeye 1L',
-    'limpieza_002': 'Papel Higiénico Noble x4 rollos',
-    'limpieza_003': 'Jabón en Polvo Drive 1kg',
-    'limpieza_004': 'Cloro Clorinda 1L',
-    'limpieza_005': 'Champú Pantene 400ml',
-    'limpieza_006': 'Pasta Dental Colgate 100ml',
-    
-    // 🍫 SNACKS Y DULCES
-    'snack_001': 'Papas Fritas Marco Polo 150g',
-    'snack_002': 'Chocolate Sahne-Nuss 100g',
-    'snack_003': 'Galletas Oreo 154g',
-    'snack_004': 'Maní Salado Crocante 200g',
-    
-    // ❄️ CONGELADOS
-    'congelado_001': 'Helado Savory Vainilla 1L',
-    'congelado_002': 'Papas Pre-Fritas McCain 1kg',
-    'congelado_003': 'Pizza Casera Grande',
-    
-    // 🔥 OTROS PRODUCTOS POPULARES
-    'otros_001': 'Cigarrillos Marlboro Box',
-    'otros_002': 'Pilas AA Duracell x4',
-    'otros_003': 'Encendedor BIC',
-    'otros_004': 'Bolsas Basura Negras x10',
+
+    // A
+    'bl1vjvttir': 'Acondicionador 900ML',
+    'f6esd2cv8e': 'Alfajor Laguito',
+    'fnpd0z0q6q': 'Ambientador Teddy 400ml',
+    'hnp6zeuft7': 'Alfajor Alfi 3un 60g',
+    'ibwqb0kr8i': 'Arroz Tucapel 1kg',
+    'pw46uhf2mz': 'Aceite Vegetal 900ml',
+
+    // B
+    '866n7om93u': 'Brownie Choc 35g',
+    'w8lky468m3': 'Bolsa de Basura 50 x 70',
+    'xpaj0r7vgl': 'Brownie Chip 62g',
+
+    // C
+    '268lcn51jk': 'Coca Cola Sin Azucar 2L Retornable',
+    '5q62l0b9m2': 'Chocolate sahne-Nuss 160g',
+    '6lj8xoj1yc': 'Coca Cola Sin Azucar 591ml',
+    '7yqyvjwsb6': 'Chocolate Cri Cri 123g',
+    '95hsdig6ge': 'Chocolate Savoy 123g',
+    '9w64zvrdfb': 'Coca Cola Original 3L Retornable',
+    'an5boerytg': 'Corn Flakes Zukaritas 175 g',
+    'bpv510kpca': 'Coca Cola Sin Azucar 3L',
+    'de0a3gg166': 'Coca Cola Original 595ml',
+    'eb7fncq0ri': 'Coca Cola Sin Azucar 350ml',
+    'fweu9wtpg7': 'Corn Flakes 450g',
+    'i6es9g124v': 'Chocolate Cri Cri 27g',
+    'jir9z5ytdb': 'Catalinas',
+    'kloyev42s4': 'Coca Cola Original 3L',
+    'l9g8glg629': 'Cloro Gel 900ml',
+    'lwb8xj8pot': 'Chocolate sahne-Nuss 90g',
+    'n0cq2j7gin': 'Crema de Coco 395g',
+    'n3hmeseihi': 'Cepillo dental 1un',
+    'nadoe5n92c': 'Crema de leche',
+    'naevokidbv': 'Crema Dental Colgate 90g',
+    'ouk8ehlk6h': 'Coca Cola Lata 350ml',
+    'qdqrgbzazi': 'Coca Cola Sin Azucar 1.5L',
+    'r57p8g2d75': 'Coca Cola Original 1.25L Retornable Retornable',
+    'r5nahgivg6': 'Cloro 250ml',
+    'rqpkdzt3ae': 'Chorizo Ahumado 5un',
+    't27yzg4775': 'Coca Cola Sin Azucar 3L Retornable',
+    't3ogv91o9i': 'Chocolate Savoy 727g',
+    'utz5t5jxzg': 'Corn Flakes Zukaritas',
+    'vzxuhyk8tg': 'Coca Cola Sin Azucar 1.25L Retornable',
+    'x9iyzprh99': 'Coca Cola Original 2L Retornable Retornable',
+    'xxmktu0lrh': 'Coca Cola Original 1.5L',
+    'y2at63qqbf': 'Cloro 500ml',
+
+    // D
+    '162e42e3pi': 'Detergente Omo 400ml',
+    'cnofjn01ot': 'Detodito Lays 290g',
+    'dxcqmriktb': 'Del Valle Naranja 1.5L',
+    'fcauenqvid': 'Downy Ariel 700 gr',
+    'knjdyzqevm': 'Detergente Briks 5L',
+    'm9ajea2gj2': 'Doritos sweet chili',
+    'mkg9plee55': 'Del Valle Durazno 1.5L',
+    'or4n6mnh1n': 'Doritos Picantes 100g',
+    'qru34hmjpy': 'Detergente Omo 500ml',
+    'vx4b9jq6t0': 'Doritos 40g',
+
+    // F
+    '745i7wpvdx': 'Flips de Dulce de Leche 120g',
+    'apbydxnp67': 'Fanta original 3L',
+    'axr4x1ritt': 'Flips 120 gr Chocolate',
+    'b922pq8cu2': 'Fajitas Rapiditas 8Un 200g',
+    'bsdrk8l7gy': 'Frac Vainilla 110g',
+    'j8o4nkcirv': 'Fanta original 591ml',
+    'qib8tnil99': 'Frescolita',
+    'w15d2psrso': 'Frac Clasica 110g',
+    'yncfp9ctfr': 'Fanta original 1.5L',
+
+    // G
+    '6bsuaruxo5': 'Galleta Oreo Vainilla 36g',
+    '6gd7y0yyxc': 'Gauda 150 Gr 9 Laminas',
+    '82vpky2paw': 'Gauda a Granel 200g',
+    'gy8tugrfgp': 'Gansito 50g',
+    'h3ka2m2e7d': 'Galleta Triton Chocolate 125g',
+    'kk8nj133ft': 'Galleta Mana 393g',
+    'l6ska42nuv': 'Galleta Oreo 108g',
+    'lle97483tn': 'Galleta Triton Vainilla 125g',
+    'qs8uqgwn6w': 'Galleta Oreo Original 36g',
+    'wrz7rrc6yz': 'Galleta Tuareg 120G',
+    'z6ps7nbdxp': 'Galleta Oreo  Vainilla 108g',
+
+    // H
+    '0bgpie8w1s': 'Harina Pan 1kg',
+    '4e9kyiywq1': 'Huevos Unidad',
+    '4hdo0qnsjj': 'Head & Shoulders 375ml',
+    '7rbsjtnwqa': 'Huevos Carton 30un',
+    'fni3ccdn1w': 'Harina la Nieve 1K',
+    'ktdwcb7ven': 'Harina con Polvo de Hornear 1k',
+    'm377jomqrc': 'Huevos Medio Carton 15un',
+
+    // J
+    '5lpq1aa2y6': 'Jabon Liquido 1L',
+    '9qygyhqdxw': 'Jabon de Baño Protect 125g',
+    'xsh78ubdox': 'Jabon de Baño Dove 90g',
+    'ymjaulb1ip': 'Jamon Acaramelado Granel 200g',
+
+    // K
+    '2hnwsb0k6r': 'Kit kak 41,5g',
+    '4m6wwfujus': 'Ketchup 190g Heinz',
+    '8zx1uk5xis': 'Kryzpo Qso 130g',
+    'bhzvrw0tmw': 'Kryzpo Cebolla 130g',
+    'o9aznmx5ho': 'Ketchup jp 100g',
+    'zvrv4nk7b7': 'Ketchup 90g Heinz',
+
+    // L
+    '3k1hzc190h': 'Leche Entera 1L',
+    '6g5afu7d36': 'LavaLozas 500ml',
+    'ag3lltuzjf': 'Lipton Limon 1.5L',
+    'dmrncd0fpi': 'Leche Descremada 1L',
+    'i6j3o6igpp': 'Lipton Durazno 1.5L',
+    'j0srjvo96t': 'Limpia Pisos Poet 900ml',
+    'ncmpf9ed7z': 'Leche Zero Lapto 1L',
+    'pjy4uwj9zq': 'Leche Semi Descremada 1L',
+    'qln7rtcz24': 'Leche Evaporada 366ml',
+    'sw7x14g6fu': 'LavaLozas 200ml',
+    'ufg1ugk3v5': 'Limpia Pisos Poet 250ml',
+    'vu6rk03e57': 'Leche Zero lapto Descremada',
+
+    // M
+    '4comxi3sbi': 'Mantequilla 250g',
+    '9xlpxzmlz8': 'Malta Polar 350 ml',
+    'agm6ei4lpo': 'Mayonesa Krat  445g',
+    'fnlruau2o6': 'Margarina 125g',
+    'h8h3yggj8i': 'Manteca 100g',
+    'nizv4ew8ff': 'Mantequilla 125g',
+    'tumbv15648': 'Monster Original 473ml',
+    'wjxhchx6h7': 'Margarina 25og',
+    'xw47zetqxj': 'Mostaza 220g',
+    'zbmqa97h52': 'Mankeke 3 Unidades',
+    'zerlgzcl7s': 'Malta Pony 1.5L',
+    'zfoc3swxxw': 'Malta Pony 335ml',
+    'zkq19ppaod': 'Mayonesa Deli Kraft 650g',
+    'zx5q7objq0': 'Mayonesa Sachet  90G',
+
+    // N
+    '192i02hnvg': 'Néctar Durazno botella 1.5 litros watts',
+    '51itspa395': 'Néctar Maracuya botella 1.5 litros watts',
+    'ey4e7c27ly': 'Nestun 5 Cereales 250g',
+    'k9h9y5yn2j': 'Néctar Frutilla botella 1.5 litros watts',
+    'ob5zges213': 'Néctar Naranja botella 1.5 litros watts',
+    'tw7klnpamb': 'Néctar Pina botella 1.5 litros watts',
+
+    // P
+    '0c0nzn6ttr': 'Pan de Hamburguesa 8 un',
+    '2x8w631olg': 'Papel Higienico Confort 22M 6U',
+    '4i3huew5xq': 'Pan de Completo (Perro) 10un Artesanal',
+    '6cps22eic0': 'Papas fritas Barbeque 200g',
+    '6l8rzllpzx': 'Papas fritas Jamon Cerrano 200g',
+    '8b9dwc6jus': 'Papas Kryzpo',
+    '8mtr0bytv8': 'Papas de Limon 180g',
+    'a2cjodo64e': 'Pan de Guayana 5 Un',
+    'b6fixhoxnk': 'Pañal xxg paquete',
+    'codx53idan': 'Preservativo LyfeStyles 3un',
+    'g5688doqu4': 'Papel Higienico Confort 22M 4U',
+    'gotnrh75bi': 'Pan andino',
+    'gsjdhz0aqo': 'Papas Lays Jamon Cerrano 180g',
+    'ha6a47kpx9': 'Postobon Uva 591ml',
+    'k0ew2g3o7b': 'Pasta Espirales 400g',
+    'k54j6c59d4': 'Papas Kryzpo Cebolla 37g',
+    'k5yj4ifqnd': 'Papas Krizpo Original 130g',
+    'lppvyiksy5': 'Papas Lays Oregado 180g',
+    'ni21posj7g': 'Pañal xxg Unidad',
+    'p96nyzp1db': 'Pate de Ternera 100g',
+    'pg23heoh5y': 'Papas Kryzpo Original 37g',
+    'pui5y2cn59': 'Pinguino 2un 80g',
+    'rlqxk005q4': 'Papas Americas Lays 180g',
+    'sbehxhh6x2': 'Pirulin 155g',
+    'sjn2mgb5fz': 'Platanitos Naturales',
+    'tdj33u6gz2': 'Postobon Uva 1.5L',
+    'tm078lapw1': 'Pan de mantequilla 5un',
+    'v6xn2zc6ey': 'Papas fritas Crema & Ciboulette 200g',
+    'xkp7anxm2e': 'Pasta Larga 400g',
+    'yiui2jbfli': 'Papas Kryzpo Qso 37g',
+    'zej3bz0wm4': 'Pirulin 24g',
+
+    // Q
+    '1f5xas3hxo': 'Queso Crema PhiladelPhia 180g',
+    '6go0ueceev': 'Queso Llanero 250g',
+    'arsng4pgml': 'Queso Crema Pate 100g',
+    'g7p6p4mjmy': 'Queso cheddar Granel 200g',
+    'h66x8kr14h': 'Queso mantecoso 9L 150g',
+    'kk6x52ztan': 'Queso Rayado (parmesano) 40g',
+    'p1n0ync0oq': 'Queso Llanero 500g',
+
+    // R
+    '7rfm6n43ia': 'Rayita 2Un 60g',
+    'hxjf7vb4ql': 'Rikesa Cheddar',
+    'lzldmpbsb3': 'Red Bull',
+
+    // S
+    '118e5nvgfl': 'Servilleta Nova 50 Un',
+    '8ziz85yud5': 'Shampoo 900ML',
+    'c3ff23usxr': 'Sprite Sin Azucar 591L',
+    'd03fz1c1hq': 'Sprite Sin Azucar 3L',
+    'fov7jrmg3e': 'Suvizante Fuzol 1L',
+    'mtmqsm7la4': 'Score Original',
+    'n273fn7cko': 'Sprite Original 3ml',
+    'nbpzfzeudw': 'Sprite Sin Azucar 1.5L',
+    'nquzlv2e34': 'Salsa para Pasta de Tomate 200g',
+    'odfu3nfasf': 'Sprite Original 591ml',
+    'uv5d0l531g': 'Super 8 29g',
+    'vnen30xclj': 'Score Gorilla',
+    'vq3zonswn8': 'Salame Granel 200G',
+    'y0usd87na1': 'Sprite Original 1.5ml',
+
+    // T
+    '06zjnes67s': 'Takis intence Nacho 200g',
+    '140bjf3irv': 'Takis intence Nacho 46g',
+    '2docduf42z': 'Takis Fuego 200g',
+    '2ug33r5fji': 'Tohalla Nova Clasico 1U',
+    '4jissloyl2': 'Takis Explosion 200g',
+    '7su2y6bjn2': 'Takis Original 200g',
+    '8ljmi5ahoo': 'Tohallas Humedas 45un',
+    'b21hrc542p': 'Takis Original 200gg',
+    'rlzi7ouwgg': 'Tohalla Nova Clasico 3U',
+    'seaq2h0yc1': 'Takis Original 46g',
+    'sxrjus0vno': 'Takis Explosion 46g',
+    'yi4w9fltjj': 'Takis Fuego 46g',
+
+    // V
+    '9bl26q7g1c': 'Vianesa PF 5un',
+    'qja9q3ey18': 'Vianesa Tradiciona Premiun 5un',
+    'vvuwgmup01': 'Vianesa Tradicional 20un',
+    'wcwiza9x5x': 'Vianesa Tradicional 5un',
+
+    // Y
+    '8xizqlkugm': 'yogurt Protein 155g 10P',
+    '92104dt4yz': 'Yogurt 1+1 Cereal',
+    'himqs4fr1s': 'Yogurt Vainilla 120g',
+    'lkbyq2e9bi': 'Yogurt Frutilla 120g',
 };
 
 // Función para obtener detalles del producto desde Meta Business API
