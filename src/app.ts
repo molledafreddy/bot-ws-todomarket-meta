@@ -2671,13 +2671,16 @@ const flowValidTime = addKeyword<Provider, Database>(EVENTS.WELCOME)
         const nombreDia = horaActual.format('dddd'); // "Monday", "Tuesday", etc.
         const nombreDiaES = horaActual.locale('es').format('dddd'); // "lunes", "martes", etc.
         const esLunes = numeroDia === 1;
-        
-        if (horaActual.isBetween(horaInicio, horaFin) || !esLunes) {
+        console.log('lunes validacion esLunes', esLunes);
+        console.log('lunes validacion numeroDia', numeroDia);
+
+        if (esLunes || !horaActual.isBetween(horaInicio, horaFin) ) {
             console.log(`✅ Usuario ${userPhone} dentro de horario`);
-            return gotoFlow(flowPrincipal);
+            return gotoFlow(flowDisable);  // O flowDisable
         } else {
             console.log(`⚠️ Usuario ${userPhone} fuera de horario`);
-            return gotoFlow(flowDisable);  // O flowDisable
+            return gotoFlow(flowPrincipal);
+            
         }
 
     } catch (error) {
