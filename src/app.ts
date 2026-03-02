@@ -2568,42 +2568,50 @@ const flowDisable = addKeyword("disable")
 .addAction(async (ctx, { gotoFlow }) => start(ctx, gotoFlow, IDLETIME))
 .addAnswer([
    '🚚 Hola, Bienvenido a *Minimarket TodoMarket* 🛵', 
-   '⌛ Nuestra disponibilidad para atenderte esta desde las 12:00 PM hasta las 10:00 PM. ⌛'
+   '⌛ Nuestra disponibilidad para atenderte es de Martes a Domingo, desde las 1:00 PM hasta las 10:00 PM. ⌛'
 ])
 .addAnswer(
     [
-       'Pero puedes ver nuestras redes sociales y recuerda que en el horario habilitado Empieza tu pedido escribiendo la palabra *Hola*', 
-       '👉 #1 Facebook', 
-       '👉 #2 Instagram', 
-       '👉 #3 TicTok'
+       'Pero puedes consultar a un Agente. Indicando la opcion 1 y recuerda que en el horario habilitado Empieza tu pedido escribiendo la palabra *Hola*', 
+       '👉 #1 Agente', 
+      //  '👉 #2 Instagram', 
+      //  '👉 #3 TicTok'
     ],
     { capture: true,  delay: 2000, idle: 960000 },
-    async (ctx,{ endFlow, fallBack, gotoFlow}) => {
+    async (ctx,{ fallBack, gotoFlow}) => {
         console.log('🔍 FlowDisable - Opción recibida:', ctx.body);
         console.log('🔍 FlowDisable - Contexto completo:', JSON.stringify(ctx, null, 2));
         
         const userInput = ctx.body.toLowerCase().trim();
+
+        if (userInput === "1" || userInput.includes('facebook')) {
+            stop(ctx);
+            
+            console.log(`🔄 Redirigiendo a FlowAgente2...`);
+            
+            return gotoFlow(FlowAgente2);
+        }
         
         // Opción 1: Facebook
-        if (userInput === "1" || userInput.includes('facebook')) {
-            stop(ctx)
-            console.log('📘 Usuario seleccionó Facebook en flowDisable');
-            return endFlow('En el siguiente Link tendras la opcion de ver Nuestra Pagina de Facebook\n 🔗 https://www.facebook.com/profile.php?id=61550250449208 \n*Gracias*');
-        }
+        // if (userInput === "1" || userInput.includes('facebook')) {
+        //     stop(ctx)
+        //     console.log('📘 Usuario seleccionó Facebook en flowDisable');
+        //     return endFlow('En el siguiente Link tendras la opcion de ver Nuestra Pagina de Facebook\n 🔗 https://www.facebook.com/profile.php?id=61550250449208 \n*Gracias*');
+        // }
         
-        // Opción 2: Instagram (VALIDACIÓN ESPECÍFICA PARA EVITAR CONFLICTO)
-        if (userInput === "2" || userInput.includes('instagram')) {
-            stop(ctx)
-            console.log('📷 Usuario seleccionó Instagram en flowDisable (NO debe ir a FlowAgente2)');
-            return endFlow('En el siguiente Link tendras la opcion de ver Nuestra Pagina de Instagram\n 🔗 https://www.instagram.com/todomarket_chile?igsh=c2M4bmVwaG5mNncw \n*Gracias*');
-        }
+        // // Opción 2: Instagram (VALIDACIÓN ESPECÍFICA PARA EVITAR CONFLICTO)
+        // if (userInput === "2" || userInput.includes('instagram')) {
+        //     stop(ctx)
+        //     console.log('📷 Usuario seleccionó Instagram en flowDisable (NO debe ir a FlowAgente2)');
+        //     return endFlow('En el siguiente Link tendras la opcion de ver Nuestra Pagina de Instagram\n 🔗 https://www.instagram.com/todomarket_chile?igsh=c2M4bmVwaG5mNncw \n*Gracias*');
+        // }
         
-        // Opción 3: TikTok
-        if (userInput === "3" || userInput.includes('tiktok') || userInput.includes('tik tok')) {
-            stop(ctx)
-            console.log('🎵 Usuario seleccionó TikTok en flowDisable');
-            return endFlow('En el siguiente Link tendras la opcion de ver Nuestro TikTok\n 🔗 https://vm.tiktok.com/ZMjkbTYBg/ \n*Gracias*');
-        } 
+        // // Opción 3: TikTok
+        // if (userInput === "3" || userInput.includes('tiktok') || userInput.includes('tik tok')) {
+        //     stop(ctx)
+        //     console.log('🎵 Usuario seleccionó TikTok en flowDisable');
+        //     return endFlow('En el siguiente Link tendras la opcion de ver Nuestro TikTok\n 🔗 https://vm.tiktok.com/ZMjkbTYBg/ \n*Gracias*');
+        // } 
 
         // Opción inválida
         console.log('❌ Opción inválida en flowDisable:', ctx.body);
@@ -2614,12 +2622,16 @@ const flowDisable = addKeyword("disable")
 
 
 
+
+
 // const recording = async function (ctx: any, provider: any) {
 //     if (provider && provider?.vendor && provider.vendor?.sendPresenceUpdate) {
 //         const id = ctx.key.remoteJid
 //         await provider.vendor.sendPresenceUpdate('recording', id)
 //     }
 // }
+
+
 
 
 const flowValidTime = addKeyword<Provider, Database>(EVENTS.WELCOME)
@@ -2650,13 +2662,22 @@ const flowValidTime = addKeyword<Provider, Database>(EVENTS.WELCOME)
         const rangoHorario = horario.split("-");
         const horaInicio = moment(rangoHorario[0], "HH:mm");
         const horaFin = moment(rangoHorario[1], "HH:mm");
+
         
-        if (horaActual.isBetween(horaInicio, horaFin)) {
+
+        const horaActualFormato = horaActual.format('HH:mm');
+        //validacion del dia en curso
+        const numeroDia = horaActual.day(); // 0=Domingo, 1=Lunes, 2=Martes, ..., 6=Sábado
+        const nombreDia = horaActual.format('dddd'); // "Monday", "Tuesday", etc.
+        const nombreDiaES = horaActual.locale('es').format('dddd'); // "lunes", "martes", etc.
+        const esLunes = numeroDia === 1;
+        
+        if (horaActual.isBetween(horaInicio, horaFin) || !esLunes) {
             console.log(`✅ Usuario ${userPhone} dentro de horario`);
             return gotoFlow(flowPrincipal);
         } else {
             console.log(`⚠️ Usuario ${userPhone} fuera de horario`);
-            return gotoFlow(flowPrincipal);  // O flowDisable
+            return gotoFlow(flowDisable);  // O flowDisable
         }
 
     } catch (error) {
