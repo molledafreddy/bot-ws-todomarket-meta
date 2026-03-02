@@ -2584,7 +2584,7 @@ const flowDisable = addKeyword("disable")
         
         const userInput = ctx.body.toLowerCase().trim();
 
-        if (userInput === "1" || userInput.includes('facebook')) {
+        if (userInput === "1" || userInput.includes('Agente')) {
             stop(ctx);
             
             console.log(`🔄 Redirigiendo a FlowAgente2...`);
