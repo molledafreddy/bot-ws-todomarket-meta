@@ -97,7 +97,7 @@ const FlowAgente2 = addKeyword(['Agente', 'AGENTE', 'agente'])
     const numAgente = ctx?.from;
     const message = `El cliente ${name} con el celular ${numAgente} solicita atencion personalizada`;
     await provider.sendText('56936499908@s.whatsapp.net', message);
-    await provider.sendText('56953941370@s.whatsapp.net', message);
+    // await provider.sendText('56953941370@s.whatsapp.net', message);
     return endFlow('*Gracias*');
    }
 );
@@ -1019,7 +1019,7 @@ const flowPrincipal = addKeyword<Provider, Database>(utils.setEvent('welcome'))
         console.log(`💬 Opción seleccionada: ${ctx.body}`);
         const message = `El cliente con el celular ${userPhone} Esta interactuando con el bot`;
         await provider.sendText('56936499908@s.whatsapp.net', message);
-        await provider.sendText('56953941370@s.whatsapp.net', message);
+        // await provider.sendText('56953941370@s.whatsapp.net', message);
         
         const userInput = ctx.body.toLowerCase().trim();
         
@@ -2518,7 +2518,7 @@ async function notificationDelivery(order: any, address: any, paymentMethod: any
         console.log('📧 Enviando notificación de pedido:', finalMessage);
         
         await provider.sendText('56936499908@s.whatsapp.net', finalMessage);
-        await provider.sendText('56953941370@s.whatsapp.net', finalMessage);
+        // await provider.sendText('56953941370@s.whatsapp.net', finalMessage);
         console.log('✅ Notificación de pedido enviada exitosamente');
         
     } catch (error) {
