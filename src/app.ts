@@ -819,8 +819,8 @@ const flowEndShoppingCart = addKeyword(utils.setEvent('END_SHOPPING_CART'))
                     '🔄 Continuemos con tu pedido...'
                 ].join('\n');
 
-                await flowDynamic(mensajeConfirmacion);
-                console.log(`✅ Notas guardadas exitosamente para ${userPhone}`);
+                // await flowDynamic(mensajeConfirmacion);
+                // console.log(`✅ Notas guardadas exitosamente para ${userPhone}`);
                 
                 return;
             }
@@ -1156,7 +1156,7 @@ const flowPrincipal = addKeyword<Provider, Database>(utils.setEvent('welcome'))
                 
                 // ✅ PEQUEÑA PAUSA PARA QUE LEA EL MENSAJE
                 console.log(`⏳ Esperando 1 segundo antes de enviar catálogos...`);
-                await new Promise(resolve => setTimeout(resolve, 1000));
+                await new Promise(resolve => setTimeout(resolve, 3000));
                 
                 // ✅ ENVIAR CATÁLOGO OFICIAL DIRECTAMENTE
                 console.log(`📤 Enviando catálogo oficial a ${userPhone}...`);
