@@ -97,7 +97,7 @@ const FlowAgente2 = addKeyword(['Agente', 'AGENTE', 'agente'])
     const numAgente = ctx?.from;
     const message = `El cliente ${name} con el celular ${numAgente} solicita atencion personalizada`;
     await provider.sendText('56936499908@s.whatsapp.net', message);
-    // await provider.sendText('56953941370@s.whatsapp.net', message);
+    
     return endFlow('*Gracias*');
    }
 );
@@ -1118,7 +1118,7 @@ const flowPrincipal = addKeyword<Provider, Database>(utils.setEvent('welcome'))
         console.log(`💬 Opción seleccionada: ${ctx.body}`);
         const message = `El cliente con el celular ${userPhone} Esta interactuando con el bot`;
         await provider.sendText('56936499908@s.whatsapp.net', message);
-        // await provider.sendText('56953941370@s.whatsapp.net', message);
+        
         
         const userInput = ctx.body.toLowerCase().trim();
         
@@ -2617,7 +2617,7 @@ async function notificationDelivery(order: any, address: any, paymentMethod: any
         console.log('📧 Enviando notificación de pedido:', finalMessage);
         
         await provider.sendText('56936499908@s.whatsapp.net', finalMessage);
-        // await provider.sendText('56953941370@s.whatsapp.net', finalMessage);
+        
         console.log('✅ Notificación de pedido enviada exitosamente');
         
     } catch (error) {
@@ -2769,12 +2769,13 @@ const flowValidTime = addKeyword<Provider, Database>(EVENTS.WELCOME)
         const esLunes = numeroDia === 1;
         console.log('lunes validacion esLunes', esLunes);
         console.log('lunes validacion numeroDia', numeroDia);
+        const dentroDeHorario = horaActual.isBetween(horaInicio, horaFin, null, '[]');
 
-        if (esLunes || !horaActual.isBetween(horaInicio, horaFin) ) {
-            console.log(`✅ Usuario ${userPhone} dentro de horario`);
+        if (esLunes || !dentroDeHorario) {
+          console.log(`⚠️ Usuario ${userPhone} fuera de horario`);            
             return gotoFlow(flowDisable);  // O flowDisable
         } else {
-            console.log(`⚠️ Usuario ${userPhone} fuera de horario`);
+            console.log(`✅ Usuario ${userPhone} dentro de horario`);
             return gotoFlow(flowPrincipal);
             
         }
