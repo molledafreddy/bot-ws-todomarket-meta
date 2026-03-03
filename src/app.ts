@@ -752,6 +752,105 @@ const flowEndShoppingCart = addKeyword(utils.setEvent('END_SHOPPING_CART'))
 })
 .addAnswer(
     [
+        '📝 *PASO 1: Notas o Consultas Especiales*\n',
+        '¿Tienes alguna consulta sobre algún producto que no viste en los catálogos?',
+        '¿O tienes alguna solicitud especial para tu pedido?\n',
+        'ℹ️ Si no tienes consultas, escribe: *"No tengo consultas"* o *"Siguiente"*\n',
+        'Un agente se comunicará contigo para confirmar disponibilidad.\n',
+        '👉 Escribe tu consulta o "Siguiente" para continuar:'
+    ],
+    { capture: true, delay: 1500, idle: 960000 },
+    async(ctx, { fallBack, globalState, flowDynamic, gotoFlow }) => {
+        const userPhone = ctx.from;  // 🔑 CLAVE ÚNICA
+        const userNotes = ctx.body?.trim();
+        const notesKey = `notes_${userPhone}`;
+        
+        console.log(`📝 === CAPTURA DE NOTAS - USUARIO ${userPhone} ===`);
+        console.log(`📝 Notas/Consulta recibida: "${userNotes}"`);
+        console.log(`📝 Longitud: ${userNotes?.length} caracteres`);
+
+        try {
+            // ✅ VALIDACIÓN 1: ¿Está vacío?
+            if (!userNotes) {
+                console.log(`❌ Notas vacías para ${userPhone}`);
+                
+                const errorMessage = '❌ *Campo requerido*\n\nPor favor ingrese una nota/consulta o escriba "Siguiente" para continuar.';
+                console.log(`📤 Enviando error a ${userPhone}`);
+                
+                return fallBack(errorMessage);
+            }
+
+            // ✅ VALIDACIÓN 2: Detectar si el usuario quiere continuar sin notas
+            const continuarSinNotas = userNotes.toLowerCase().includes('siguiente') || 
+                                     userNotes.toLowerCase().includes('no tengo') ||
+                                     userNotes.toLowerCase().includes('no');
+
+            if (continuarSinNotas) {
+                console.log(`⏭️ Usuario ${userPhone} continúa sin dejar notas`);
+                
+                // Guardar que no hay notas
+                await globalState.update({ 
+                    [notesKey]: '[Sin notas adicionales]' 
+                });
+
+                const mensajeContinuar = [
+                    '✅ Entendido, continuemos con tu pedido.\n',
+                    '🔄 Avanzando al siguiente paso...'
+                ].join('\n');
+
+                await flowDynamic(mensajeContinuar);
+                console.log(`✅ Notas (vacías) guardadas para ${userPhone}`);
+                
+                // Continuar al siguiente paso (dirección)
+                return;
+            }
+
+            // ✅ VALIDACIÓN 3: Guardar notas si contiene consulta
+            if (userNotes.length >= 5) {
+                console.log(`✅ Guardando notas para usuario ${userPhone}...`);
+                await globalState.update({ 
+                    [notesKey]: userNotes 
+                });
+
+                const mensajeConfirmacion = [
+                    '✅ *Nota guardada:*\n',
+                    `"${userNotes}"\n`,
+                    '📞 Un agente se comunicará contigo para confirmar disponibilidad y detalles.\n',
+                    '🔄 Continuemos con tu pedido...'
+                ].join('\n');
+
+                await flowDynamic(mensajeConfirmacion);
+                console.log(`✅ Notas guardadas exitosamente para ${userPhone}`);
+                
+                return;
+            }
+
+            // ❌ NOTAS DEMASIADO CORTAS
+            console.log(`⚠️ Notas muy cortas para ${userPhone}: ${userNotes.length} caracteres`);
+            
+            const errorMessage = [
+                '⚠️ *Nota muy corta*\n',
+                'Por favor sé más específico con tu consulta o solicitud.\n',
+                'Ejemplo: "¿Tienen leche descremada marca X?"',
+                'O escribe "Siguiente" si no tienes consultas.'
+            ].join('\n');
+            
+            console.log(`📤 Enviando error a ${userPhone}`);
+            
+            return fallBack(errorMessage);
+
+        } catch (error) {
+            console.error(`💥 Error procesando notas para ${userPhone}:`, error);
+            
+            const errorMessage = '❌ *Error técnico*\n\nHubo un problema procesando tu nota. Por favor intenta nuevamente.';
+            console.log(`📤 Enviando error a ${userPhone}`);
+            
+            return fallBack(errorMessage);
+        }
+    }
+)
+.addAnswer(
+    [
         '✅ *PASO 1: Dirección de entrega*\n',
         'Ingrese su dirección completa:\n',
         '*Nombre Calle Numeración, Comuna, Depto*\n',
@@ -2621,9 +2720,6 @@ const flowDisable = addKeyword("disable")
 )
 
 
-
-
-
 // const recording = async function (ctx: any, provider: any) {
 //     if (provider && provider?.vendor && provider.vendor?.sendPresenceUpdate) {
 //         const id = ctx.key.remoteJid
@@ -2676,7 +2772,8 @@ const flowValidTime = addKeyword<Provider, Database>(EVENTS.WELCOME)
 
         if (esLunes || !horaActual.isBetween(horaInicio, horaFin) ) {
             console.log(`✅ Usuario ${userPhone} dentro de horario`);
-            return gotoFlow(flowDisable);  // O flowDisable
+            // return gotoFlow(flowDisable);  // O flowDisable
+            return gotoFlow(flowPrincipal);
         } else {
             console.log(`⚠️ Usuario ${userPhone} fuera de horario`);
             return gotoFlow(flowPrincipal);
