@@ -793,12 +793,12 @@ const flowEndShoppingCart = addKeyword(utils.setEvent('END_SHOPPING_CART'))
                     [notesKey]: '[Sin notas adicionales]' 
                 });
 
-                const mensajeContinuar = [
-                    '✅ Entendido, continuemos con tu pedido.\n',
-                    '🔄 Avanzando al siguiente paso...'
-                ].join('\n');
+                // const mensajeContinuar = [
+                //     '✅ Entendido, continuemos con tu pedido.\n',
+                //     '🔄 Avanzando al siguiente paso...'
+                // ].join('\n');
 
-                await flowDynamic(mensajeContinuar);
+                // await flowDynamic(mensajeContinuar);
                 console.log(`✅ Notas (vacías) guardadas para ${userPhone}`);
                 
                 // Continuar al siguiente paso (dirección)
