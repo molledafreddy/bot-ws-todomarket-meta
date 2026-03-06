@@ -94,7 +94,7 @@ export class MultiCatalogCartService {
             return '🛒 *Tu carrito está vacío*';
         }
 
-        let summary = ['🛒 *Tu Carrito*', ''];
+        const summary = ['🛒 *Tu Carrito*', ''];
         
         cart.items.forEach((item, index) => {
             const itemTotal = (item.price || 0) * item.quantity;
