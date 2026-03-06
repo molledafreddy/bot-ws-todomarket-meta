@@ -14,14 +14,7 @@ import { flowWelcome, flowThanks, flowContactSupport, flowHelp } from './flows/a
 import { initializeCacheSystem, updateAllCatalogs, updateCatalogCache } from './cache/cron-jobs.js';
 import { getCatalogIfValid } from './cache/catalog-cache-manager.js';
 
-await initializeCacheSystem(ENABLED_CATALOGS, categorizeProductsCorrectly);
-
-// Validar configuración al iniciar
-const configValidation = validateCatalogConfig();
-if (!configValidation.valid) {
-    console.error('❌ Configuración de catálogos inválida:', configValidation.errors);
-    process.exit(1);
-}
+await initializeCacheSystem();
 
 // Importar fetch para Node.js si no está disponible globalmente
 const fetch = globalThis.fetch || require('node-fetch')
