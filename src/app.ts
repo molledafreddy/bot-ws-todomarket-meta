@@ -169,7 +169,7 @@ const flowCategorySelection = addKeyword(utils.setEvent('CATEGORY_SELECTION'))
       console.log(`✅ Categoría enviada exitosamente`);
       
       // ✅ DESPUÉS DE ENVIAR CATEGORÍA, IR A FLUJO DE CONTINUACIÓN
-      return gotoFlow(flowContinueOrCheckout);
+      // return gotoFlow(flowContinueOrCheckout);
 
     } catch (error: any) {
       console.error(`💥 Error en flowCategorySelection:`, error.message);
