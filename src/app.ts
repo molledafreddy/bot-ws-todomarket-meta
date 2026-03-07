@@ -6,15 +6,20 @@ import { MongoAdapter as Database } from '@builderbot/database-mongo'
 import { MetaProvider as Provider } from '@builderbot/provider-meta'
 import { idleFlow, reset, start, stop, IDLETIME } from './idle-custom'
 import { getCatalogConfig, CatalogConfig, ENABLED_CATALOGS, validateCatalogConfig } from './config/multi-catalog-config'
-import { flowCatalogSelection } from './flows/catalog-selection-flow';
+// import { flowCatalogSelection } from './flows/catalog-selection-flow';
 
-import { flowCatalogOrder, flowViewCart, flowMultiCatalogCheckout } from './flows/catalog-order-flow';
-import { flowWelcome, flowThanks, flowContactSupport, flowHelp } from './flows/additional-flows';
+// import { flowCatalogOrder, flowViewCart, flowMultiCatalogCheckout } from './flows/catalog-order-flow';
+// import { flowWelcome, flowThanks, flowContactSupport, flowHelp } from './flows/additional-flows';
 
 import { initializeCacheSystem, updateAllCatalogs, updateCatalogCache } from './cache/cron-jobs.js';
 import { getCatalogIfValid } from './cache/catalog-cache-manager.js';
 import path from 'path';
 import fs from 'fs/promises';
+import { fileURLToPath } from 'url'; 
+
+// ✅ DEFINIR __dirname Y __filename PARA ESM
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 await initializeCacheSystem();
 
