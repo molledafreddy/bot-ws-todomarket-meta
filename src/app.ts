@@ -1020,8 +1020,9 @@ const flowPrincipal = addKeyword<Provider, Database>(utils.setEvent('welcome'))
         console.log(`📱 === FLOWPRINCIPAL.addAnswer() ===`);
         console.log(`👤 Usuario: ${userPhone}`);
         console.log(`💬 Opción seleccionada: ${ctx.body}`);
-        const message = `El cliente con el celular ${userPhone} Esta interactuando con el bot`;
-        await provider.sendText('56936499908@s.whatsapp.net', message);
+        await notificationClientIterating(userPhone);
+        // const message = `El cliente con el celular ${userPhone} Esta interactuando con el bot`;
+        // await provider.sendText('56936499908@s.whatsapp.net', message);
         
         
         const userInput = ctx.body.toLowerCase().trim();
@@ -2832,6 +2833,63 @@ async function notificationDelivery(order: any, dataNotes: any, address: any, pa
     }
 }
 
+async function notificationClientIterating(userPhone: any ) {
+  const activityTime = moment().format('HH:mm:ss');  // Hora actual  
+  const templateMessage = {
+        messaging_product: "whatsapp",
+        to: '56936499908',  // Teléfono del administrador
+        type: "template",
+        template: {
+            name: "cliente_interactuando_bot",  // ✅ NOMBRE DE TU PLANTILLA
+            language: {
+                code: "es_MX"  // Español México (o es_ES para España)
+            },
+            components: [
+                {
+                    type: "body",
+                    parameters: [
+                        {
+                            type: "text",
+                            text: userPhone  // {{1}} = {{customer_phone}}
+                        },
+                        {
+                            type: "text",
+                            text: activityTime  // {{2}} = {{activity_time}}
+                        }
+                    ]
+                }
+            ]
+        }
+    };
+
+    console.log(`📧 Enviando plantilla "cliente_interactuando_bot"...`);
+    console.log(`   • Usuario: ${userPhone}`);
+    console.log(`   • Hora: ${activityTime}`);
+
+    // Obtener token y número ID
+    const jwtToken = process.env.JWT_TOKEN;
+    const numberId = process.env.NUMBER_ID;
+
+    if (!jwtToken || !numberId) {
+        throw new Error('Faltan credenciales Meta (JWT_TOKEN o NUMBER_ID)');
+    }
+
+    // Enviar plantilla de Meta
+    const response = await fetch(
+        `https://graph.facebook.com/v23.0/${numberId}/messages`,
+        {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${jwtToken}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(templateMessage)
+        }
+    );
+
+    const result = await response.json();
+}
+
 /**
  * Maneja las notificaciones de estado de mensajes
  */
@@ -2924,17 +2982,6 @@ const flowDisable = addKeyword("disable")
         return fallBack("*Opcion no valida*, \nPor favor seleccione una opcion valida:\n👉 #1 Facebook\n👉 #2 Instagram\n👉 #3 TikTok");
     }
 )
-
-
-// const recording = async function (ctx: any, provider: any) {
-//     if (provider && provider?.vendor && provider.vendor?.sendPresenceUpdate) {
-//         const id = ctx.key.remoteJid
-//         await provider.vendor.sendPresenceUpdate('recording', id)
-//     }
-// }
-
-
-
 
 const flowValidTime = addKeyword<Provider, Database>(EVENTS.WELCOME)
  .addAction(async(ctx, {gotoFlow, provider, state}) => {
