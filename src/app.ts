@@ -6,10 +6,6 @@ import { MongoAdapter as Database } from '@builderbot/database-mongo'
 import { MetaProvider as Provider } from '@builderbot/provider-meta'
 import { idleFlow, reset, start, stop, IDLETIME } from './idle-custom'
 import { getCatalogConfig, CatalogConfig, ENABLED_CATALOGS, validateCatalogConfig } from './config/multi-catalog-config'
-// import { flowCatalogSelection } from './flows/catalog-selection-flow';
-
-// import { flowCatalogOrder, flowViewCart, flowMultiCatalogCheckout } from './flows/catalog-order-flow';
-// import { flowWelcome, flowThanks, flowContactSupport, flowHelp } from './flows/additional-flows';
 
 import { initializeCacheSystem, updateAllCatalogs, updateCatalogCache } from './cache/cron-jobs.js';
 import { getCatalogIfValid } from './cache/catalog-cache-manager.js';
@@ -17,7 +13,6 @@ import path from 'path';
 import fs from 'fs/promises';
 import { fileURLToPath } from 'url'; 
 
-// ✅ DEFINIR __dirname Y __filename PARA ESM
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -460,89 +455,6 @@ async function sendSpecificCategoryAsProductList(
   }
 }
 
-
-/**
- * FLUJO 4: Consultar si desea ver otra categoría o culminar pedido - CORREGIDO
- * ✅ Se dispara después de que usuario interactúa con product_list
- * ✅ Da opción de seguir comprando o proceder al pago
- * ✅ CORREGIDO: Usa provider correcto
- */
-const flowContinueOrCheckout = addKeyword(utils.setEvent('CONTINUE_OR_CHECKOUT'))
-  .addAnswer(
-    [
-      '✅ *¿Qué deseas hacer?*\n',
-      '👉 *1* - Ver otra categoría',
-      '👉 *2* - Finalizar mi pedido y pagar',
-      '',
-      'Escribe solo el número (1 o 2)'
-    ],
-    { capture: true, delay: 1000, idle: 960000 },
-    async (ctx, { state, globalState, flowDynamic, fallBack, gotoFlow, provider }) => {
-      // ✅ AGREGADO: provider en destructuring
-      const userPhone = ctx.from;
-      const userInput = ctx.body?.trim();
-
-      console.log(`\n🛒 === FLUJO CONTINUAR O FINALIZAR ===`);
-      console.log(`📱 Usuario: ${userPhone}`);
-      console.log(`🎯 Opción: ${userInput}`);
-
-      try {
-        // ✅ OPCIÓN 1: VER OTRA CATEGORÍA
-        if (userInput === '1') {
-          console.log(`👉 Usuario seleccionó: Ver otra categoría`);
-
-          const userCategoriesKey = `categories_${userPhone}`;
-          const userSelectedCategoriesKey = `selectedCategories_${userPhone}`;
-          
-          const categories = globalState.get(userCategoriesKey) || [];
-          const selectedCategories = globalState.get(userSelectedCategoriesKey) || [];
-          const unviewedCategories = categories.filter(cat => !selectedCategories.includes(cat));
-
-          if (unviewedCategories.length === 0) {
-            console.log(`🔄 Todas las categorías han sido vistas, reiniciando`);
-            await globalState.update({
-              [`selectedCategories_${userPhone}`]: []
-            });
-
-            const allCategoriesMenu = [
-              '📂 *CATEGORÍAS DISPONIBLES*\n',
-              ...categories.map((cat, idx) => `${idx + 1}️⃣ *${cat}`),
-              '',
-              '👉 Escribe el número de la categoría que deseas ver'
-            ].join('\n');
-
-            await flowDynamic(allCategoriesMenu);
-          } else {
-            const unviewedMenu = [
-              '📂 *CATEGORÍAS DISPONIBLES*\n',
-              ...unviewedCategories.map((cat, idx) => `${idx + 1}️⃣ *${cat}`),
-              '',
-              '👉 Escribe el número de la categoría que deseas ver'
-            ].join('\n');
-
-            await flowDynamic(unviewedMenu);
-          }
-
-          return;
-        }
-
-        // ✅ OPCIÓN 2: FINALIZAR PEDIDO
-        if (userInput === '2') {
-          console.log(`✅ Usuario seleccionó: Finalizar pedido`);
-          return gotoFlow(flowEndShoppingCart);
-        }
-
-        // ❌ OPCIÓN INVÁLIDA
-        console.log(`❌ Opción inválida: ${userInput}`);
-        return fallBack('❌ Opción inválida. Por favor escribe 1 o 2.');
-
-      } catch (error: any) {
-        console.error(`💥 Error en flowContinueOrCheckout:`, error.message);
-        return fallBack(`❌ Error. Por favor intenta nuevamente.`);
-      }
-    }
-  );
-
 /**
 * Captura una variedad de eventos multimedia que no son permitidos por el bot 
 * y envía un mensaje correspondiente según Meta WhatsApp Business API
@@ -704,7 +616,7 @@ const flowEndShoppingCart = addKeyword(utils.setEvent('END_SHOPPING_CART'))
     console.log(`🛒 === FLUJO DE PAGO - USUARIO ${userPhone} ===`);
     console.log(`📱 Iniciando validación de orden...`);
     
-    // ✅ LEER DATOS SOLO DE ESTE USUARIO
+    // LEER DATOS SOLO DE ESTE USUARIO
     const orderKey = `order_${userPhone}`;
     const addressKey = `address_${userPhone}`;
     const paymentKey = `payment_${userPhone}`;
@@ -790,6 +702,7 @@ const flowEndShoppingCart = addKeyword(utils.setEvent('END_SHOPPING_CART'))
                                      userNotes.toLowerCase().includes('no tengo') ||
                                      userNotes.toLowerCase().includes('no');
 
+            console.log(continuarSinNotas, `continuarSinNotas`);                         
             if (continuarSinNotas) {
                 console.log(`⏭️ Usuario ${userPhone} continúa sin dejar notas`);
                 
@@ -798,15 +711,8 @@ const flowEndShoppingCart = addKeyword(utils.setEvent('END_SHOPPING_CART'))
                     [notesKey]: '[Sin notas adicionales]' 
                 });
 
-                // const mensajeContinuar = [
-                //     '✅ Entendido, continuemos con tu pedido.\n',
-                //     '🔄 Avanzando al siguiente paso...'
-                // ].join('\n');
-
-                // await flowDynamic(mensajeContinuar);
                 console.log(`✅ Notas (vacías) guardadas para ${userPhone}`);
                 
-                // Continuar al siguiente paso (dirección)
                 return;
             }
 
@@ -817,16 +723,6 @@ const flowEndShoppingCart = addKeyword(utils.setEvent('END_SHOPPING_CART'))
                     [notesKey]: userNotes 
                 });
 
-                const mensajeConfirmacion = [
-                    '✅ *Nota guardada:*\n',
-                    `"${userNotes}"\n`,
-                    '📞 Un agente se comunicará contigo para confirmar disponibilidad y detalles.\n',
-                    '🔄 Continuemos con tu pedido...'
-                ].join('\n');
-
-                // await flowDynamic(mensajeConfirmacion);
-                // console.log(`✅ Notas guardadas exitosamente para ${userPhone}`);
-                
                 return;
             }
 
@@ -937,6 +833,7 @@ const flowEndShoppingCart = addKeyword(utils.setEvent('END_SHOPPING_CART'))
         const orderKey = `order_${userPhone}`;
         const addressKey = `address_${userPhone}`;
         const paymentKey = `payment_${userPhone}`;
+        const notesKey = `notesKey_${userPhone}`;
         const catalogKey = `catalogId_${userPhone}`;
         const hashKey = `hash_${userPhone}`;
         const customerNameKey = `customerName_${userPhone}`;
@@ -990,6 +887,7 @@ const flowEndShoppingCart = addKeyword(utils.setEvent('END_SHOPPING_CART'))
             
             const dataOrder = globalState.get(orderKey);
             const dataAddress = globalState.get(addressKey);
+            const dataNotes = globalState.get(notesKey);
             const dataPaymentMethod = globalState.get(paymentKey);
             const catalogId = globalState.get(catalogKey);
             
@@ -1030,7 +928,7 @@ const flowEndShoppingCart = addKeyword(utils.setEvent('END_SHOPPING_CART'))
 
             // ✅ ENVIAR NOTIFICACIÓN AL NEGOCIO
             console.log(`📧 Enviando notificación de pedido para ${userPhone}...`);
-            await notificationDelivery(dataOrder, dataAddress, dataPaymentMethod, name, userPhone, provider);
+            await notificationDelivery(dataOrder, dataNotes, dataAddress, dataPaymentMethod, name, userPhone, provider);
             console.log(`✅ Notificación enviada`);
 
             // ✅ LIMPIAR GLOBALSTATE - SOLO DATOS DE ESTE USUARIO
@@ -1042,6 +940,7 @@ const flowEndShoppingCart = addKeyword(utils.setEvent('END_SHOPPING_CART'))
                 [catalogKey]: null,
                 [hashKey]: null,
                 [customerNameKey]: null,
+                [notesKey]: null,
                 [orderTimestampKey]: null
             });
             
@@ -1159,34 +1058,12 @@ const flowPrincipal = addKeyword<Provider, Database>(utils.setEvent('welcome'))
                 
                 console.log(`✅ Mensaje informativo enviado a ${userPhone}`);
                 
-                // ✅ PEQUEÑA PAUSA PARA QUE LEA EL MENSAJE
-                console.log(`⏳ Esperando 1 segundo antes de enviar catálogos...`);
                 await new Promise(resolve => setTimeout(resolve, 3000));
                 
-                // ✅ ENVIAR CATÁLOGO OFICIAL DIRECTAMENTE
-                console.log(`📤 Enviando catálogo oficial a ${userPhone}...`);
-
-                if (userPhone === '56936499908') {
-                  console.log(`📤 Enviando catálogo con cache ${userPhone}...`);
-                  const result = await sendCatalogWith30ProductsCache(ctx.from, 'principal', provider);
-                } else {
-                  console.log(`📤 Enviando catálogo sin cache ${userPhone}...`);
-                  const result = await sendCatalogWith30ProductsNew(ctx.from, 'principal', provider);
-                }
-
+                // const result = await sendCatalogWith30ProductsNew(ctx.from, 'principal', provider);
+                const result = await sendCatalogWith30ProductsCache(ctx.from, 'principal', provider);
                 
-
-                // const result = await listAvailableCategoriesAndSendMenu(
-                //     userPhone,
-                //     'principal',
-                //     provider,
-                //     globalState
-                // );
-                // // flowCategorySelection
-                // return gotoFlow(flowCategorySelection);
-
-                return; // ✅ FINALIZAR FLUJO CORRECTAMENTE
-                
+                return;
             } catch (error) {
                 console.error(`❌ Error enviando catálogo a ${userPhone}:`, error);
                 
@@ -1204,7 +1081,6 @@ const flowPrincipal = addKeyword<Provider, Database>(utils.setEvent('welcome'))
                 } catch (sendError) {
                     console.error(`❌ Error enviando mensaje de error a ${userPhone}:`, sendError);
                 }
-                
                 return endFlow(errorMessage);
             }
         }
@@ -1230,9 +1106,6 @@ const flowPrincipal = addKeyword<Provider, Database>(utils.setEvent('welcome'))
             "👉 #1 Catalogos de compra\n",
             "👉 #2 Conversar con un Agente"
         ].join('');
-        
-        console.log(`📤 Enviando mensaje de opción inválida a ${userPhone}...`);
-        
         return fallBack(invalidMessage);
      }
  );
@@ -1335,11 +1208,6 @@ function categorizeProductsCorrectly(products: any[], catalogKey: string) {
     let assignedCategory = '📦 Otros'; // Fallback por defecto
     let foundMatch = false;
 
-    // console.log(`\n📦 PRODUCTO ${index + 1}: "${product.name}"`);
-    // if (productDesc) {
-    //   console.log(`   📝 Descripción: "${productDesc}"`);
-    // }
-
     // ⚠️ ITERACIÓN SECUENCIAL: Primera coincidencia gana
     for (const [categoryName, keywords] of Object.entries(categoryKeywords)) {
       // Verificar si ALGUNA palabra clave coincide en el texto completo
@@ -1352,9 +1220,7 @@ function categorizeProductsCorrectly(products: any[], catalogKey: string) {
       if (matchedKeywords.length > 0) {
         assignedCategory = categoryName;
         foundMatch = true;
-        // console.log(`   ✅ ASIGNADO: ${categoryName}`);
-        // console.log(`   💡 Palabras clave encontradas: ${matchedKeywords.join(', ')}`);
-        break; // ✅ SALIR INMEDIATAMENTE EN LA PRIMERA COINCIDENCIA
+        break;
       }
     }
 
@@ -1456,7 +1322,6 @@ function createAllCategorizedSectionLotes(categorizedProducts: Record<string, an
         categoriesInLote: new Set<string>()
       };
 
-      console.log(`   📝 Nuevo Lote ${currentLote.loteNumber} creado`);
       continue; // Reintentar SIN incrementar categoryIndex
     }
 
@@ -1482,7 +1347,6 @@ function createAllCategorizedSectionLotes(categorizedProducts: Record<string, an
         categoriesInLote: new Set<string>()
       };
 
-      console.log(`   📝 Nuevo Lote ${currentLote.loteNumber} creado`);
       continue;
     }
 
@@ -1514,7 +1378,7 @@ function createAllCategorizedSectionLotes(categorizedProducts: Record<string, an
 
     currentLote.sections.push(section);
     currentLote.itemsCount += itemsForSection.length;
-    currentLote.categoriesInLote.add(categoryName); // ✅ Marcar categoría (se puede repetir)
+    currentLote.categoriesInLote.add(categoryName);
 
     console.log(`   ✅ Sección "${sectionTitle}": ${itemsForSection.length} items`);
     console.log(`      Total en Lote ${currentLote.loteNumber}: ${currentLote.itemsCount}/${maxItemsPerMessage}`);
@@ -1557,10 +1421,6 @@ function createAllCategorizedSectionLotes(categorizedProducts: Record<string, an
   const categoriesUsed = new Set<string>();
 
   messageLotes.forEach((lote: any) => {
-    console.log(`\n📨 Lote ${lote.loteNumber}:`);
-    console.log(`   📦 Items: ${lote.itemsCount}/${maxItemsPerMessage}`);
-    console.log(`   📋 Secciones: ${lote.sections.length}`);
-
     // Extraer categorías únicas (sin sufijos numéricos)
     const uniqueCategoriesInLote = new Set<string>();
     for (const cat of lote.categoriesInLote) {
@@ -1569,8 +1429,7 @@ function createAllCategorizedSectionLotes(categorizedProducts: Record<string, an
     }
 
     const categoriesString = Array.from(uniqueCategoriesInLote).sort().join(', ');
-    console.log(`   🏷️  Categorías: ${categoriesString}`);
-
+    
     // Listar secciones
     lote.sections.forEach((section: any, idx: number) => {
       console.log(`     ${idx + 1}. ${section.title}: ${section.product_items.length} items`);
@@ -1578,13 +1437,6 @@ function createAllCategorizedSectionLotes(categorizedProducts: Record<string, an
 
     totalItems += lote.itemsCount;
   });
-
-  console.log(`\n${'═'.repeat(70)}`);
-  console.log(`📊 TOTALES FINALES:`);
-  console.log(`   • Mensajes: ${messageLotes.length}`);
-  console.log(`   • Items totales: ${totalItems}`);
-  console.log(`   • Categorías únicas procesadas: ${categoryArray.length}`);
-  console.log(`${'═'.repeat(70)}\n`);
 
   return messageLotes;
 }
@@ -2466,16 +2318,6 @@ function generateProductListFallback100(catalog: any, catalogKey: string) {
   return fallback.join('\n');
 }
 
-// 📦 CATÁLOGO DE PRODUCTOS TODOMARKET
-// Mapeo de productos reales del minimarket (actualizar con tus productos)
-// 📦 CATÁLOGO DE PRODUCTOS TODOMARKET
-// Actualizado automáticamente
-// Fecha: 2026-03-02T02:09:15.250Z
-// Total: 195 productos
-// 📦 CATÁLOGO DE PRODUCTOS TODOMARKET
-// Actualizado automáticamente
-// Fecha: 2026-03-02T02:55:00.000Z
-// Total: 195 productos
 const PRODUCT_CATALOG = {
 
     // A
@@ -2967,13 +2809,14 @@ async function processOrder(details: any) {
     return containerProducts;
 }
 
-async function notificationDelivery(order: any, address: any, paymentMethod: any, name: any, phone: any, provider: any) {
+async function notificationDelivery(order: any, dataNotes: any, address: any, paymentMethod: any, name: any, phone: any, provider: any) {
     try {
         const dataMessageGlobal: any[] = [];
         dataMessageGlobal.push(`*🛒 Se registró nuevo pedido con Detalle: 🛒*\n`);
         dataMessageGlobal.push(`*Nombre Cliente:* ${name}\n*Teléfono:* +${phone}\n`);
         dataMessageGlobal.push(`*Dirección:* ${address}\n`);
         dataMessageGlobal.push(`*Método de pago:* ${paymentMethod}\n`);
+        dataMessageGlobal.push(`*Notas:* ${dataNotes}\n`);
         dataMessageGlobal.push(`*Productos:*\n${order.join('')}`);
         
         const finalMessage = dataMessageGlobal.join('');
@@ -3122,28 +2965,19 @@ const flowValidTime = addKeyword<Provider, Database>(EVENTS.WELCOME)
         const horaInicio = moment(rangoHorario[0], "HH:mm");
         const horaFin = moment(rangoHorario[1], "HH:mm");
 
-        
-
         const horaActualFormato = horaActual.format('HH:mm');
         //validacion del dia en curso
         const numeroDia = horaActual.day(); // 0=Domingo, 1=Lunes, 2=Martes, ..., 6=Sábado
-        const nombreDia = horaActual.format('dddd'); // "Monday", "Tuesday", etc.
-        const nombreDiaES = horaActual.locale('es').format('dddd'); // "lunes", "martes", etc.
         const esLunes = numeroDia === 1;
-        console.log('lunes validacion esLunes', esLunes);
-        console.log('lunes validacion numeroDia', numeroDia);
         const dentroDeHorario = horaActual.isBetween(horaInicio, horaFin, null, '[]');
 
         if (esLunes || !dentroDeHorario) {
           console.log(`⚠️ Usuario ${userPhone} fuera de horario`);            
-            // return gotoFlow(flowDisable);  // O flowDisable
-            return gotoFlow(flowPrincipal);
+            return gotoFlow(flowDisable);  // O flowDisable
         } else {
             console.log(`✅ Usuario ${userPhone} dentro de horario`);
             return gotoFlow(flowPrincipal);
-            
         }
-
     } catch (error) {
         console.error('💥 Error en flowValidTime:', error);
         return gotoFlow(flowPrincipal);
@@ -3162,9 +2996,9 @@ const main = async () => {
         FlowAgente2,                    // Flujo para agente
         flowOrder,                      // Flujo para órdenes
         flowValidMedia,                 // Validación de media
-        // flowSelectCategory,        // ✅ NUEVO
-        flowCategorySelection,
-        flowContinueOrCheckout,    // ✅ NUEVO
+        // flowSelectCategory,        
+        // flowCategorySelection,
+        // flowContinueOrCheckout,    
         idleFlow
     ])
     
@@ -3227,8 +3061,6 @@ const main = async () => {
     // Agregar este endpoint en tu app.ts en la sección de webhooks
 
     adapterProvider.server.post('/webhook/cache-update', async (req, res) => {
-      console.log(`\n🔗 === WEBHOOK RECIBIDO (SIN VALIDACIÓN) ===`);
-      console.log(`Body recibido:`, JSON.stringify(req.body, null, 2));
 
       try {
         const { action, catalogKey } = req.body;
@@ -3294,9 +3126,6 @@ const main = async () => {
         })
     )
 
-    // Webhook handler compatible con BuilderBot y Meta
-    // Nota: BuilderBot maneja automáticamente el webhook en /webhook
-    // Este es un handler adicional para notificaciones de estado
     adapterProvider.server.post(
         '/webhook-status', 
         (req, res) => {
