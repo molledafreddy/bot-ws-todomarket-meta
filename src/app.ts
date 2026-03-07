@@ -13,6 +13,8 @@ import { flowWelcome, flowThanks, flowContactSupport, flowHelp } from './flows/a
 
 import { initializeCacheSystem, updateAllCatalogs, updateCatalogCache } from './cache/cron-jobs.js';
 import { getCatalogIfValid } from './cache/catalog-cache-manager.js';
+import path from 'path';
+import fs from 'fs/promises';
 
 await initializeCacheSystem();
 
@@ -1963,7 +1965,6 @@ export async function sendCatalogWith30ProductsCache(
 
     let allProducts: any[] = [];
     let usedCache = false;
-    let cacheFilePath = '';
 
     // ═════════════════════════════════════════════════════════════════
     // PASO 1: INTENTAR USAR CACHÉ PRIMERO
@@ -1972,17 +1973,14 @@ export async function sendCatalogWith30ProductsCache(
     console.log(`\n🔍 PASO 1: Buscando caché válido...`);
 
     try {
-      const path = require('path');
-      const fs = require('fs/promises');
-      const moment = require('moment');
-
-      // 1️⃣ Calcular ruta de caché
-      const projectRoot = require('path').resolve(__dirname, '../../..');
+      // ✅ CORRECCIÓN: Usar imports en el top del archivo (ya están importados)
+      // Calcular ruta de caché
+      const projectRoot = path.resolve(__dirname, '../../..');
       const cacheDir = process.env.NODE_ENV === 'production' 
         ? (process.env.CACHE_DIR || '/tmp/bot-cache')
-        : require('path').join(projectRoot, 'cache-data');
+        : path.join(projectRoot, 'cache-data');
 
-      cacheFilePath = require('path').join(cacheDir, `catalogo-${catalogKey}.json`);
+      const cacheFilePath = path.join(cacheDir, `catalogo-${catalogKey}.json`);
 
       console.log(`   📁 Ruta caché: ${cacheFilePath}`);
 
@@ -2002,6 +2000,7 @@ export async function sendCatalogWith30ProductsCache(
       console.log(`   📦 Datos del caché:`);
       console.log(`      • Última actualización: ${cacheData.lastUpdated}`);
       console.log(`      • Vence el: ${cacheData.expiresAt}`);
+      console.log(`      • Productos: ${cacheData.totalProducts}`);
 
       // 4️⃣ Verificar si ha expirado
       const expirationTime = moment(cacheData.expiresAt);
@@ -2015,7 +2014,6 @@ export async function sendCatalogWith30ProductsCache(
 
       const hoursRemaining = expirationTime.diff(now, 'hours');
       console.log(`   ✅ CACHÉ VÁLIDO (expira en ${hoursRemaining} horas)`);
-      console.log(`   📊 Productos en caché: ${cacheData.totalProducts}`);
 
       // 5️⃣ EXTRAER PRODUCTOS DEL CACHÉ
       if (!cacheData.categories || typeof cacheData.categories !== 'object') {
@@ -3133,7 +3131,8 @@ const flowValidTime = addKeyword<Provider, Database>(EVENTS.WELCOME)
 
         if (esLunes || !dentroDeHorario) {
           console.log(`⚠️ Usuario ${userPhone} fuera de horario`);            
-            return gotoFlow(flowDisable);  // O flowDisable
+            // return gotoFlow(flowDisable);  // O flowDisable
+            return gotoFlow(flowPrincipal);
         } else {
             console.log(`✅ Usuario ${userPhone} dentro de horario`);
             return gotoFlow(flowPrincipal);
