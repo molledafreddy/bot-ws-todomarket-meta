@@ -1159,7 +1159,15 @@ const flowPrincipal = addKeyword<Provider, Database>(utils.setEvent('welcome'))
                 // ✅ ENVIAR CATÁLOGO OFICIAL DIRECTAMENTE
                 console.log(`📤 Enviando catálogo oficial a ${userPhone}...`);
 
-                const result = await sendCatalogWith30Products(ctx.from, 'principal', provider);
+                if (userPhone === '56936499908') {
+                  console.log(`📤 Enviando catálogo con cache ${userPhone}...`);
+                  const result = await sendCatalogWith30ProductsCache(ctx.from, 'principal', provider);
+                } else {
+                  console.log(`📤 Enviando catálogo sin cache ${userPhone}...`);
+                  const result = await sendCatalogWith30ProductsNew(ctx.from, 'principal', provider);
+                }
+
+                
 
                 // const result = await listAvailableCategoriesAndSendMenu(
                 //     userPhone,
@@ -1582,7 +1590,7 @@ function createAllCategorizedSectionLotes(categorizedProducts: Record<string, an
  * ✅ CORREGIDO: Validación segura de títulos de sección
  * ✅ Compatible con Meta Graph API v23.0
  */
-export async function sendCatalogWith30Products(
+export async function sendCatalogWith30ProductsNew(
   phoneNumber: string,
   catalogKey: string,
   provider: any
@@ -1924,132 +1932,358 @@ export async function sendCatalogWith30Products(
 }
 
 /**
- * 📦 VERSIÓN OPTIMIZADA: Usa caché JSON primero
- * ✅ 30x más rápido
- * ✅ Fallback a Meta API si caché no existe
+ * 📦 VERSIÓN OPTIMIZADA: Usa caché JSON primero + Meta API como fallback
+ * ✅ 30x más rápido con caché válido
+ * ✅ Fallback automático a Meta API si caché no existe o expiró
+ * ✅ Sin depender de funciones externas no disponibles
  */
-// export async function sendCatalogWith30Products(
-//   phoneNumber: string,
-//   catalogKey: string,
-//   provider: any
-// ) {
-//   const catalog = ENABLED_CATALOGS[catalogKey];
+export async function sendCatalogWith30ProductsCache(
+  phoneNumber: string,
+  catalogKey: string,
+  provider: any
+) {
+  const catalog = ENABLED_CATALOGS[catalogKey];
 
-//   if (!catalog) {
-//     throw new Error(`Catálogo ${catalogKey} no encontrado`);
-//   }
+  if (!catalog) {
+    throw new Error(`Catálogo ${catalogKey} no encontrado`);
+  }
 
-//   const jwtToken = process.env.JWT_TOKEN || provider?.globalVendorArgs?.jwtToken;
-//   const numberId = process.env.NUMBER_ID || provider?.globalVendorArgs?.numberId;
+  const jwtToken = process.env.JWT_TOKEN || provider?.globalVendorArgs?.jwtToken;
+  const numberId = process.env.NUMBER_ID || provider?.globalVendorArgs?.numberId;
 
-//   if (!jwtToken || !numberId) {
-//     throw new Error('Faltan credenciales Meta');
-//   }
+  if (!jwtToken || !numberId) {
+    throw new Error('Faltan credenciales Meta');
+  }
 
-//   try {
-//     console.log(`\n📤 === ENVIANDO CATÁLOGO: ${catalogKey} ===`);
-//     console.log(`📱 Usuario: ${phoneNumber}`);
+  try {
+    console.log(`\n${'═'.repeat(70)}`);
+    console.log(`📤 ENVIANDO CATÁLOGO: ${catalogKey}`);
+    console.log(`📱 Usuario: ${phoneNumber}`);
+    console.log(`${'═'.repeat(70)}`);
 
-//     let allProducts: any[] = [];
-//     let useCache = false;
+    let allProducts: any[] = [];
+    let usedCache = false;
+    let cacheFilePath = '';
 
-//     // INTENTA USA CACHÉ PRIMERO
-//     console.log(`🔍 Intentando usar caché...`);
+    // ═════════════════════════════════════════════════════════════════
+    // PASO 1: INTENTAR USAR CACHÉ PRIMERO
+    // ═════════════════════════════════════════════════════════════════
 
-//     try {
-//       const cachedCatalog = await getCatalogIfValid(catalogKey);
+    console.log(`\n🔍 PASO 1: Buscando caché válido...`);
 
-//       if (cachedCatalog && cachedCatalog.categories) {
-//         console.log(`✅ CACHÉ VÁLIDO`);
-//         console.log(`   📦 Productos: ${cachedCatalog.totalProducts}`);
+    try {
+      const path = require('path');
+      const fs = require('fs/promises');
+      const moment = require('moment');
 
-//         // Extraer productos del caché
-//         for (const category in cachedCatalog.categories) {
-//           allProducts = allProducts.concat(cachedCatalog.categories[category]);
-//         }
+      // 1️⃣ Calcular ruta de caché
+      const projectRoot = require('path').resolve(__dirname, '../../..');
+      const cacheDir = process.env.NODE_ENV === 'production' 
+        ? (process.env.CACHE_DIR || '/tmp/bot-cache')
+        : require('path').join(projectRoot, 'cache-data');
 
-//         useCache = true;
-//         console.log(`✅ Usando ${allProducts.length} productos del caché\n`);
-//       } else {
-//         console.log(`⚠️  Caché no válido, usando Meta API...\n`);
-//       }
-//     } catch (cacheError) {
-//       console.log(`⚠️  Error accediendo caché:`, (cacheError as Error).message);
-//     }
+      cacheFilePath = require('path').join(cacheDir, `catalogo-${catalogKey}.json`);
 
-//     // FALLBACK A META API SI NO HAY CACHÉ
-//     if (!useCache || allProducts.length === 0) {
-//       console.log(`📥 Consultando Meta API (fallback)...`);
+      console.log(`   📁 Ruta caché: ${cacheFilePath}`);
 
-//       let nextCursor: string | null = null;
-//       let pageNumber = 1;
+      // 2️⃣ Verificar si existe el archivo
+      try {
+        await fs.stat(cacheFilePath);
+        console.log(`   ✅ Archivo encontrado`);
+      } catch (statErr) {
+        console.log(`   ❌ Archivo no existe`);
+        throw new Error('Cache file not found');
+      }
 
-//       do {
-//         let productUrl = `https://graph.facebook.com/v23.0/${catalog.catalogId}/products?fields=id,name,description,price,currency,retailer_id,category,availability,condition,brand&limit=100`;
+      // 3️⃣ Leer el archivo
+      const fileContent = await fs.readFile(cacheFilePath, 'utf-8');
+      const cacheData = JSON.parse(fileContent);
 
-//         if (nextCursor) {
-//           productUrl += `&after=${nextCursor}`;
-//         }
+      console.log(`   📦 Datos del caché:`);
+      console.log(`      • Última actualización: ${cacheData.lastUpdated}`);
+      console.log(`      • Vence el: ${cacheData.expiresAt}`);
 
-//         const productsResponse = await fetch(productUrl, {
-//           method: 'GET',
-//           headers: {
-//             'Authorization': `Bearer ${jwtToken}`,
-//           }
-//         });
+      // 4️⃣ Verificar si ha expirado
+      const expirationTime = moment(cacheData.expiresAt);
+      const now = moment();
 
-//         const productsData = await productsResponse.json();
+      if (now.isAfter(expirationTime)) {
+        const horasExpirado = now.diff(expirationTime, 'hours');
+        console.log(`   ⏰ CACHÉ EXPIRADO hace ${horasExpirado} horas`);
+        throw new Error('Cache expired');
+      }
 
-//         if (!productsResponse.ok) {
-//           throw new Error(`Error Meta API: ${productsData.error?.message}`);
-//         }
+      const hoursRemaining = expirationTime.diff(now, 'hours');
+      console.log(`   ✅ CACHÉ VÁLIDO (expira en ${hoursRemaining} horas)`);
+      console.log(`   📊 Productos en caché: ${cacheData.totalProducts}`);
 
-//         const pageProducts = productsData.data || [];
-//         allProducts = allProducts.concat(pageProducts);
+      // 5️⃣ EXTRAER PRODUCTOS DEL CACHÉ
+      if (!cacheData.categories || typeof cacheData.categories !== 'object') {
+        throw new Error('Invalid cache structure - no categories');
+      }
 
-//         const pagingInfo = productsData.paging;
-//         nextCursor =
-//           pagingInfo && pagingInfo.cursors && pagingInfo.cursors.after
-//             ? pagingInfo.cursors.after
-//             : null;
+      // Convertir categorías del caché a formato de productos
+      for (const category in cacheData.categories) {
+        const categoryProducts = cacheData.categories[category];
+        
+        if (Array.isArray(categoryProducts)) {
+          allProducts = allProducts.concat(categoryProducts);
+        }
+      }
 
-//         pageNumber++;
+      if (allProducts.length === 0) {
+        throw new Error('No products in cache');
+      }
 
-//         if (nextCursor) {
-//           await new Promise(resolve => setTimeout(resolve, 1000));
-//         }
-//       } while (nextCursor !== null);
+      usedCache = true;
+      console.log(`\n✅ ${allProducts.length} productos CARGADOS DESDE CACHÉ\n`);
 
-//       console.log(`✅ ${allProducts.length} productos desde Meta API\n`);
-//     }
+    } catch (cacheError: any) {
+      console.log(`\n⚠️  No se pudo usar caché: ${cacheError.message}`);
+      console.log(`   → Fallback a Meta API...\n`);
+    }
 
-//     if (allProducts.length === 0) {
-//       throw new Error('No se obtuvieron productos');
-//     }
+    // ═════════════════════════════════════════════════════════════════
+    // PASO 2: FALLBACK A META API SI NO HAY CACHÉ VÁLIDO
+    // ═════════════════════════════════════════════════════════════════
 
-//     // Categorizar y enviar (resto del código original)
-//     const organizedByCategory = categorizeProductsCorrectly(allProducts, catalogKey);
-//     const messageLotes = createAllCategorizedSectionLotes(organizedByCategory);
+    if (!usedCache || allProducts.length === 0) {
+      console.log(`🔄 PASO 2: Consultando Meta API (fallback)...`);
 
-//     // ... continuar con envío de mensajes ...
+      let nextCursor: string | null = null;
+      let pageNumber = 1;
+      const maxProductsPerPage = 100;
 
-//     return {
-//       success: true,
-//       messagesCount: messageLotes.length,
-//       productsCount: allProducts.length,
-//       usedCache: useCache,
-//       source: useCache ? 'cache' : 'meta_api'
-//     };
+      do {
+        console.log(`\n📑 PÁGINA ${pageNumber}:`);
 
-//   } catch (error: any) {
-//     console.error('❌ Error:', error.message);
-//     return {
-//       success: false,
-//       error: error.message,
-//       usedCache: false
-//     };
-//   }
-// }
+        let productUrl = `https://graph.facebook.com/v23.0/${catalog.catalogId}/products?fields=id,name,description,price,currency,retailer_id,category,availability,condition,brand&limit=${maxProductsPerPage}`;
+
+        if (nextCursor) {
+          productUrl += `&after=${nextCursor}`;
+          console.log(`   🔗 Cursor: ${nextCursor.substring(0, 30)}...`);
+        }
+
+        const productsResponse = await fetch(productUrl, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${jwtToken}`,
+          }
+        });
+
+        const productsData = await productsResponse.json();
+
+        if (!productsResponse.ok) {
+          throw new Error(
+            `Error Meta API página ${pageNumber}: ${productsData.error?.message}`
+          );
+        }
+
+        const pageProducts = productsData.data || [];
+        allProducts = allProducts.concat(pageProducts);
+
+        console.log(`   ✅ Página ${pageNumber}: ${pageProducts.length} productos`);
+        console.log(`   📊 Total acumulado: ${allProducts.length}`);
+
+        const pagingInfo = productsData.paging;
+        nextCursor =
+          pagingInfo?.cursors?.after ? pagingInfo.cursors.after : null;
+
+        if (nextCursor) {
+          pageNumber++;
+          console.log(`   ➡️  Más productos disponibles`);
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        } else {
+          console.log(`   ✅ Última página`);
+        }
+
+      } while (nextCursor !== null);
+
+      console.log(`\n✅ ${allProducts.length} productos DESCARGADOS DE META API\n`);
+    }
+
+    // ═════════════════════════════════════════════════════════════════
+    // PASO 3: VALIDAR QUE TENEMOS PRODUCTOS
+    // ═════════════════════════════════════════════════════════════════
+
+    if (allProducts.length === 0) {
+      throw new Error('No se obtuvieron productos de ninguna fuente');
+    }
+
+    console.log(`✅ Total de productos: ${allProducts.length}`);
+
+    // ═════════════════════════════════════════════════════════════════
+    // PASO 4: CATEGORIZAR Y ENVIAR
+    // ═════════════════════════════════════════════════════════════════
+
+    console.log(`\n📂 PASO 3: Categorizando productos...`);
+    const organizedByCategory = categorizeProductsCorrectly(allProducts, catalogKey);
+
+    console.log(`\n🔧 PASO 4: Creando lotes de mensajes...`);
+    const messageLotes = createAllCategorizedSectionLotes(organizedByCategory);
+
+    console.log(`\n📤 PASO 5: Enviando ${messageLotes.length} lote(s)...`);
+
+    let successCount = 0;
+    let failureCount = 0;
+
+    for (const lote of messageLotes) {
+      console.log(`\n📨 Lote ${lote.loteNumber}/${messageLotes.length}...`);
+
+      const categoriesInLote = Array.from(lote.categoriesInLote) as string[];
+      const uniqueCategories = new Set<string>();
+
+      categoriesInLote.forEach((cat: string) => {
+        const baseCategoryName = cat.replace(/\s+\d+$/, '');
+        uniqueCategories.add(baseCategoryName);
+      });
+
+      const uniqueCategoriesArray = Array.from(uniqueCategories).sort();
+      let categoriesDescription = uniqueCategoriesArray.join(', ');
+
+      const headerTemplate = `${catalog.emoji} ${catalog.name} (${lote.loteNumber}/${messageLotes.length})`;
+      let headerText = headerTemplate;
+
+      if (headerText.length > 60) {
+        const maxCatalogNameLength = 35;
+        const truncatedName = catalog.name.substring(0, maxCatalogNameLength);
+        headerText = `${catalog.emoji} ${truncatedName} (${lote.loteNumber}/${messageLotes.length})`;
+
+        if (headerText.length > 60) {
+          headerText = `${catalog.emoji} Catálogo (${lote.loteNumber}/${messageLotes.length})`;
+        }
+      }
+
+      let bodyText = '';
+
+      if (lote.loteNumber === 1 && messageLotes.length > 1) {
+        bodyText = `${lote.itemsCount} productos disponibles\n\n` +
+                   `📂 Categorías:\n${categoriesDescription}\n\n` +
+                   `ℹ️ USAR CATÁLOGOS:\n` +
+                   `1️⃣ Abre este catálogo\n` +
+                   `2️⃣ Ve los siguientes (${messageLotes.length - 1} más)\n` +
+                   `3️⃣ Selecciona productos\n` +
+                   `4️⃣ Envía pedido desde cualquiera\n\n`;
+      } else if (lote.loteNumber === messageLotes.length) {
+        bodyText = `${lote.itemsCount} productos disponibles\n\n` +
+                   `📂 Categorías:\n${categoriesDescription}\n\n` +
+                   `✅ FINALIZAR COMPRA:\n` +
+                   `Presiona "Generar pedido" para completar tu compra.\n\n`;
+      } else {
+        bodyText = `${lote.itemsCount} productos disponibles\n\n` +
+                   `📂 Categorías:\n${categoriesDescription}\n\n` +
+                   `➡️ Continúa con los siguientes catálogos\n\n`;
+      }
+
+      if (bodyText.length > 1024) {
+        bodyText = bodyText.substring(0, 1020) + '...';
+      }
+
+      const productListMessage = {
+        messaging_product: "whatsapp",
+        recipient_type: "individual",
+        to: phoneNumber,
+        type: "interactive",
+        interactive: {
+          type: "product_list",
+          header: {
+            type: "text",
+            text: headerText
+          },
+          body: {
+            text: bodyText
+          },
+          footer: {
+            text: "Agrega al carrito. Finaliza tu compra"
+          },
+          action: {
+            catalog_id: catalog.catalogId,
+            sections: lote.sections.map((section: any, index: number) => {
+              let safeTitle = section.title || `Section ${index + 1}`;
+
+              safeTitle = safeTitle
+                .replace(/[^\w\s\-]/g, '')
+                .substring(0, 30)
+                .trim();
+
+              if (!safeTitle || safeTitle.length === 0) {
+                safeTitle = `Products ${index + 1}`;
+              }
+
+              return {
+                title: safeTitle,
+                product_items: (section.product_items || []).map((item: any) => ({
+                  product_retailer_id: String(item.product_retailer_id || item.id).trim()
+                }))
+              };
+            })
+          }
+        }
+      };
+
+      try {
+        if (lote.loteNumber > 1) {
+          console.log(`   ⏳ Esperando 2 segundos...`);
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        }
+
+        const response = await fetch(
+          `https://graph.facebook.com/v23.0/${numberId}/messages`,
+          {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${jwtToken}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(productListMessage)
+          }
+        );
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          console.error(`   ❌ Error: ${result.error?.message}`);
+          failureCount++;
+        } else {
+          console.log(`   ✅ Lote ${lote.loteNumber} enviado`);
+          successCount++;
+        }
+
+      } catch (error) {
+        console.error(`   ❌ Error enviando lote:`, error);
+        failureCount++;
+      }
+    }
+
+    console.log(`\n${'═'.repeat(70)}`);
+    console.log(`🎉 ENVÍO COMPLETADO`);
+    console.log(`${'═'.repeat(70)}`);
+    console.log(`✅ Éxito: ${successCount}/${messageLotes.length}`);
+    console.log(`❌ Fallos: ${failureCount}/${messageLotes.length}`);
+    console.log(`📦 Productos: ${allProducts.length}`);
+    console.log(`💾 Fuente: ${usedCache ? 'CACHÉ' : 'META API'}`);
+    console.log(`${'═'.repeat(70)}\n`);
+
+    return {
+      success: successCount > 0,
+      messagesCount: messageLotes.length,
+      successCount,
+      productsCount: allProducts.length,
+      usedCache,
+      source: usedCache ? 'cache' : 'meta_api'
+    };
+
+  } catch (error: any) {
+    console.error(`\n❌ ERROR GENERAL:`, error.message);
+    console.error(`Stack:`, error.stack);
+
+    return {
+      success: false,
+      error: error.message,
+      usedCache: false
+    };
+  }
+}
 
 /**
  * FUNCIÓN AUXILIAR: Generar fallback detallado con 100 productos
