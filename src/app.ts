@@ -3020,8 +3020,7 @@ const flowValidTime = addKeyword<Provider, Database>(EVENTS.WELCOME)
 
         if (esLunes || !dentroDeHorario) {
           console.log(`⚠️ Usuario ${userPhone} fuera de horario`);            
-            // return gotoFlow(flowDisable);  // O flowDisable
-            return gotoFlow(flowPrincipal);
+             return gotoFlow(flowDisable);  // O flowDisable
         } else {
             console.log(`✅ Usuario ${userPhone} dentro de horario`);
             return gotoFlow(flowPrincipal);
