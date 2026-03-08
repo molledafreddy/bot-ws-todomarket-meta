@@ -1020,9 +1020,9 @@ const flowPrincipal = addKeyword<Provider, Database>(utils.setEvent('welcome'))
         console.log(`📱 === FLOWPRINCIPAL.addAnswer() ===`);
         console.log(`👤 Usuario: ${userPhone}`);
         console.log(`💬 Opción seleccionada: ${ctx.body}`);
-        await notificationClientIterating(userPhone);
-        // const message = `El cliente con el celular ${userPhone} Esta interactuando con el bot`;
-        // await provider.sendText('56936499908@s.whatsapp.net', message);
+        // await notificationClientIterating(userPhone);
+        const message = `El cliente con el celular ${userPhone} Esta interactuando con el bot`;
+        await provider.sendText('56936499908@s.whatsapp.net', message);
         
         
         const userInput = ctx.body.toLowerCase().trim();
